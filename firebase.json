@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "thea-643b1-23686",
+    "public": "build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
