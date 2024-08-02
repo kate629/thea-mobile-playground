@@ -1,0 +1,6 @@
+{
+    "eslint.codeActionsOnSave.rules": null,
+    "eslint.run": "onType",
+    "editor.formatOnSave": true,
+    "notebook.formatOnSave.enabled": true
+}
