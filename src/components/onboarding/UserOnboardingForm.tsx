@@ -27,6 +27,8 @@ const likesOptions = [
     'Clothes', 
 ]; 
 
+const DB_NAME = "user";
+
 const required = (value: any) => (value ? undefined : "Required");
 const emailValidation = (value: any) =>
     value && /\S+@\S+\.\S+/.test(value) ? undefined : "Invalid email";
@@ -62,7 +64,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
         }
 
         try {
-            await addDoc(collection(db, "user"), {
+            await addDoc(collection(db, DB_NAME), {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 gender: values.gender,
@@ -83,7 +85,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     };
 
     return (
-        <Container style={{ width: "50%" }}>
+        
             <div className="container mt-5">
                 <h1>Welcome to Thea!</h1>
                 <h2>{user?.displayName}</h2>
@@ -227,7 +229,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                     )}
                 />
             </div>
-        </Container>
+    
     );
 };
 

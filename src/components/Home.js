@@ -23,17 +23,23 @@ const Home = () => {
   const photo = user?.photoURL;
 
   return (
-    <Container fluid className="mt-5">
+    <Container className="mt-5">
       <Row className="justify-content-center">
         <div className="p-4 box mt-3">
           <RoundImage image={photo} />
           <UserOnboardingForm />
         </div>
-        <div className="d-grid gap-2 mt-3">
-          <Button variant="primary" onClick={handleLogout}>
-            Log out
+      </Row>
+      <Row className="justify-content-center mt-3">
+        <Col className="text-center">
+          <Button
+            variant="danger"
+            style={{ width: "50%" }}
+            onClick={handleLogout}
+          >
+            Log Out
           </Button>
-        </div>
+        </Col>
       </Row>
     </Container>
   );
