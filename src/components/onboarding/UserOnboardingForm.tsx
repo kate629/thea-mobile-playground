@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Form, Field } from "react-final-form";
 import { db } from "../../firebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -9,9 +9,28 @@ interface Props {
     name: string;
 }
 
+enum CountryCodes {
+    US = "+1",
+    CA = "+1",
+}
+
+const likesOptions = [
+    'Tech',
+    'Books',
+    'Cooking',
+    'Jewelry',
+    'Experiences', 
+    'Plants', 
+    'Fitness', 
+    'Cocktails', 
+    'Clothes', 
+]; 
+
 const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     const auth = getAuth();
-    const [user, setUser] = React.useState<User | null >(null);
+    
+    const [user, setUser] = React.useState<User | null >(auth.currentUser);
+    const [selectedLikes, setSelectedLikes] = useState<string[]>([]);
 
     React.useEffect(() => {
         onAuthStateChanged(auth, (currentUser) => {
@@ -23,11 +42,10 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
         });
     }, [auth]);
 
-    const countryCodes: { [key: string]: string } = {
-        US: "+1",
-        CA: "+1",
-        IN: "+91",
-        // Add more country codes as needed
+    const toggleLike = (like: string) => {
+        setSelectedLikes((prev) =>
+            prev.includes(like) ? prev.filter((l) => l !== like) : [...prev, like]
+        );
     };
 
     const onSubmit = async (values: any) => {
@@ -37,16 +55,16 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
         }
 
         try {
-            await addDoc(collection(db, "users"), {
+            await addDoc(collection(db, "user"), {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 gender: values.gender,
                 birthday: new Date(values.dob),
                 phoneNumber: {
-                    countryCode: countryCodes[values.countryCode] || values.countryCode,
+                    countryCode: values.countryCode,
                     number: values.phoneNumber,
                 },
-                likes: values.likes.split(',').map((like: string) => like.trim()),
+                likes: selectedLikes,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 uid: user.uid,
@@ -66,6 +84,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                 render={({ handleSubmit, form, submitting, pristine }) => (
                     <form onSubmit={handleSubmit} className="mt-4">
                         <div className="form-group">
+                            <label>First Name</label>
                             <Field
                                 name="firstName"
                                 component="input"
@@ -75,6 +94,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             />
                         </div>
                         <div className="form-group">
+                            <label>Last Name</label>
                             <Field
                                 name="lastName"
                                 component="input"
@@ -84,6 +104,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             />
                         </div>
                         <div className="form-group">
+                            <label>Gender</label>
                             <Field name="gender" component="select" className="form-control">
                                 <option value="">Select Gender</option>
                                 <option value="MALE">Male</option>
@@ -103,13 +124,12 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                         <div className="form-group">
                             <label>Phone Number</label>
                             <div className="d-flex">
-                                <Field
-                                    name="countryCode"
-                                    component="input"
-                                    type="text"
-                                    placeholder="Country Code (e.g., US, CA, IN)"
-                                    className="form-control mr-2"
-                                />
+                                <Field name="countryCode" component="select" className="form-control mr-2">
+                                    <option value="">Select Country Code</option>
+                                    {Object.entries(CountryCodes).map(([key, value]) => (
+                                        <option key={key} value={value}>{`${key} (${value})`}</option>
+                                    ))}
+                                </Field>
                                 <Field
                                     name="phoneNumber"
                                     component="input"
@@ -120,14 +140,19 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>Likes (comma separated)</label>
-                            <Field
-                                name="likes"
-                                component="input"
-                                type="text"
-                                placeholder="Likes"
-                                className="form-control"
-                            />
+                            <label>Likes</label>
+                            <div>
+                                {likesOptions.map((like) => (
+                                    <button
+                                        key={like}
+                                        type="button"
+                                        className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
+                                        onClick={() => toggleLike(like)}
+                                    >
+                                        {like}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="form-group form-check">
                             <Field
