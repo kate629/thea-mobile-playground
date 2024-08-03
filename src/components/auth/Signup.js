@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, Alert } from "react-bootstrap";
-import { Button } from "react-bootstrap";
+import { Container, Button } from "react-bootstrap";
 import { useUserAuth } from "../../context/UserAuthContext.tsx";
 import { RoundImage } from "../common/RoundImage.tsx";
 import theaLogo from "../../assets/logo/thea_logo.png";
@@ -25,7 +25,7 @@ const Signup = () => {
   };
 
   return (
-    <>
+    <Container style={{ width: "50%" }}>
       <div className="p-4 box">
         <RoundImage image={theaLogo} />
         <h1 className="mb-3" style={{ textAlign: "center" }}>
@@ -59,7 +59,7 @@ const Signup = () => {
       <div className="p-4 box mt-3 text-center">
         Already have an account? <Link to="/">Log In</Link>
       </div>
-    </>
+    </Container>
   );
 };
 

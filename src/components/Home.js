@@ -21,10 +21,9 @@ const Home = () => {
   console.log("User in Home: ", user);
 
   const photo = user?.photoURL;
-  // add photo above Row below
 
   return (
-    <Container className="mt-5">
+    <Container fluid className="mt-5">
       <Row className="justify-content-center">
         <div className="p-4 box mt-3">
           <RoundImage image={photo} />

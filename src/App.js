@@ -10,7 +10,7 @@ import { UserAuthContextProvider } from "./context/UserAuthContext.tsx";
 
 function App() {
   return (
-    <Container style={{ width: "400px" }}>
+    <Container>
       <Row>
         <Col>
           <UserAuthContextProvider>
