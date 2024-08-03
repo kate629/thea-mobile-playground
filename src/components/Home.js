@@ -21,7 +21,6 @@ const Home = () => {
   console.log("User in Home: ", user);
 
   const photo = user?.photoURL;
-  // add photo above Row below
 
   return (
     <Container className="mt-5">
@@ -30,11 +29,17 @@ const Home = () => {
           <RoundImage image={photo} />
           <UserOnboardingForm />
         </div>
-        <div className="d-grid gap-2 mt-3">
-          <Button variant="primary" onClick={handleLogout}>
-            Log out
+      </Row>
+      <Row className="justify-content-center mt-3">
+        <Col className="text-center">
+          <Button
+            variant="danger"
+            style={{ width: "50%" }}
+            onClick={handleLogout}
+          >
+            Log Out
           </Button>
-        </div>
+        </Col>
       </Row>
     </Container>
   );
