@@ -6,7 +6,7 @@ import Home from "./components/Home";
 import Login from "./components/auth/Login";
 import Signup from "./components/auth/Signup";
 
-import { UserAuthContextProvider } from "./context/UserAuthContext.tsx";
+import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 
 function App() {
   return (

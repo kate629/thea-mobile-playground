@@ -4,7 +4,7 @@ interface Props {
   image: string;
 }
 
-export const RoundImage = ({image}) => {
+export const RoundImage: React.FC<Props> = ({ image }) => {
   return (
     <div className="text-center mb-3">
       <img
