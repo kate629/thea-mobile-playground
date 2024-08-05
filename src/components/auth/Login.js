@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Form, Alert } from "react-bootstrap";
 import { Button, Container } from "react-bootstrap";
 import GoogleButton from "react-google-button";
-import { useUserAuth } from "../../context/UserAuthContext.tsx";
+import { useUserAuth } from "../../context/UserAuthContext.js";
 import theaLogo from "../../assets/logo/thea_logo.png";
 import { RoundImage } from "../common/RoundImage.tsx";
 

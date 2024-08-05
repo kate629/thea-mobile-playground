@@ -33,7 +33,7 @@ const required = (value: any) => (value ? undefined : "Required");
 const emailValidation = (value: any) =>
     value && /\S+@\S+\.\S+/.test(value) ? undefined : "Invalid email";
 const composeValidators = (...validators: any) => (value: any) =>
-    validators.reduce((error, validator) => error || validator(value), undefined);
+    validators.reduce((error: any, validator: (arg0: any) => any) => error || validator(value), undefined);
 
 const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     const auth = getAuth();

@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Container, Row, Col } from "react-bootstrap";
 
 import { useNavigate } from "react-router";
-import { useUserAuth } from "../context/UserAuthContext.tsx";
+import { useUserAuth } from "../context/UserAuthContext.js";
 import UserOnboardingForm from "./onboarding/UserOnboardingForm.tsx";
 import RoundImage from "./common/RoundImage.tsx";
 
