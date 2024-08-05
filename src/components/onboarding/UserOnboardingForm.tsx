@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Form, Field } from "react-final-form";
 import { db } from "../../firebaseConfig";
-import { Container, Button } from "react-bootstrap";
+import { Container, Button, Row, Col } from "react-bootstrap";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
@@ -98,7 +98,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
 
     if (isSubscribed) {
         return (
-            <Container className="mt-5">
+            <Container className="mt-5 text-center">
                 <h1>{user?.displayName}, </h1>
                 <h1>Thank you for subscribing to Thea!</h1>
                 <p>We appreciate your interest. We'll be in touch soon.</p>
@@ -107,167 +107,187 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     }
 
     return (
-        <Container className="mt-5">
-            <h1>Welcome to Thea!</h1>
-            <h2>{user?.displayName}</h2>
-            <Form
-                onSubmit={onSubmit}
-                render={({ handleSubmit, form, submitting, pristine }) => (
-                    <form onSubmit={handleSubmit} className="mt-4">
-                        <div className="form-group">
-                            <Field
-                                name="firstName"
-                                component="input"
-                                type="text"
-                                placeholder="First Name"
-                                className="form-control"
-                                validate={required}
-                            >
-                                {({ input, meta }) => (
-                                    <div>
-                                        <label>First Name</label>
-                                        <input {...input} className="form-control" />
-                                        {meta.error && meta.touched && (
-                                            <span className="text-danger">{meta.error}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </Field>
-                        </div>
-                        <div className="form-group">
-                            <Field
-                                name="lastName"
-                                component="input"
-                                type="text"
-                                placeholder="Last Name"
-                                className="form-control"
-                                validate={required}
-                            >
-                                {({ input, meta }) => (
-                                    <div>
-                                        <label>Last Name</label>
-                                        <input {...input} className="form-control" />
-                                        {meta.error && meta.touched && (
-                                            <span className="text-danger">{meta.error}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </Field>
-                        </div>
-                        <div className="form-group">
-                            <label>Gender</label>
-                            <Field name="gender" component="select" className="form-control" validate={required}>
-                                <option value="">Select Gender</option>
-                                <option value="MALE">Male</option>
-                                <option value="FEMALE">Female</option>
-                                <option value="OTHER">Other</option>
-                            </Field>
-                            <Field name="gender">
-                                {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
-                            </Field>
-                        </div>
-                        <div className="form-group">
-                            <Field
-                                name="dob"
-                                component="input"
-                                type="date"
-                                className="form-control"
-                                validate={required}
-                            >
-                                {({ input, meta }) => (
-                                    <div>
-                                        <label>Date of Birth</label>
-                                        <input {...input} className="form-control" />
-                                        {meta.error && meta.touched && (
-                                            <span className="text-danger">{meta.error}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </Field>
-                        </div>
-                        <div className="form-group">
-                            <Field
-                                name="email"
-                                component="input"
-                                type="email"
-                                placeholder="Email"
-                                className="form-control"
-                                validate={composeValidators(required, emailValidation)}
-                            >
-                                {({ input, meta }) => (
-                                    <div>
-                                        <label>Email</label>
-                                        <input {...input} className="form-control" />
-                                        {meta.error && meta.touched && (
-                                            <span className="text-danger">{meta.error}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </Field>
-                        </div>
-                        <div className="form-group">
-                            <label>Phone Number</label>
-                            <div className="d-flex">
-                                <Field name="countryCode" component="select" className="form-control mr-2">
-                                    <option value="">Select Country Code</option>
-                                    {Object.entries(CountryCodes).map(([key, value]) => (
-                                        <option key={key} value={value}>{`${key} (${value})`}</option>
-                                    ))}
-                                </Field>
-                                <Field
-                                    name="phoneNumber"
-                                    component="input"
-                                    type="text"
-                                    placeholder={userAuthPhoneNumber ?? "Phone Number"}
-                                    defaultValue= {userAuthPhoneNumber ?? ""}
-                                    className="form-control"
-                                />
-                            </div>
-                        </div>
-                        <div className="form-group">
-                            <label>Tell us about your interests: </label>
-                            <div>
-                                {likesOptions.map((like) => (
-                                    <button
-                                        key={like}
-                                        type="button"
-                                        className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
-                                        onClick={() => toggleLike(like)}
+        <Container className="d-flex justify-content-center align-items-center mt-5">
+            <div className="w-75">
+                <h1 className="text-center">Welcome to Thea!</h1>
+                <h2 className="text-center">{user?.displayName}</h2>
+                <Form
+                    onSubmit={onSubmit}
+                    render={({ handleSubmit, form, submitting, pristine }) => (
+                        <form onSubmit={handleSubmit} className="mt-4">
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>First Name</label></Col>
+                                <Col sm={8}>
+                                    <Field
+                                        name="firstName"
+                                        component="input"
+                                        type="text"
+                                        placeholder="First Name"
+                                        className="form-control"
+                                        validate={required}
                                     >
-                                        {like}
-                                    </button>
-                                ))}
+                                        {({ input, meta }) => (
+                                            <div>
+                                                <input {...input} className="form-control" />
+                                                {meta.error && meta.touched && (
+                                                    <span className="text-danger">{meta.error}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Last Name</label></Col>
+                                <Col sm={8}>
+                                    <Field
+                                        name="lastName"
+                                        component="input"
+                                        type="text"
+                                        placeholder="Last Name"
+                                        className="form-control"
+                                        validate={required}
+                                    >
+                                        {({ input, meta }) => (
+                                            <div>
+                                                <input {...input} className="form-control" />
+                                                {meta.error && meta.touched && (
+                                                    <span className="text-danger">{meta.error}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Gender</label></Col>
+                                <Col sm={8}>
+                                    <Field name="gender" component="select" className="form-control" validate={required}>
+                                        <option value="">Select Gender</option>
+                                        <option value="MALE">Male</option>
+                                        <option value="FEMALE">Female</option>
+                                        <option value="OTHER">Other</option>
+                                    </Field>
+                                    <Field name="gender">
+                                        {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Date of Birth</label></Col>
+                                <Col sm={8}>
+                                    <Field
+                                        name="dob"
+                                        component="input"
+                                        type="date"
+                                        className="form-control"
+                                        validate={required}
+                                    >
+                                        {({ input, meta }) => (
+                                            <div>
+                                                <input {...input} className="form-control" />
+                                                {meta.error && meta.touched && (
+                                                    <span className="text-danger">{meta.error}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Email</label></Col>
+                                <Col sm={8}>
+                                    <Field
+                                        name="email"
+                                        component="input"
+                                        type="email"
+                                        placeholder="Email"
+                                        className="form-control"
+                                        validate={composeValidators(required, emailValidation)}
+                                    >
+                                        {({ input, meta }) => (
+                                            <div>
+                                                <input {...input} className="form-control" />
+                                                {meta.error && meta.touched && (
+                                                    <span className="text-danger">{meta.error}</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Phone Number</label></Col>
+                                <Col sm={8}>
+                                    <div className="d-flex">
+                                        <Field name="countryCode" component="select" className="form-control mr-2">
+                                            <option value="">Select Country Code</option>
+                                            {Object.entries(CountryCodes).map(([key, value]) => (
+                                                <option key={key} value={value}>{`${key} (${value})`}</option>
+                                            ))}
+                                        </Field>
+                                        <Field
+                                            name="phoneNumber"
+                                            component="input"
+                                            type="text"
+                                            placeholder={userAuthPhoneNumber ?? "Phone Number"}
+                                            defaultValue={userAuthPhoneNumber ?? ""}
+                                            className="form-control"
+                                        />
+                                    </div>
+                                </Col>
+                            </Row>
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end"><label>Tell us about your interests</label></Col>
+                                <Col sm={8}>
+                                    <div>
+                                        {likesOptions.map((like) => (
+                                            <button
+                                                key={like}
+                                                type="button"
+                                                className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
+                                                onClick={() => toggleLike(like)}
+                                            >
+                                                {like}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Col>
+                            </Row>
+                            <hr />
+                            <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
+                                <Col sm={4} className="text-sm-end">
+                                    <Field
+                                        name="terms"
+                                        component="input"
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        validate={required}
+                                    />
+                                </Col>
+                                <Col sm={8}>
+                                    <label className="form-check-label small">
+                                        By checking this box, you acknowledge that you have read, understood, and agree to be bound by our{' '}
+                                        <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">
+                                            Terms and Conditions
+                                        </a>
+                                        <p>By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.</p>
+                                    </label>
+                                    <Field name="terms">
+                                        {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
+                                    </Field>
+                                </Col>
+                            </Row>
+                            <br />
+                            <div className="text-center">
+                                <Button type="submit" style={{ width: "50%" }} className="btn btn-primary" disabled={submitting || pristine}>
+                                    Submit
+                                </Button>
                             </div>
-                        </div>
-                        <hr />
-                        <div className="form-group form-check">
-                            <Field
-                                name="terms"
-                                component="input"
-                                type="checkbox"
-                                className="form-check-input"
-                                validate={required}
-                            />
-                            <label className="form-check-label small">
-                                By checking this box, you acknowledge that you have read, understood, and agree to be bound by our{' '}
-                                <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">
-                                    Terms and Conditions
-                                </a>
-                                <p>By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.</p>
-                            </label>
-                            <Field name="terms">
-                                {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
-                            </Field>
-                        </div>
-                        <br />
-                        <div className="text-center">
-                            <Button type="submit" style={{ width: "50%" }} className="btn btn-primary" disabled={submitting || pristine}>
-                                Submit
-                            </Button>
-                        </div>
-                    </form>
-                )}
-            />
+                        </form>
+                    )}
+                />
+            </div>
         </Container>
     );
 };
