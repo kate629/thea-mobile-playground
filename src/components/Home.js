@@ -32,11 +32,7 @@ const Home = () => {
       </Row>
       <Row className="justify-content-center mt-3">
         <Col className="text-center">
-          <Button
-            variant="danger"
-            style={{ width: "50%" }}
-            onClick={handleLogout}
-          >
+          <Button variant="danger" onClick={handleLogout}>
             Log Out
           </Button>
         </Col>

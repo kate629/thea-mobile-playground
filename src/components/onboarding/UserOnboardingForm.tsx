@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Form, Field } from "react-final-form";
 import { db } from "../../firebaseConfig";
-import { Container } from "react-bootstrap";
+import { Container, Button } from "react-bootstrap";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
@@ -260,9 +260,9 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                         </div>
                         <br />
                         <div className="text-center">
-                            <button type="submit" className="btn btn-primary" disabled={submitting || pristine}>
+                            <Button type="submit" style={{ width: "50%" }} className="btn btn-primary" disabled={submitting || pristine}>
                                 Submit
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 )}
