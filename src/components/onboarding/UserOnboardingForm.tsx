@@ -225,7 +225,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>Likes</label>
+                            <label>Tell us about your interests: </label>
                             <div>
                                 {likesOptions.map((like) => (
                                     <button
@@ -248,11 +248,12 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 className="form-check-input"
                                 validate={required}
                             />
-                            <label className="form-check-label">
+                            <label className="form-check-label small">
                                 By checking this box, you acknowledge that you have read, understood, and agree to be bound by our{' '}
                                 <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">
                                     Terms and Conditions
                                 </a>
+                                <p>By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.</p>
                             </label>
                             <Field name="terms">
                                 {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
