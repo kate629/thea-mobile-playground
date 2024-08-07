@@ -6,6 +6,7 @@ import GoogleButton from "react-google-button";
 import { useUserAuth } from "../../context/UserAuthContext.js";
 import theaLogo from "../../assets/logo/thea_logo.png";
 import { RoundImage } from "../common/RoundImage.tsx";
+import BrandedAuthButton from "./BrandedAuthButton.tsx";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -63,9 +64,9 @@ const Login = () => {
           </Form.Group>
 
           <div className="d-grid gap-2">
-            <Button variant="primary" type="Submit">
+            <BrandedAuthButton variant="primary" type="submit">
               Log In
-            </Button>
+            </BrandedAuthButton>
           </div>
         </Form>
         <hr />
