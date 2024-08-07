@@ -222,8 +222,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 <Col sm={3}><label>Phone Number</label></Col>
                                 <Col sm={9}>
                                     <div className="d-flex">
-                                        <Field name="countryCode" component="select" className="form-control mr-2">
-                                            <option value="">Country Code</option>
+                                        <Field name="countryCode" component="select" className="form-control mr-2" style={{ width: '100px' }}>
+                                            <option value="">Country</option>
                                             {Object.entries(CountryCodes).map(([key, value]) => (
                                                 <option key={key} value={value}>{`${key} (${value})`}</option>
                                             ))}
@@ -242,8 +242,6 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             <br />
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
                                 <label style={{ textAlign: 'center', display: 'block' }}>Help us help your friends! If a friend were picking out a gift for you, which categories would you be interested in?</label>
-                                {/* add certical spacing here */}
-
                                 <div style={{ marginTop: '20px' }}>
                                     {likesOptions.map((like) => (
                                         <button
@@ -270,9 +268,9 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                                 <Col sm={11}>
                                     <label className="form-check-label small">
-                                        By checking this box, you acknowledge that you have read, understood, and agree to be bound by our{' '}
+                                        By checking this box, you acknowledge that you have read, understood, and agree to be bound by our Confidentiality Agreement.{' '}
                                         <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">
-                                            Terms and Conditions
+                                            Confidentiality Agreement
                                         </a>
                                         <p>By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.</p>
                                     </label>

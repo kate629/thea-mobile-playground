@@ -31,13 +31,13 @@ const Home = () => {
           <UserOnboardingForm />
         </div>
       </Row>
-      <Row className="justify-content-center mt-3">
+      {/* <Row className="justify-content-center mt-3">
         <Col className="text-center">
           <Button variant="danger" onClick={handleLogout}>
             Log Out
           </Button>
         </Col>
-      </Row>
+      </Row> */}
     </Container>
   );
 };
