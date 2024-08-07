@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, Alert } from "react-bootstrap";
-import { Container, Button } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import { useUserAuth } from "../../context/UserAuthContext.js";
 import { RoundImage } from "../common/RoundImage.tsx";
+import BrandedAuthButton from "./BrandedAuthButton.tsx";
 import theaLogo from "../../assets/logo/thea_logo.png";
 
 const Signup = () => {
@@ -29,7 +30,7 @@ const Signup = () => {
       <div className="p-4 box">
         <RoundImage image={theaLogo} />
         <h1 className="mb-3" style={{ textAlign: "center" }}>
-          Welcome to Thea
+          Gifting made magical
         </h1>
         {error && <Alert variant="danger">{error}</Alert>}
         <Form onSubmit={handleSubmit}>
@@ -50,9 +51,9 @@ const Signup = () => {
           </Form.Group>
 
           <div className="d-grid gap-2">
-            <Button variant="primary" type="Submit">
-              Sign up
-            </Button>
+            <BrandedAuthButton variant="primary" type="submit">
+              Join
+            </BrandedAuthButton>
           </div>
         </Form>
       </div>
