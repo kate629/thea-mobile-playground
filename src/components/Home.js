@@ -8,17 +8,15 @@ import RoundImage from "./common/RoundImage.tsx";
 
 const Home = () => {
   const { logOut, user } = useUserAuth();
-  const navigate = useNavigate();
-  const handleLogout = async () => {
-    try {
-      await logOut();
-      navigate("/");
-    } catch (error) {
-      console.log(error.message);
-    }
-  };
-
-  console.log("User in Home: ", user);
+  //   const navigate = useNavigate();
+  //   const handleLogout = async () => {
+  //     try {
+  //       await logOut();
+  //       navigate("/");
+  //     } catch (error) {
+  //       console.log(error.message);
+  //     }
+  //   };
 
   const photo = user?.photoURL;
   const isValidPhotos = photo !== null && photo !== undefined;
