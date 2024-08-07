@@ -108,17 +108,17 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     }
 
     return (
-        <Container className="d-flex justify-content-center align-items-center mt-5">
-            <div className="w-75">
+        <Container className="d-flex justify-content-center align-items-center mt-5" style={{ width: "70%", maxWidth: "500px" }}>
+            <div className="w-90">
                 <h1 className="text-center">Welcome to Thea!</h1>
-                <h2 className="text-center">{user?.displayName}</h2>
+                {user?.displayName && <h2 className="text-center">{user.displayName}</h2>}
                 <Form
                     onSubmit={onSubmit}
                     render={({ handleSubmit, form, submitting, pristine }) => (
                         <form onSubmit={handleSubmit} className="mt-4">
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>First Name</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3} ><label>First Name</label></Col>
+                                <Col sm={9}>
                                     <Field
                                         name="firstName"
                                         component="input"
@@ -139,8 +139,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                             </Row>
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Last Name</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3} ><label>Last Name</label></Col>
+                                <Col sm={9}>
                                     <Field
                                         name="lastName"
                                         component="input"
@@ -161,8 +161,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                             </Row>
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Gender</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3} ><label>Gender</label></Col>
+                                <Col sm={9}>
                                     <Field name="gender" component="select" className="form-control" validate={required}>
                                         <option value="">Select Gender</option>
                                         <option value="MALE">Male</option>
@@ -175,8 +175,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                             </Row>
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Date of Birth</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3}><label>Date of Birth</label></Col>
+                                <Col sm={9}>
                                     <Field
                                         name="dob"
                                         component="input"
@@ -196,13 +196,14 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                             </Row>
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Email</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3}><label>Email</label></Col>
+                                <Col sm={9}>
                                     <Field
                                         name="email"
                                         component="input"
                                         type="email"
                                         placeholder="Email"
+                                        defaultValue={user?.email ?? ""}
                                         className="form-control"
                                         validate={composeValidators(required, emailValidation)}
                                     >
@@ -218,11 +219,11 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 </Col>
                             </Row>
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Phone Number</label></Col>
-                                <Col sm={8}>
+                                <Col sm={3}><label>Phone Number</label></Col>
+                                <Col sm={9}>
                                     <div className="d-flex">
                                         <Field name="countryCode" component="select" className="form-control mr-2">
-                                            <option value="">Select Country Code</option>
+                                            <option value="">Country Code</option>
                                             {Object.entries(CountryCodes).map(([key, value]) => (
                                                 <option key={key} value={value}>{`${key} (${value})`}</option>
                                             ))}
@@ -238,26 +239,27 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                     </div>
                                 </Col>
                             </Row>
+                            <br />
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end"><label>Tell us about your interests</label></Col>
-                                <Col sm={8}>
-                                    <div>
-                                        {likesOptions.map((like) => (
-                                            <button
-                                                key={like}
-                                                type="button"
-                                                className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
-                                                onClick={() => toggleLike(like)}
-                                            >
-                                                {like}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </Col>
+                                <label style={{ textAlign: 'center', display: 'block' }}>Help us help your friends! If a friend were picking out a gift for you, which categories would you be interested in?</label>
+                                {/* add certical spacing here */}
+
+                                <div style={{ marginTop: '20px' }}>
+                                    {likesOptions.map((like) => (
+                                        <button
+                                            key={like}
+                                            type="button"
+                                            className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
+                                            onClick={() => toggleLike(like)}
+                                        >
+                                            {like}
+                                        </button>
+                                    ))}
+                                </div>
                             </Row>
                             <hr />
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
-                                <Col sm={4} className="text-sm-end">
+                                <Col sm={1} className="text-sm-end">
                                     <Field
                                         name="terms"
                                         component="input"
@@ -266,7 +268,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                         validate={required}
                                     />
                                 </Col>
-                                <Col sm={8}>
+                                <Col sm={11}>
                                     <label className="form-check-label small">
                                         By checking this box, you acknowledge that you have read, understood, and agree to be bound by our{' '}
                                         <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">

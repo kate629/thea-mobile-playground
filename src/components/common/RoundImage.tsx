@@ -1,10 +1,11 @@
 import React from "react";
+import thea_logo from "../../assets/logo/thea_logo.png";
 
 interface Props {
   image: string;
 }
 
-export const RoundImage: React.FC<Props> = ({ image }) => {
+export const RoundImage: React.FC<Props> = ({ image = thea_logo }) => {
   return (
     <div className="text-center mb-3">
       <img

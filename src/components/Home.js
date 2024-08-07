@@ -21,12 +21,13 @@ const Home = () => {
   console.log("User in Home: ", user);
 
   const photo = user?.photoURL;
+  const isValidPhotos = photo !== null && photo !== undefined;
 
   return (
     <Container className="mt-5">
       <Row className="justify-content-center">
         <div className="p-4 box mt-3">
-          <RoundImage image={photo} />
+          {isValidPhotos ? <RoundImage image={photo} /> : <RoundImage />}
           <UserOnboardingForm />
         </div>
       </Row>

@@ -25,7 +25,7 @@ const Signup = () => {
   };
 
   return (
-    <Container style={{ width: "50%" }}>
+    <Container style={{ width: "70%", maxWidth: "500px" }}>
       <div className="p-4 box">
         <RoundImage image={theaLogo} />
         <h1 className="mb-3" style={{ textAlign: "center" }}>
