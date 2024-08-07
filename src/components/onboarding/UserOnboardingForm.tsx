@@ -97,6 +97,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     };
 
     if (isSubscribed) {
+        console.log(user)
         return (
             <Container className="mt-5 text-center">
                 <h1>{user?.displayName}, </h1>
