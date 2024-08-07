@@ -7,6 +7,7 @@ import { useUserAuth } from "../../context/UserAuthContext.js";
 import theaLogo from "../../assets/logo/thea_logo.png";
 import { RoundImage } from "../common/RoundImage.tsx";
 import BrandedAuthButton from "./BrandedAuthButton.tsx";
+import HeroComponent from "../common/HeroComponent.tsx";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -39,13 +40,8 @@ const Login = () => {
   return (
     <Container style={{ width: "70%", maxWidth: "500px" }}>
       <div className="p-4 box">
-        <RoundImage image={theaLogo} />
-        <h1 className="mb-3" style={{ textAlign: "center" }}>
-          Welcome to Thea
-        </h1>
-
+        <HeroComponent />
         {error && <Alert variant="danger">{error}</Alert>}
-
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <Form.Control

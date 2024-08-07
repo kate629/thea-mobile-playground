@@ -21,6 +21,7 @@ const BrandedAuthButton: React.FC<BrandedAuthButtonProps> = ({
     borderColor: "#000000",
     color: "#000000",
     fontWeight: 700, 
+    fontFamily: "'Nunito Sans', sans-serif",
     ...style, 
   };
 
