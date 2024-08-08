@@ -25,8 +25,9 @@ const likesOptions = [
     'Experiences', 
     'Plants', 
     'Fitness', 
-    'Cocktails', 
+    'Alcohol', 
     'Clothes', 
+    'Sweets'
 ]; 
 
 const DB_NAME = "user";
@@ -43,6 +44,15 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     const [selectedLikes, setSelectedLikes] = useState<string[]>([]);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const userAuthPhoneNumber = user?.phoneNumber;
+
+    const getDefaultDate = () => {
+        const today = new Date();
+        const year = today.getFullYear() - 30;
+        const month = 0; // January
+        const day = 1;
+        const date = new Date(Date.UTC(year, month, day));
+        return date.toISOString().split('T')[0];
+    };
 
     useEffect(() => {
         const checkSubscriptionStatus = async (currentUser: User) => {
@@ -75,12 +85,14 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
             return;
         }
 
+        const dobString = values.dob;
+
         try {
             await addDoc(collection(db, DB_NAME), {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 gender: values.gender,
-                birthday: new Date(values.dob),
+                birthday: dobString,
                 email: values.email,
                 phoneNumber: {
                     countryCode: values.countryCode,
@@ -199,6 +211,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                         type="date"
                                         className="form-control"
                                         validate={required}
+                                        defaultValue={getDefaultDate()}
                                     >
                                         {({ input, meta }) => (
                                             <div>
