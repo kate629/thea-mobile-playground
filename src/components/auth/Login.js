@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, Alert } from "react-bootstrap";
-import { Button, Container } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import GoogleButton from "react-google-button";
 import { useUserAuth } from "../../context/UserAuthContext.js";
-import theaLogo from "../../assets/logo/thea_logo.png";
-import { RoundImage } from "../common/RoundImage.tsx";
 import BrandedAuthButton from "./BrandedAuthButton.tsx";
 import HeroComponent from "../common/HeroComponent.tsx";
 
@@ -41,8 +39,23 @@ const Login = () => {
     <Container style={{ width: "70%", maxWidth: "500px" }}>
       <div className="p-4 box">
         <HeroComponent />
+        <br />
         {error && <Alert variant="danger">{error}</Alert>}
         <Form onSubmit={handleSubmit}>
+          <div className="d-flex justify-content-center">
+            <GoogleButton
+              className="g-btn"
+              type="dark"
+              onClick={handleGoogleSignIn}
+            />
+          </div>
+          <br />
+          <p
+            className="d-flex justify-content-center"
+            style={{ fontFamily: "'Nunito Sans', sans-serif" }}
+          >
+            or
+          </p>
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <Form.Control
               type="email"
@@ -65,16 +78,11 @@ const Login = () => {
             </BrandedAuthButton>
           </div>
         </Form>
-        <hr />
-        <div className="d-flex justify-content-center">
-          <GoogleButton
-            className="g-btn"
-            type="dark"
-            onClick={handleGoogleSignIn}
-          />
-        </div>
       </div>
-      <div className="p-4 box mt-3 text-center">
+      <div
+        style={{ fontFamily: "'Nunito Sans', sans-serif" }}
+        className="p-4 box mt-3 text-center"
+      >
         Don't have an account? <Link to="/signup">Sign up</Link>
       </div>
     </Container>

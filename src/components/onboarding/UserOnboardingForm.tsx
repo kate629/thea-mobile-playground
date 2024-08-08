@@ -5,6 +5,7 @@ import { Container, Button, Row, Col } from "react-bootstrap";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import BrandedAuthButton from "../auth/BrandedAuthButton";
 
 interface Props {
     name: string;
@@ -109,9 +110,28 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
 
     return (
         <Container className="d-flex justify-content-center align-items-center mt-5" style={{ width: "70%", maxWidth: "500px" }}>
-            <div className="w-90">
-                <h1 className="text-center">Welcome to Thea!</h1>
-                {user?.displayName && <h2 className="text-center">{user.displayName}</h2>}
+            <div className="w-90" >
+            <h2 className="text-center" style={{ 
+                    fontFamily: "'Nunito Sans', sans-serif", 
+                    fontWeight: 400, 
+                    fontSize: '30px', 
+                    lineHeight: '40.92px', 
+                    textAlign: 'center' 
+                }}>
+                    Welcome to the 
+                    <br></br>
+                    Thea pilot!
+            </h2>
+            <p className="text-center" style={{ 
+                    fontFamily: "'Nunito Sans', sans-serif", 
+                    fontWeight: 400, 
+                    fontSize: '18px', 
+                    lineHeight: '24.55px', 
+                    marginTop: '20px'
+                }}>
+                Tell us a little more about yourself to get started.
+            </p>
+            
                 <Form
                     onSubmit={onSubmit}
                     render={({ handleSubmit, form, submitting, pristine }) => (
@@ -222,7 +242,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 <Col sm={3}><label>Phone Number</label></Col>
                                 <Col sm={9}>
                                     <div className="d-flex">
-                                        <Field name="countryCode" component="select" className="form-control mr-2" style={{ width: '100px' }}>
+                                        <Field name="countryCode" component="select" className="form-control mr-2" style={{ width: '100px' }} defaultValue={CountryCodes.US}>
                                             <option value="">Country</option>
                                             {Object.entries(CountryCodes).map(([key, value]) => (
                                                 <option key={key} value={value}>{`${key} (${value})`}</option>
@@ -234,7 +254,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                             type="text"
                                             placeholder={userAuthPhoneNumber ?? "Phone Number"}
                                             defaultValue={userAuthPhoneNumber ?? ""}
-                                            className="form-control"
+                                            className="form-control mr-2"
                                         />
                                     </div>
                                 </Col>
@@ -245,13 +265,26 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                 <div style={{ marginTop: '20px' }}>
                                     {likesOptions.map((like) => (
                                         <button
-                                            key={like}
-                                            type="button"
-                                            className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
-                                            onClick={() => toggleLike(like)}
-                                        >
-                                            {like}
-                                        </button>
+                                        key={like}
+                                        type="button"
+                                        className={`btn btn-outline-primary m-1 ${selectedLikes.includes(like) ? 'active' : ''}`}
+                                        onClick={() => toggleLike(like)}
+                                        style={{
+                                            border: "1px solid black",
+                                            backgroundColor: selectedLikes.includes(like) ? "#F8BD0080" : "transparent",
+                                            color: "black",
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = "#F8BD0080";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!selectedLikes.includes(like)) {
+                                                e.currentTarget.style.backgroundColor = "transparent";
+                                            }
+                                        }}
+                                    >
+                                        {like}
+                                    </button>
                                     ))}
                                 </div>
                             </Row>
@@ -272,7 +305,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                         <a href="https://givethea.com/version-test/confidentiality_agreement" target="_blank" rel="noreferrer">
                                             Confidentiality Agreement
                                         </a>
-                                        <p>By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.</p>
+                                        <br />
+                                        By signing up, you agree to receive text messages from Thea at the number provided. Msg freq may vary. Reply STOP to opt out. Std rates may apply.
                                     </label>
                                     <Field name="terms">
                                         {({ meta }) => meta.error && meta.touched && <span className="text-danger">{meta.error}</span>}
@@ -281,9 +315,9 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             </Row>
                             <br />
                             <div className="text-center">
-                                <Button type="submit" style={{ width: "50%" }} className="btn btn-primary" disabled={submitting || pristine}>
+                                <BrandedAuthButton type="submit" style={{ width: "60%", height: "50px" }} >
                                     Submit
-                                </Button>
+                                </BrandedAuthButton>                                
                             </div>
                         </form>
                     )}

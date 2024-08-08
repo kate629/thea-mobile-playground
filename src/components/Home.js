@@ -22,10 +22,10 @@ const Home = () => {
   const isValidPhotos = photo !== null && photo !== undefined;
 
   return (
-    <Container className="mt-5">
+    <Container className="mt-2">
       <Row className="justify-content-center">
-        <div className="p-4 box mt-3">
-          {isValidPhotos ? <RoundImage image={photo} /> : <RoundImage />}
+        <div className="p-4 box">
+          {/* {isValidPhotos ? <RoundImage image={photo} /> : <RoundImage />} */}
           <UserOnboardingForm />
         </div>
       </Row>
