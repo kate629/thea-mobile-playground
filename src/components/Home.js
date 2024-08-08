@@ -8,35 +8,34 @@ import RoundImage from "./common/RoundImage.tsx";
 
 const Home = () => {
   const { logOut, user } = useUserAuth();
-  const navigate = useNavigate();
-  const handleLogout = async () => {
-    try {
-      await logOut();
-      navigate("/");
-    } catch (error) {
-      console.log(error.message);
-    }
-  };
-
-  console.log("User in Home: ", user);
+  //   const navigate = useNavigate();
+  //   const handleLogout = async () => {
+  //     try {
+  //       await logOut();
+  //       navigate("/");
+  //     } catch (error) {
+  //       console.log(error.message);
+  //     }
+  //   };
 
   const photo = user?.photoURL;
+  const isValidPhotos = photo !== null && photo !== undefined;
 
   return (
-    <Container className="mt-5">
+    <Container className="mt-2">
       <Row className="justify-content-center">
-        <div className="p-4 box mt-3">
-          <RoundImage image={photo} />
+        <div className="p-4 box">
+          {/* {isValidPhotos ? <RoundImage image={photo} /> : <RoundImage />} */}
           <UserOnboardingForm />
         </div>
       </Row>
-      <Row className="justify-content-center mt-3">
+      {/* <Row className="justify-content-center mt-3">
         <Col className="text-center">
           <Button variant="danger" onClick={handleLogout}>
             Log Out
           </Button>
         </Col>
-      </Row>
+      </Row> */}
     </Container>
   );
 };

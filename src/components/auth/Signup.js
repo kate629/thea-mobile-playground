@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, Alert } from "react-bootstrap";
-import { Container, Button } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import { useUserAuth } from "../../context/UserAuthContext.js";
-import { RoundImage } from "../common/RoundImage.tsx";
-import theaLogo from "../../assets/logo/thea_logo.png";
+import BrandedAuthButton from "./BrandedAuthButton.tsx";
+import HeroComponent from "../common/HeroComponent.tsx";
+import GoogleButton from "react-google-button";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
+  const { logIn, googleSignIn } = useUserAuth();
   const { signUp } = useUserAuth();
   let navigate = useNavigate();
 
@@ -24,15 +26,37 @@ const Signup = () => {
     }
   };
 
+  const handleGoogleSignIn = async (e) => {
+    e.preventDefault();
+    try {
+      await googleSignIn();
+      navigate("/home");
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
   return (
-    <Container style={{ width: "50%" }}>
+    <Container style={{ width: "70%", maxWidth: "400px" }}>
       <div className="p-4 box">
-        <RoundImage image={theaLogo} />
-        <h1 className="mb-3" style={{ textAlign: "center" }}>
-          Welcome to Thea
-        </h1>
+        <HeroComponent />
+        <br />
         {error && <Alert variant="danger">{error}</Alert>}
         <Form onSubmit={handleSubmit}>
+          <div className="d-flex justify-content-center">
+            <GoogleButton
+              className="g-btn"
+              type="dark"
+              onClick={handleGoogleSignIn}
+            />
+          </div>
+          <br />
+          <p
+            className="d-flex justify-content-center"
+            style={{ fontFamily: "'Nunito Sans', sans-serif" }}
+          >
+            or
+          </p>
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <Form.Control
               type="email"
@@ -48,15 +72,17 @@ const Signup = () => {
               onChange={(e) => setPassword(e.target.value)}
             />
           </Form.Group>
-
           <div className="d-grid gap-2">
-            <Button variant="primary" type="Submit">
-              Sign up
-            </Button>
+            <BrandedAuthButton variant="primary" type="submit">
+              Join
+            </BrandedAuthButton>
           </div>
         </Form>
       </div>
-      <div className="p-4 box mt-3 text-center">
+      <div
+        style={{ fontFamily: "'Nunito Sans', sans-serif" }}
+        className="p-4 box mt-3 text-center"
+      >
         Already have an account? <Link to="/">Log In</Link>
       </div>
     </Container>
