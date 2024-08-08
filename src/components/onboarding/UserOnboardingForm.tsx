@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp } from "fire
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import BrandedAuthButton from "../auth/BrandedAuthButton";
+import SubscribedSplash from "./SubscribedSplash";
 
 interface Props {
     name: string;
@@ -98,13 +99,8 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     };
 
     if (isSubscribed) {
-        console.log(user)
         return (
-            <Container className="mt-5 text-center">
-                <h1>{user?.displayName}, </h1>
-                <h1>Thank you for subscribing to Thea!</h1>
-                <p>We appreciate your interest. We'll be in touch soon.</p>
-            </Container>
+            <SubscribedSplash  userDisplayName={user?.displayName}/>
         );
     }
 

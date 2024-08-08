@@ -37,7 +37,7 @@ const Signup = () => {
   };
 
   return (
-    <Container style={{ width: "70%", maxWidth: "500px" }}>
+    <Container style={{ width: "70%", maxWidth: "400px" }}>
       <div className="p-4 box">
         <HeroComponent />
         <br />
