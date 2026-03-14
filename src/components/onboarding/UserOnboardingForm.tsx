@@ -250,7 +250,7 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                             <Row className="form-group mb-3 d-sm-flex align-items-sm-center">
                                 <Col sm={3}><label>Phone Number</label></Col>
                                 <Col sm={9}>
-                                    <div className="d-flex">
+                                    <div className="d-flex position-relative">
                                         <Field name="countryCode" component="select" className="form-control mr-2" style={{ width: '100px' }} defaultValue={CountryCodes.US}>
                                             <option value="">Country</option>
                                             {Object.entries(CountryCodes).map(([key, value]) => (
@@ -261,10 +261,19 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                                             name="phoneNumber"
                                             component="input"
                                             type="text"
-                                            placeholder={userAuthPhoneNumber ?? "Phone Number"}
-                                            defaultValue={userAuthPhoneNumber ?? ""}
-                                            className="form-control mr-2"
-                                        />
+                                            placeholder={"Phone Number"}
+                                            className="form-control"
+                                            validate={required}
+                                        >
+                                            {({ input, meta }) => (
+                                                <div className="w-100 position-relative">
+                                                    <input {...input} className="form-control" />
+                                                    {meta.error && meta.touched && (
+                                                        <span className="text-danger position-absolute" style={{ bottom: '-20px' }}>{meta.error}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </Field>
                                     </div>
                                 </Col>
                             </Row>
