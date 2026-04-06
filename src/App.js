@@ -7,6 +7,7 @@ import Login from "./components/auth/Login";
 import Signup from "./components/auth/Signup";
 
 import CarouselFeedPage from "./components/carousel/CarouselFeedPage";
+import FastCarouselFeedPage from "./components/carousel/FastCarouselFeedPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
               <Route path="/" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/feed" element={<CarouselFeedPage />} />
+              <Route path="/feed-fast" element={<FastCarouselFeedPage />} />
             </Routes>
           </UserAuthContextProvider>
         </Col>

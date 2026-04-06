@@ -20,7 +20,6 @@ const CHIP_CAROUSELS: Record<string, ChipConfig> = {
   Sports: { id: 'sports', age_min: 10 },
   Beauty: { id: 'beauty', age_min: 14 },
   HomeDecor: { id: 'homedecor', age_min: 18 },
-  Tech: { id: 'tech', age_min: 14 },
   Toys: { id: 'toys', age_min: 0, age_max: 13 },
   Accessories: { id: 'accessories', age_min: 14 },
   Music: { id: 'music', age_min: 10 },

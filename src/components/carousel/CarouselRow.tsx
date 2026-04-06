@@ -2,6 +2,24 @@ import React, { useRef } from 'react';
 import { ProgressBar, Spinner } from 'react-bootstrap';
 import ProductCard, { Product } from './ProductCard';
 
+interface ToolCallEntry {
+  iteration: number | string;
+  tool: string;
+  args: Record<string, any>;
+  result_count: number | null;
+  latency_ms: number;
+  reasoning: string;
+  pool_size: number;
+  new_products: number;
+}
+
+interface CarouselDebug {
+  tool_call_log: ToolCallEntry[];
+  timing: { search_ms: number; curation_ms: number; total_ms: number; prompt_tokens?: number; output_tokens?: number; thinking_tokens?: number };
+  agent_summary: string;
+  product_provenance: Record<string, string>;
+}
+
 interface CarouselRowProps {
   carouselId: string;
   displayName: string;
@@ -9,6 +27,7 @@ interface CarouselRowProps {
   products: Product[];
   productCount?: number;
   targetCount?: number;
+  debug?: CarouselDebug;
 }
 
 const SKELETON_TOTAL = 5;
@@ -27,6 +46,78 @@ const statusLabel: Record<string, string> = {
   error: 'Something went wrong',
 };
 
+const formatMs = (ms: number): string => {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+};
+
+const DebugPanel: React.FC<{ debug: CarouselDebug; products: Product[] }> = ({ debug, products }) => (
+  <div className="carousel-debug-panel">
+    <div className="debug-timing">
+      <span>Search: {formatMs(debug.timing.search_ms)}</span>
+      <span>Curation: {formatMs(debug.timing.curation_ms)}</span>
+      <span>Total: {formatMs(debug.timing.total_ms)}</span>
+      {debug.timing.prompt_tokens != null && (
+        <>
+          <span className="debug-tokens">Prompt: {debug.timing.prompt_tokens.toLocaleString()} tok</span>
+          <span className="debug-tokens">Output: {debug.timing.output_tokens?.toLocaleString() || 0} tok</span>
+          <span className="debug-tokens">Thinking: {debug.timing.thinking_tokens?.toLocaleString() || 0} tok</span>
+        </>
+      )}
+    </div>
+
+    {debug.tool_call_log.map((entry, i) => (
+      <div key={i} className="debug-tool-entry">
+        <div className="debug-tool-header">
+          <span className={`debug-tool-name debug-tool-${entry.tool}`}>{entry.tool}</span>
+          <span className="debug-tool-meta">
+            iter {entry.iteration} | {formatMs(entry.latency_ms)} |{' '}
+            {entry.result_count != null ? `${entry.result_count} results` : ''}{' '}
+            {entry.new_products > 0 ? `(+${entry.new_products} new)` : ''}
+            {' '}| pool: {entry.pool_size}
+          </span>
+        </div>
+        {entry.tool !== 'curation' && entry.args && (
+          <div className="debug-tool-args">
+            {Object.entries(entry.args).map(([k, v]) => {
+              const value = typeof v === 'object' ? JSON.stringify(v) : String(v);
+              const highlight = k === 'filter_carousel_name';
+              return (
+                <span
+                  key={k}
+                  className={`debug-arg${highlight ? ' debug-arg-key-carousel' : ''}`}
+                  title={`${k}: ${value}`}
+                >
+                  {k}: {value}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {entry.reasoning && (
+          <div className="debug-tool-reasoning">{entry.reasoning}</div>
+        )}
+      </div>
+    ))}
+
+    {Object.keys(debug.product_provenance).length > 0 && (
+      <div className="debug-provenance">
+        <div className="debug-section-label">Product Provenance</div>
+        {products.map((p) => {
+          const query = debug.product_provenance[p.id];
+          if (!query) return null;
+          return (
+            <div key={p.id} className="debug-provenance-row">
+              <span className="debug-provenance-title">{p.title?.trim()}</span>
+              <span className="debug-provenance-query">{query}</span>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
+
 const CarouselRow: React.FC<CarouselRowProps> = ({
   carouselId,
   displayName,
@@ -34,6 +125,7 @@ const CarouselRow: React.FC<CarouselRowProps> = ({
   products,
   productCount = 0,
   targetCount = 15,
+  debug,
 }) => {
   const isActive = status !== 'complete' && status !== 'error';
   const skeletonCount = isActive ? Math.max(0, SKELETON_TOTAL - products.length) : 0;
@@ -103,6 +195,8 @@ const CarouselRow: React.FC<CarouselRowProps> = ({
           ))}
         </div>
       </div>
+
+      {debug && <DebugPanel debug={debug} products={products} />}
     </div>
   );
 };

@@ -6,4 +6,7 @@ const functions = getFunctions(app);
 export const getCarouselFeed = httpsCallable(functions, 'getCarouselFeed', {
   timeout: 300_000, // 5 min — matches Cloud Function timeout
 });
+export const getFastCarouselFeed = httpsCallable(functions, 'getFastCarouselFeed', {
+  timeout: 60_000, // 1 min — matches Cloud Function timeout
+});
 export { functions };

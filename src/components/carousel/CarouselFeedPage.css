@@ -132,3 +132,130 @@
 .carousel-progress-bar .progress-bar {
   transition: width 0.4s ease-out;
 }
+
+/* Debug panel */
+.carousel-debug-panel {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.debug-timing {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+}
+
+.debug-tool-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.debug-tool-entry:last-child { border-bottom: none; }
+
+.debug-tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debug-tool-name {
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: white;
+  font-size: 0.7rem;
+}
+
+.debug-tool-browse_catalog { background: #6c757d; }
+.debug-tool-multi_search { background: #0d6efd; }
+.debug-tool-search_products { background: #198754; }
+.debug-tool-curation { background: #6f42c1; }
+.debug-tool-planning { background: #fd7e14; }
+
+.debug-tool-meta {
+  color: #6c757d;
+  font-size: 0.7rem;
+}
+
+.debug-tool-args {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.debug-arg {
+  background: #e9ecef;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #495057;
+  font-size: 0.68rem;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.debug-arg-key-carousel {
+  background: #d1e7dd;
+  color: #0f5132;
+  font-weight: 600;
+}
+
+.debug-tool-reasoning {
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: #fff;
+  border-left: 3px solid #6f42c1;
+  border-radius: 0 4px 4px 0;
+  color: #495057;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 0.7rem;
+}
+
+.debug-section-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+
+.debug-provenance {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #dee2e6;
+}
+
+.debug-provenance-row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  align-items: baseline;
+}
+
+.debug-provenance-title {
+  font-weight: 500;
+  color: #212529;
+  min-width: 180px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debug-provenance-query {
+  color: #6c757d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -48,6 +48,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, animationDelay }) =>
         {product.agent_why && (
           <div className="product-card-why">{product.agent_why}</div>
         )}
+        <small className="text-muted d-block mt-1" style={{ fontSize: '0.65rem', opacity: 0.5 }}>{product.id}</small>
       </Card.Body>
     </Card>
   );

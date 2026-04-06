@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Button, Spinner, Alert } from 'react-bootstrap';
+import { Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db, ensureAuth } from '../../firebaseConfig';
-import { getCarouselFeed } from '../../firebaseFunctions';
+import { getFastCarouselFeed } from '../../firebaseFunctions';
 import RecipientForm from './RecipientForm';
 import ChipSelector from './ChipSelector';
 import CarouselRow from './CarouselRow';
@@ -39,7 +39,7 @@ interface CarouselData {
 
 type CarouselEntry = [string, CarouselData];
 
-const CarouselFeedPage: React.FC = () => {
+const FastCarouselFeedPage: React.FC = () => {
   const [gender, setGender] = useState('');
   const [age, setAge] = useState<number | ''>('');
   const [relationship, setRelationship] = useState('');
@@ -144,8 +144,8 @@ const CarouselFeedPage: React.FC = () => {
         }
       );
 
-      // 3. Fire the function (don't await — onSnapshot handles progress)
-      getCarouselFeed({
+      // 3. Fire the fast function (don't await — onSnapshot handles progress)
+      getFastCarouselFeed({
         recipient_gender: gender,
         recipient_age: age,
         recipient_relationship: relationship,
@@ -153,9 +153,9 @@ const CarouselFeedPage: React.FC = () => {
         selected_chips: Array.from(selectedChips),
         session_id: sessionId,
       }).catch((err: any) => {
-        console.error('Error calling getCarouselFeed:', err);
+        console.error('Error calling getFastCarouselFeed:', err);
         setFeedStatus('error');
-        setError(err.message || 'Failed to start recommendation feed.');
+        setError(err.message || 'Failed to start fast recommendation feed.');
       });
     } catch (err: any) {
       console.error('Error during auth:', err);
@@ -173,7 +173,12 @@ const CarouselFeedPage: React.FC = () => {
 
   return (
     <div className="carousel-feed-page">
-      <h2 className="mb-4">Gift Recommendations</h2>
+      <h2 className="mb-4">
+        Gift Recommendations{' '}
+        <Badge bg="warning" text="dark" className="ms-2" style={{ fontSize: '0.55em', verticalAlign: 'middle' }}>
+          FAST
+        </Badge>
+      </h2>
 
       <RecipientForm
         gender={gender}
@@ -232,7 +237,7 @@ const CarouselFeedPage: React.FC = () => {
 
       {showDebug && pipelineTiming && (
         <div className="pipeline-timing-bar mb-3 p-2" style={{ background: '#f8f9fa', borderRadius: 6, fontSize: '0.8rem' }}>
-          <strong>Pipeline:</strong>{' '}
+          <strong>Pipeline ({pipelineTiming.mode || 'standard'}):</strong>{' '}
           {pipelineTiming.total_ms != null ? `${(pipelineTiming.total_ms / 1000).toFixed(1)}s total` : ''} |{' '}
           Planning: {pipelineTiming.planner_ms != null ? `${(pipelineTiming.planner_ms / 1000).toFixed(1)}s` : '?'} |{' '}
           Workers: {pipelineTiming.workers_ms != null ? `${(pipelineTiming.workers_ms / 1000).toFixed(1)}s` : '?'} |{' '}
@@ -296,4 +301,4 @@ const CarouselFeedPage: React.FC = () => {
   );
 };
 
-export default CarouselFeedPage;
+export default FastCarouselFeedPage;
