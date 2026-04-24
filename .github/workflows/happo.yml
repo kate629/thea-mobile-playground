@@ -1,0 +1,26 @@
+name: Happo
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  happo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx happo-ci-github-actions
+        env:
+          HAPPO_API_KEY: ${{ secrets.HAPPO_API_KEY }}
+          HAPPO_API_SECRET: ${{ secrets.HAPPO_API_SECRET }}
