@@ -20,7 +20,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npx happo-ci-github-actions
+      - run: npx happo --baseBranch origin/master
         env:
           HAPPO_API_KEY: ${{ secrets.HAPPO_API_KEY }}
           HAPPO_API_SECRET: ${{ secrets.HAPPO_API_SECRET }}
