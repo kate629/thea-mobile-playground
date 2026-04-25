@@ -2,6 +2,90 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Testing
+
+This project has three testing layers, each with its own purpose, scope, and CI workflow.
+
+### Unit tests — Jest + React Testing Library
+
+**What they cover**: component behavior in isolation. Render a component, simulate user interaction, assert on the resulting DOM.
+
+**Location**: co-located with the component as `<Component>.test.tsx`. See `src/components/common/Button.test.tsx` for the canonical pattern (render / interaction / conditional behavior).
+
+**Run locally**:
+```bash
+npm test                    # interactive watch mode
+npm test -- --watchAll=false  # one-shot (matches CI)
+```
+
+**CI**: `.github/workflows/test.yml` — blocks PR merges on failure.
+
+**Best practices**:
+- Query by accessible role (`getByRole('button', { name: 'Submit' })`) over test IDs
+- Use `userEvent` (not `fireEvent`) for realistic interaction
+- Group with `describe`, one assertion per `it` when reasonable
+- Mock at the network or module boundary, not internal implementation
+
+### Visual regression — Happo + Storybook
+
+**What it covers**: pixel-level diffs of every Storybook story across `chrome-large`, `chrome-small`, and `accessibility` targets. Catches unintentional CSS/layout regressions that unit tests can't see.
+
+**Location**: stories live next to components as `<Component>.stories.tsx`. See `src/components/common/Button.stories.tsx`.
+
+**Run locally**:
+```bash
+npm run storybook   # browse stories at http://localhost:6006
+npm run happo       # snapshot run; requires .env.local with Happo creds
+```
+
+`.env.local` (gitignored) must contain:
+```
+HAPPO_API_KEY=<from happo.io/settings>
+HAPPO_API_SECRET=<from happo.io/settings>
+```
+
+**CI**: `.github/workflows/happo.yml` — runs on every PR. With the Happo GitHub App installed, posts a visual diff comment on the PR.
+
+**Best practices**:
+- Every reusable component in `src/components/common/` should have at least one story
+- Cover meaningful states (default / hover / disabled / error) as separate stories — Happo screenshots each
+- Keep stories deterministic: no `Date.now()`, `Math.random()`, network calls, or animations in flight when the snapshot is taken
+
+### End-to-end — Playwright
+
+**What it covers**: full-stack flows against a real running app. Catches integration issues (auth, routing, Firebase, deployment) that unit + visual tests can't.
+
+**Location**: `tests/*.spec.ts`. See `tests/smoke.spec.ts`.
+
+**Run locally** (against the dev server):
+```bash
+npm run e2e
+```
+Playwright auto-starts `npm start` via the `webServer` block in `playwright.config.ts`. To run against an existing dev server you've already started, the config sets `reuseExistingServer: true` outside CI.
+
+**Run against a deployed URL**:
+```bash
+PLAYWRIGHT_BASE_URL=https://thea-643b1-23686.web.app npm run e2e
+```
+
+**CI**: `.github/workflows/e2e.yml` — runs against the deployed Firebase Hosting URL (`https://thea-643b1-23686.web.app`). **Marked `continue-on-error: true`** so failures surface visibly without blocking PR merges. The Playwright HTML report is uploaded as a workflow artifact.
+
+**Best practices**:
+- Test user-facing flows, not implementation details. Use page objects for anything reused across tests.
+- Prefer `expect(locator).toBeVisible()` (auto-waits) over arbitrary `waitForTimeout`
+- Don't write data into prod from tests — keep e2e read-only against prod, or stand up a preview channel for write flows
+- For per-PR isolation, deploy each PR to a Firebase Hosting preview channel and pass that URL via `PLAYWRIGHT_BASE_URL` (future improvement)
+
+### Which test type for what
+
+| Question | Layer |
+|----------|-------|
+| Does this function/component behave correctly given inputs X? | Unit |
+| Does this component still look right? | Visual (Happo) |
+| Can a user actually complete this flow against the deployed app? | E2E |
+
+When fixing a bug, add a regression test at the lowest layer that reproduces it.
+
 ## Available Scripts
 
 In the project directory, you can run:
