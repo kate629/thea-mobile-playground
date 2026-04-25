@@ -28,7 +28,8 @@
     "eject": "react-scripts eject",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "happo": "dotenv -e .env.local -- happo"
+    "happo": "dotenv -e .env.local -- happo",
+    "e2e": "playwright test"
   },
   "eslintConfig": {
     "extends": [
