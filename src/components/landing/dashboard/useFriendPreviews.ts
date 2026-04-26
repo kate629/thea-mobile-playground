@@ -26,14 +26,22 @@ export function useFriendPreviews(
   const [resolved, setResolved] = useState<Record<string, boolean>>({});
   const subsRef = useRef<Map<string, () => void>>(new Map());
 
+  // Joined into a string so the effect's dep is content-equal across
+  // renders that pass a fresh array reference with the same ids. Without
+  // this the effect re-runs every render, which combined with state writes
+  // produces an infinite render loop.
+  const personIdsKey = personIds.slice().sort().join(',');
+
   useEffect(() => {
     if (authState.status !== 'signed-in') {
       // Tear down any active subscriptions; clear maps. The hook returns
-      // empty maps until auth flips back to signed-in.
+      // empty maps until auth flips back to signed-in. Functional updaters
+      // return the SAME reference when already empty so React bails out and
+      // we don't trigger a re-render → effect → state-write loop.
       subsRef.current.forEach((unsub) => unsub());
       subsRef.current.clear();
-      setPreviews({});
-      setResolved({});
+      setPreviews((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+      setResolved((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       return;
     }
 
@@ -55,7 +63,8 @@ export function useFriendPreviews(
       });
       subsRef.current.set(id, unsub);
     });
-  }, [authState.status, personIds, loader]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authState.status, personIdsKey, loader]);
 
   // Clean up on unmount.
   useEffect(() => {
