@@ -1,12 +1,15 @@
 name: Happo
 
-# Skip Happo on draft PRs and on commits that only touch CI/workflow/config
-# files. Visual regression value comes from rendered-output changes; CI
-# tweaks and markdown edits don't move the storybook bundle and shouldn't
-# burn Happo budget or runner minutes.
+# Triggers chosen so draft PRs never fire the workflow (not even as a
+# "Skipped" run). `pull_request.synchronize` and `pull_request.opened`
+# fire on drafts too — both are removed. `ready_for_review` only fires
+# on the draft → ready transition, so that's the canonical "run Happo"
+# moment for a PR. Subsequent pushes to a ready PR don't auto-fire;
+# use `workflow_dispatch` (Actions tab → "Run workflow") if you want
+# to re-run before merging.
 on:
   pull_request:
-    types: [opened, ready_for_review, synchronize, reopened]
+    types: [ready_for_review, reopened]
     paths-ignore:
       - '.github/**'
       - 'lighthouserc*.json'
@@ -16,6 +19,7 @@ on:
       - '.firebaserc'
   push:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   happo:
