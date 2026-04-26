@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import styled from 'styled-components';
 import { HeartButton } from './HeartButton';
+import { isImageCached, markImageLoaded, useInViewportOnce } from './imageCache';
 
 export interface OccasionProductCardProps {
+  /** Retailer URL (or other public CDN). Used as the <img> src and <picture> fallback. */
   imageUrl: string;
+  /** Firebase Storage WebP original (images_cdn[0]). */
+  imageUrlCdn?: string;
+  /** Firebase Storage WebP mobile variant (~600px wide; images_cdn_mobile[0]). */
+  imageUrlCdnMobile?: string;
   title: string;
   brand?: string;
   price?: number;
@@ -94,6 +100,8 @@ const Price = styled.p`
 
 export const OccasionProductCard: React.FC<OccasionProductCardProps> = ({
   imageUrl,
+  imageUrlCdn,
+  imageUrlCdnMobile,
   title,
   brand,
   price,
@@ -102,28 +110,44 @@ export const OccasionProductCard: React.FC<OccasionProductCardProps> = ({
   onClick,
   asCard = false,
   priority = false,
-}) => (
-  <Root $asCard={asCard}>
-    <Inner onClick={onClick}>
-      <ImageFrame>
-        <Img
-          src={imageUrl}
-          alt={title}
-          loading={priority ? 'eager' : 'lazy'}
-        />
-      </ImageFrame>
-      <Meta $asCard={asCard}>
-        <Title>{title}</Title>
-        {brand && <Brand>{brand}</Brand>}
-        {price != null && <Price>${Math.ceil(price)}</Price>}
-      </Meta>
-    </Inner>
-    <HeartButton
-      liked={liked}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSaveClick?.(e);
-      }}
-    />
-  </Root>
-);
+}) => {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const inViewport = useInViewportOnce(frameRef);
+  const shouldLoad = priority || isImageCached(imageUrl) || inViewport;
+
+  return (
+    <Root $asCard={asCard}>
+      <Inner onClick={onClick}>
+        <ImageFrame ref={frameRef}>
+          {shouldLoad && (
+            <picture>
+              {imageUrlCdnMobile && (
+                <source media="(max-width: 640px)" type="image/webp" srcSet={imageUrlCdnMobile} />
+              )}
+              {imageUrlCdn && <source type="image/webp" srcSet={imageUrlCdn} />}
+              <Img
+                src={imageUrl}
+                alt={title}
+                loading={priority ? 'eager' : 'lazy'}
+                decoding="async"
+                onLoad={() => markImageLoaded(imageUrl)}
+              />
+            </picture>
+          )}
+        </ImageFrame>
+        <Meta $asCard={asCard}>
+          <Title>{title}</Title>
+          {brand && <Brand>{brand}</Brand>}
+          {price != null && <Price>${Math.ceil(price)}</Price>}
+        </Meta>
+      </Inner>
+      <HeartButton
+        liked={liked}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSaveClick?.(e);
+        }}
+      />
+    </Root>
+  );
+};

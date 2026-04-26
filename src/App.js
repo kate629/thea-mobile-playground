@@ -15,12 +15,25 @@ const Signup = lazy(() => import("./components/auth/Signup"));
 const CarouselFeedPage = lazy(() => import("./components/carousel/CarouselFeedPage"));
 const FastCarouselFeedPage = lazy(() => import("./components/carousel/FastCarouselFeedPage"));
 
+// Lazy so the ~600 hardcoded sample products don't bloat the root bundle.
+const OccasionRoute = lazy(() =>
+  import("./components/landing/marketing/OccasionRoute").then((m) => ({ default: m.OccasionRoute }))
+);
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <UserAuthContextProvider>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/occasion/:id"
+            element={
+              <Suspense fallback={null}>
+                <OccasionRoute />
+              </Suspense>
+            }
+          />
           <Route
             path="/dev/login"
             element={

@@ -3,7 +3,10 @@ import styled from 'styled-components';
 import { OccasionProductCard, OccasionProductCardProps } from '../../ui/OccasionProductCard';
 
 export interface CarouselProduct
-  extends Pick<OccasionProductCardProps, 'imageUrl' | 'title' | 'brand' | 'price' | 'productUrl'> {
+  extends Pick<
+    OccasionProductCardProps,
+    'imageUrl' | 'imageUrlCdn' | 'imageUrlCdnMobile' | 'title' | 'brand' | 'price' | 'productUrl'
+  > {
   /** Stable id used for liked-set lookup + React key. */
   id: string;
 }
@@ -147,6 +150,8 @@ export const CarouselSection: React.FC<CarouselSectionProps> = ({
           <Slide key={p.id}>
             <OccasionProductCard
               imageUrl={p.imageUrl}
+              imageUrlCdn={p.imageUrlCdn}
+              imageUrlCdnMobile={p.imageUrlCdnMobile}
               title={p.title}
               brand={p.brand}
               price={p.price}
