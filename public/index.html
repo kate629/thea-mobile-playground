@@ -14,6 +14,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Oooh+Baby&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,wght@1,400;1,600;1,700&display=swap" rel="stylesheet">
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/thea_logo.png" />
+    <!-- LCP optimization: preload the first hero scenario's image so the
+         browser starts fetching it during HTML parse, before React mounts.
+         Must stay in sync with SCENARIO_CARDS[0].productImage. -->
+    <link rel="preload" as="image" href="%PUBLIC_URL%/landing-assets/gift-tea.jpg" fetchpriority="high" />
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/

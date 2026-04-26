@@ -62,7 +62,12 @@ export function useTypewriterHero(
   const [typedCount, setTypedCount] = useState(0);
   const [phase, setPhase] = useState<Phase>('typing');
   const [heroReady, setHeroReady] = useState(false);
-  const [showCard, setShowCard] = useState(false);
+  /* Card starts visible so the first scenario's image is LCP-eligible at
+     first paint (an opacity:0 element does not count as the LCP element).
+     The 400ms grace fade-in only kicks in for *subsequent* scenarios after
+     the user has seen the first card. */
+  const [showCard, setShowCard] = useState(true);
+  const hasCycledRef = useRef(false);
 
   const activeCard = scenarios[activeIndex];
   const displayedCard = scenarios[displayedIndex];
@@ -80,8 +85,11 @@ export function useTypewriterHero(
     prevTypingDoneRef.current = typingDone;
   }, [typingDone, activeIndex]);
 
-  /* 400ms grace period after typing finishes before fading the card in. */
+  /* 400ms grace period after typing finishes before fading the card back in.
+     Only applied after the first cycle — the initial card is shown
+     immediately for LCP. */
   useEffect(() => {
+    if (!hasCycledRef.current) return undefined;
     if (typingDone) {
       const t = window.setTimeout(() => setShowCard(true), 400);
       return () => window.clearTimeout(t);
@@ -141,6 +149,7 @@ export function useTypewriterHero(
         return;
       }
       // phase === 'swap'
+      hasCycledRef.current = true;
       const nextIndex = (activeIndex + 1) % scenarios.length;
       setDisplayedIndex(nextIndex);
       setActiveIndex(nextIndex);
@@ -163,7 +172,11 @@ export function useTypewriterHero(
     swapMs,
   ]);
 
-  const cardVisible = heroReady && showCard && phase !== 'swap';
+  /* For the first cycle, card is visible immediately (LCP optimization). After
+     the first swap, it's gated on the typewriter state machine like before. */
+  const cardVisible = hasCycledRef.current
+    ? heroReady && showCard && phase !== 'swap'
+    : showCard && phase !== 'swap';
 
   return {
     phrase,
