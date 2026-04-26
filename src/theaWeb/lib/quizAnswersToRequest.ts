@@ -56,6 +56,9 @@ export function quizAnswersToRequest(answers: QuizAnswers): TheaWebSubmitGiftFlo
       interests: answers.interests,
       freeform: answers.moreAbout,
     },
-    mode: 'FAST',
+    // THOUGHTFUL routes to the original /feed agent (carousel_agent.py).
+    // FAST mode (fast_carousel_agent.py) is an abandoned experiment; do not
+    // use until / unless that path is rehabilitated.
+    mode: 'THOUGHTFUL',
   };
 }

@@ -95,14 +95,14 @@ describe('useSubmitGiftFlow', () => {
     expect(mockSubmitGiftFlow).toHaveBeenCalledTimes(1);
     const callArg = mockSubmitGiftFlow.mock.calls[0][0] as any;
     expect(callArg.recipient.relationship).toBe('MOM');
-    expect(callArg.mode).toBe('FAST');
+    expect(callArg.mode).toBe('THOUGHTFUL');
 
-    // FAST mode should kick off the fast pipeline (not the thoughtful one)
-    // with the BE-provided carouselSessionId. Mom maps to PARENT for the
-    // agent's relationship vocab.
-    expect(mockGetFastCarouselFeed).toHaveBeenCalledTimes(1);
-    expect(mockGetCarouselFeed).not.toHaveBeenCalled();
-    const kickArg = mockGetFastCarouselFeed.mock.calls[0][0] as any;
+    // THOUGHTFUL mode should kick off the thoughtful pipeline (not the fast
+    // one) with the BE-provided carouselSessionId. Mom maps to PARENT for
+    // the agent's relationship vocab.
+    expect(mockGetCarouselFeed).toHaveBeenCalledTimes(1);
+    expect(mockGetFastCarouselFeed).not.toHaveBeenCalled();
+    const kickArg = mockGetCarouselFeed.mock.calls[0][0] as any;
     expect(kickArg.session_id).toBe('uid-1_rec1');
     expect(kickArg.recipient_relationship).toBe('PARENT');
     expect(kickArg.selected_chips).toEqual(['gardening']);

@@ -32,10 +32,10 @@ describe('quizAnswersToRequest', () => {
     expect(req.input.freeform).toBe('star wars fan');
   });
 
-  test('defaults occasion to JUST_BECAUSE and mode to FAST', () => {
+  test('defaults occasion to JUST_BECAUSE and mode to THOUGHTFUL', () => {
     const req = quizAnswersToRequest(baseAnswers);
     expect(req.input.occasion).toBe('JUST_BECAUSE');
-    expect(req.mode).toBe('FAST');
+    expect(req.mode).toBe('THOUGHTFUL');
   });
 
   test('non-binary gender maps to NON_BINARY', () => {
