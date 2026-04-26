@@ -4,7 +4,7 @@ import { SAMPLE_SAVED_ITEMS } from './sampleResultsData';
 import { Button } from '../../ui/Button';
 
 export default {
-  title: 'Landing/Results/ResultsSavedGrid',
+  title: 'Surfaces/Results/ResultsSavedGrid',
   component: ResultsSavedGrid,
 };
 

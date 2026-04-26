@@ -8,6 +8,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 const StyledTextarea = styled.textarea<{ $invalid: boolean }>`
   display: block;
   width: 100%;
+  box-sizing: border-box;
   min-height: 100px;
   padding: 10px 12px;
   font-size: 14px;

@@ -6,7 +6,7 @@ import { Button } from '../../ui/Button';
 import { getInterestPills, getPlaceholderText } from '../quiz/ageBasedContent';
 
 export default {
-  title: 'Landing/Results/ProfileDrawer',
+  title: 'Surfaces/Results/ProfileDrawer',
   component: ProfileDrawer,
 };
 
@@ -91,6 +91,121 @@ export const WithSavedHints = {
       onClose={() => {}}
       draft={draftFilled}
       savedHints={{ name: true, interests: true }}
+      interestPills={interestPills}
+      freeformPlaceholder={placeholder}
+      onChange={() => {}}
+      onUpdatePicks={() => {}}
+      onRemove={() => {}}
+    />
+  ),
+};
+
+/* ============================================================
+   Variation: max interests selected — exercises Chip wrap behavior
+   plus the "many active vibes" combo to verify spacing under load.
+   ============================================================ */
+export const MaxInterests = {
+  render: () => (
+    <ProfileDrawer
+      open
+      onClose={() => {}}
+      draft={{
+        ...draftFilled,
+        interests: interestPills.slice(0, 8),
+        vibes: ['Sentimental', 'Practical', 'Cozy', 'Whimsical', 'Sleek', 'Bold'],
+      }}
+      interestPills={interestPills}
+      freeformPlaceholder={placeholder}
+      onChange={() => {}}
+      onUpdatePicks={() => {}}
+      onRemove={() => {}}
+    />
+  ),
+};
+
+/* ============================================================
+   Variation: dad (alwaysAdult relationship) — exercises male pill
+   flip ("Beauty" → "Grooming") and the "What does he like?"
+   placeholder copy.
+   ============================================================ */
+const dadInterestPills = getInterestPills(70, 'male');
+const dadPlaceholder = getPlaceholderText('male', 70);
+
+export const FilledDad = {
+  render: () => (
+    <ProfileDrawer
+      open
+      onClose={() => {}}
+      draft={{
+        emoji: '⛳',
+        name: 'Dad',
+        birthMonth: 9,
+        birthDay: 3,
+        gender: 'male',
+        relationship: 'Dad',
+        age: 70,
+        occasion: 'Father’s Day',
+        priceMin: 25,
+        priceMax: 200,
+        interests: ['Books', 'Outdoors', 'Cooking', 'Sports'],
+        vibes: ['Practical', 'Classic'],
+        moreAbout: 'He just retired and is getting into woodworking.',
+      }}
+      interestPills={dadInterestPills}
+      freeformPlaceholder={dadPlaceholder}
+      onChange={() => {}}
+      onUpdatePicks={() => {}}
+      onRemove={() => {}}
+    />
+  ),
+};
+
+/* ============================================================
+   Variation: kid mode — different relationship + age bucket changes
+   the interest pill list dramatically.
+   ============================================================ */
+const sonInterestPills = getInterestPills(8, 'male');
+const sonPlaceholder = getPlaceholderText('male', 8);
+
+export const FilledKid = {
+  render: () => (
+    <ProfileDrawer
+      open
+      onClose={() => {}}
+      draft={{
+        emoji: '⭐',
+        name: 'Son',
+        birthMonth: 3,
+        birthDay: 18,
+        gender: 'male',
+        relationship: 'Son',
+        age: 8,
+        occasion: 'Birthday',
+        priceMin: 0,
+        priceMax: 60,
+        interests: ['Sports', 'Games', 'Space'],
+        vibes: ['Playful'],
+        moreAbout: 'He just started playing little league and loves astronaut books.',
+      }}
+      interestPills={sonInterestPills}
+      freeformPlaceholder={sonPlaceholder}
+      onChange={() => {}}
+      onUpdatePicks={() => {}}
+      onRemove={() => {}}
+    />
+  ),
+};
+
+/* ============================================================
+   Mobile viewport — verifies the drawer's responsive width.
+   ============================================================ */
+export const Mobile = {
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  render: () => (
+    <ProfileDrawer
+      open
+      onClose={() => {}}
+      draft={draftFilled}
       interestPills={interestPills}
       freeformPlaceholder={placeholder}
       onChange={() => {}}

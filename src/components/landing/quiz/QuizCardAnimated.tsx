@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { QuizCard } from './QuizCard';
 import { QuizStepRelationship } from './QuizStepRelationship';
-import { QuizStepKidOrAdult } from './QuizStepKidOrAdult';
+import { QuizStepGender } from './QuizStepGender';
 import { QuizStepAge } from './QuizStepAge';
+import { QuizStepOccasion } from './QuizStepOccasion';
 import { QuizStepInterests } from './QuizStepInterests';
 import { QuizLoadingAnimated } from './QuizLoadingAnimated';
 import { ProductImage } from './AmbientProductScroll';
+import { Gender } from './constants';
 import { QuizAnswers, useQuizFlow } from './useQuizFlow';
 
 export interface QuizCardAnimatedProps {
@@ -13,10 +15,45 @@ export interface QuizCardAnimatedProps {
   onSubmit?: (answers: QuizAnswers) => void;
   /** Live-arriving product images for the ambient ring during loading. */
   loadingImages?: ProductImage[];
+  /** Auto-advance delay between single-select steps (matches sovrn's 180ms). */
+  autoAdvanceMs?: number;
 }
 
-export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({ onSubmit, loadingImages = [] }) => {
+const DEFAULT_ADVANCE_MS = 180;
+
+export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({
+  onSubmit,
+  loadingImages = [],
+  autoAdvanceMs = DEFAULT_ADVANCE_MS,
+}) => {
   const flow = useQuizFlow({ onSubmit });
+
+  // Auto-advance on single-select steps to mirror sovrn's UX. Each transition
+  // is debounced by `autoAdvanceMs` so the chip-select animation can play.
+  const advance = useCallback(
+    (transition: () => void) => {
+      const t = setTimeout(transition, autoAdvanceMs);
+      return () => clearTimeout(t);
+    },
+    [autoAdvanceMs],
+  );
+
+  const handlePickRelationship = (rel: string) => {
+    flow.setRelationship(rel);
+    advance(flow.goFromRelationship);
+  };
+  const handlePickGender = (g: Gender) => {
+    flow.setGender(g);
+    advance(flow.goFromGender);
+  };
+  const handlePickAge = (age: number) => {
+    flow.setAge(age);
+    advance(flow.goFromAge);
+  };
+  const handlePickOccasion = (occasion: string) => {
+    flow.setOccasion(occasion);
+    advance(flow.goFromOccasion);
+  };
 
   if (flow.step === 'loading') {
     return (
@@ -32,25 +69,32 @@ export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({ onSubmit, lo
     <QuizCard
       stepKey={flow.step}
       onBack={flow.step !== 'relationship' ? flow.goBack : undefined}
-      dots={flow.dots}
+      progressPercent={flow.progressPercent}
     >
       {flow.step === 'relationship' && (
         <QuizStepRelationship
+          title={flow.relationshipTitle}
           selected={flow.relationship}
-          onSelect={flow.setRelationship}
-          onNext={flow.goFromRelationship}
+          onSelect={handlePickRelationship}
         />
       )}
-      {flow.step === 'kidOrAdult' && (
-        <QuizStepKidOrAdult onPick={flow.pickKidOrAdult} />
+      {flow.step === 'gender' && (
+        <QuizStepGender title={flow.genderTitle} selected={flow.gender} onSelect={handlePickGender} />
       )}
       {flow.step === 'age' && (
         <QuizStepAge
           title={flow.ageTitle}
           chips={flow.ageChips}
           selectedAge={flow.age}
-          onSelectAge={flow.setAge}
-          onNext={flow.goFromAge}
+          onSelectAge={handlePickAge}
+        />
+      )}
+      {flow.step === 'occasion' && (
+        <QuizStepOccasion
+          title={flow.occasionTitle}
+          options={flow.occasionOptions}
+          selected={flow.occasion}
+          onSelect={handlePickOccasion}
         />
       )}
       {flow.step === 'interests' && (

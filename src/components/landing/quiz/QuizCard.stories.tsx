@@ -2,7 +2,7 @@ import React from 'react';
 import { QuizCard } from './QuizCard';
 
 export default {
-  title: 'Landing/Quiz/QuizCard',
+  title: 'Surfaces/Quiz/QuizCard',
   component: QuizCard,
 };
 
@@ -36,8 +36,10 @@ export const WithDotsCurrentFirst = {
     <QuizCard
       onBack={() => {}}
       dots={[
-        { key: 'kidOrAdult', state: 'current' },
+        { key: 'relationship', state: 'current' },
+        { key: 'gender', state: 'upcoming' },
         { key: 'age', state: 'upcoming' },
+        { key: 'occasion', state: 'upcoming' },
         { key: 'interests', state: 'upcoming' },
       ]}
     >
@@ -51,11 +53,22 @@ export const WithDotsMidFlow = {
     <QuizCard
       onBack={() => {}}
       dots={[
-        { key: 'kidOrAdult', state: 'completed' },
+        { key: 'relationship', state: 'completed' },
+        { key: 'gender', state: 'completed' },
         { key: 'age', state: 'current' },
+        { key: 'occasion', state: 'upcoming' },
         { key: 'interests', state: 'upcoming' },
       ]}
     >
+      <Filler />
+    </QuizCard>
+  ),
+};
+
+export const WithProgressBar = {
+  name: 'With progress bar (sovrn-style)',
+  render: () => (
+    <QuizCard onBack={() => {}} progressPercent={50}>
       <Filler />
     </QuizCard>
   ),

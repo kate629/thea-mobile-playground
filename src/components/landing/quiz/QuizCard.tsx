@@ -2,13 +2,15 @@ import React from 'react';
 import styled from 'styled-components';
 import { fadeIn } from '../../../animations';
 
-export type QuizStepKey = 'kidOrAdult' | 'age' | 'interests';
+export type QuizStepKey = 'relationship' | 'gender' | 'age' | 'occasion' | 'interests';
 
 export interface QuizCardProps {
   /** Optional back button. Hidden on the first interactive step (relationship). */
   onBack?: () => void;
-  /** Visible step dots. Pass empty array to hide. */
+  /** Visible step dots. Pass empty array to hide. Mutually-exclusive with `progressPercent`. */
   dots?: { key: QuizStepKey; state: 'completed' | 'current' | 'upcoming' }[];
+  /** When set, renders the sovrn-style continuous bottom progress bar (0-100). */
+  progressPercent?: number;
   /** Animation key — bump to retrigger fade-in when the step swaps. */
   stepKey?: string;
   children: React.ReactNode;
@@ -99,7 +101,29 @@ const ChevronLeft: React.FC = () => (
   </svg>
 );
 
-export const QuizCard: React.FC<QuizCardProps> = ({ onBack, dots, stepKey, children }) => (
+const ProgressTrack = styled.div`
+  margin-top: 16px;
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--border) / 0.6);
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div<{ $percent: number }>`
+  height: 100%;
+  width: ${({ $percent }) => `${Math.max(0, Math.min(100, $percent))}%`};
+  background: ${({ theme }) => theme.color.clay};
+  border-radius: 9999px;
+  transition: width 300ms ease;
+`;
+
+export const QuizCard: React.FC<QuizCardProps> = ({
+  onBack,
+  dots,
+  progressPercent,
+  stepKey,
+  children,
+}) => (
   <Outer>
     <Card>
       <Body>
@@ -119,6 +143,17 @@ export const QuizCard: React.FC<QuizCardProps> = ({ onBack, dots, stepKey, child
           )}
         </StepFrame>
       </Body>
+      {typeof progressPercent === 'number' && (
+        <ProgressTrack
+          role="progressbar"
+          aria-label="Quiz progress"
+          aria-valuenow={Math.round(progressPercent)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <ProgressFill $percent={progressPercent} />
+        </ProgressTrack>
+      )}
     </Card>
   </Outer>
 );

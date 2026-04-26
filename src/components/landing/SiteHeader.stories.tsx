@@ -2,7 +2,7 @@ import React from 'react';
 import { SiteHeader } from './SiteHeader';
 
 export default {
-  title: 'Landing/SiteHeader',
+  title: 'Surfaces/SiteHeader',
   component: SiteHeader,
 };
 

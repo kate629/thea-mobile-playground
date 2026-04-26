@@ -3,7 +3,7 @@ import { QuizLoadingAnimated } from './QuizLoadingAnimated';
 import { SAMPLE_AMBIENT_IMAGES } from './sampleAmbientImages';
 
 export default {
-  title: 'Landing/Quiz/QuizLoadingAnimated',
+  title: 'Surfaces/Quiz/QuizLoadingAnimated',
   component: QuizLoadingAnimated,
   parameters: { happo: false },
 };

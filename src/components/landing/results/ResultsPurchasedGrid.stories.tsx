@@ -3,7 +3,7 @@ import { ResultsPurchasedGrid } from './ResultsPurchasedGrid';
 import { SAMPLE_PURCHASED_ITEMS } from './sampleResultsData';
 
 export default {
-  title: 'Landing/Results/ResultsPurchasedGrid',
+  title: 'Surfaces/Results/ResultsPurchasedGrid',
   component: ResultsPurchasedGrid,
 };
 

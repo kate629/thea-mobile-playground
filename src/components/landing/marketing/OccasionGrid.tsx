@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { OccasionTile } from '../ui/OccasionTile';
+import { OccasionTile } from '../../ui/OccasionTile';
 
 export interface OccasionGridTile {
   event: string;

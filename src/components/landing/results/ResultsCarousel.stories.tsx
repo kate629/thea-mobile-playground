@@ -4,7 +4,7 @@ import { ResultsCarouselAnimated } from './ResultsCarouselAnimated';
 import { SAMPLE_RESULTS_CAROUSELS } from './sampleResultsData';
 
 export default {
-  title: 'Landing/Results/ResultsCarousel',
+  title: 'Surfaces/Results/ResultsCarousel',
   component: ResultsCarousel,
 };
 

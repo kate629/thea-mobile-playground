@@ -2,7 +2,7 @@ import React from 'react';
 import { QuizCardAnimated } from './QuizCardAnimated';
 
 export default {
-  title: 'Landing/Quiz/QuizCardAnimated',
+  title: 'Surfaces/Quiz/QuizCardAnimated',
   component: QuizCardAnimated,
   parameters: { happo: false },
 };
