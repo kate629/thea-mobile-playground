@@ -43,7 +43,7 @@ export const MarketingLanding = {
 };
 
 /* ============================================================
-   Quiz Flow (relationship → kid/adult → age → interests → loading)
+   Quiz Flow (relationship → gender? → age → occasion → interests → loading)
    ============================================================ */
 export const QuizFlow = {
   name: 'Quiz Flow',

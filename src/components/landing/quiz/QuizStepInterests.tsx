@@ -20,7 +20,7 @@ export interface QuizStepInterestsProps {
   onSubmit: () => void;
   /** Submit-disabled rule comes from container; View just renders. */
   canSubmit: boolean;
-  /** Defaults to "Get ideas". */
+  /** Defaults to "Show me my gifts ✨" (sovrn parity). */
   submitLabel?: string;
 }
 
@@ -86,7 +86,7 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
   onTextareaChange,
   onSubmit,
   canSubmit,
-  submitLabel = 'Get ideas',
+  submitLabel = 'Show me my gifts ✨',
 }) => (
   <>
     <Title>{title}</Title>

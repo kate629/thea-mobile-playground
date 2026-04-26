@@ -24,22 +24,10 @@ interface BuildArgs {
   title: string;
   selectedInterests?: string[];
   textareaValue?: string;
-  /** Pass `true` if the interests step is the only dot (no kid/adult split for this relationship). */
-  alwaysAdult?: boolean;
 }
 
 const buildPills = (age: number, gender: Gender) =>
   getInterestPills(age, gender).map((label) => ({ label, emoji: getInterestEmoji(label, gender) }));
-
-const buildDots = (alwaysAdult = false) => {
-  const keys = alwaysAdult
-    ? (['age', 'interests'] as const)
-    : (['kidOrAdult', 'age', 'interests'] as const);
-  return keys.map((k) => ({
-    key: k,
-    state: k === 'interests' ? ('current' as const) : ('completed' as const),
-  }));
-};
 
 const Variant: React.FC<BuildArgs> = ({
   age,
@@ -47,9 +35,8 @@ const Variant: React.FC<BuildArgs> = ({
   title,
   selectedInterests = [],
   textareaValue = '',
-  alwaysAdult,
 }) => (
-  <QuizCard onBack={() => {}} dots={buildDots(alwaysAdult)}>
+  <QuizCard onBack={() => {}} progressPercent={100}>
     <QuizStepInterests
       title={title}
       pills={buildPills(age, gender)}
@@ -59,7 +46,7 @@ const Variant: React.FC<BuildArgs> = ({
       textareaPlaceholder={getPlaceholderText(gender, age)}
       onTextareaChange={() => {}}
       onSubmit={() => {}}
-      canSubmit={selectedInterests.length > 0 || textareaValue.length > 0}
+      canSubmit={selectedInterests.length >= 2}
     />
   </QuizCard>
 );
@@ -185,13 +172,12 @@ export const YoungAdultFemale = {
 };
 
 export const SixtiesFemale = {
-  name: '60s / Female (Mom — alwaysAdult)',
+  name: '60s / Female (Mom)',
   render: () => (
     <Variant
       age={65}
       gender="female"
       title="What does she like?"
-      alwaysAdult
       selectedInterests={['Cooking', 'Books', 'Hosting']}
       textareaValue="She loves entertaining and just got into pottery."
     />
