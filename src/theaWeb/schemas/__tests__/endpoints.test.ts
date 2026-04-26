@@ -64,9 +64,11 @@ describe('TheaWebSubmitGiftFlow request/response shape', () => {
     const res: TheaWebSubmitGiftFlowResponse = {
       recipientId: 'r1',
       recommendationId: '01HXXX',
+      carouselSessionId: 'uid1_01HXXX',
       status: 'PROCESSING',
     };
     expect(res.status).toBe('PROCESSING');
+    expect(res.carouselSessionId).toBe('uid1_01HXXX');
   });
 });
 

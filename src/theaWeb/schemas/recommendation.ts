@@ -8,7 +8,6 @@ import type { RecipientSnapshot } from './recipient';
 
 // Snapshot of a product as written by the recommendation pipeline.
 // Mirrors carousel_agent._serialize_product_for_firestore (BE-side trimmer).
-// Inline in the recommendation doc — no second fetch needed to render.
 export interface RecommendationProduct {
   id: string;
   title: string;
@@ -41,6 +40,10 @@ export interface RecommendationInput {
 
 // Doc at `theaWebUser/{uid}/recipient/{recipientId}/recommendation/{ulid}`.
 // One per generation. `isActive: true` for the current; flips to false on regenerate.
+//
+// Carousel data is NOT here — it lives in carouselSessions/{carouselSessionId}
+// (written by the existing /feed agent). Subscribe to that doc separately for
+// progressive paint.
 export interface Recommendation {
   recommendationId: string;
   isActive: boolean;
@@ -48,9 +51,8 @@ export interface Recommendation {
   input: RecommendationInput;
   recipientSnapshot: RecipientSnapshot;
   status: TheaWebRecommendationStatusEnum;
-  carousels: Record<string, RecommendationCarousel>;
-  carouselOrder: string[];
   mode: TheaWebRecommendationModeEnum;
+  carouselSessionId: string;
   pipelineTimingMs?: number;
   errorMessage?: string;
   _mergedFrom?: string;
@@ -59,4 +61,15 @@ export interface Recommendation {
   updatedAt: Timestamp;
   completedAt?: Timestamp;
   archivedAt?: Timestamp;
+}
+
+// Shape of carouselSessions/{id} after normalizeCarouselSession() runs. The
+// agent writes snake_case to that doc; the munger maps to the camelCase shape
+// the components consume so component code stays idiomatic.
+export interface CarouselSession {
+  status: TheaWebRecommendationStatusEnum;
+  carousels: Record<string, RecommendationCarousel>;
+  carouselOrder: string[];
+  errorMessage?: string;
+  pipelineTimingMs?: number;
 }

@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { ensureAuth } from '../../firebaseConfig';
+import { getCarouselFeed, getFastCarouselFeed } from '../../firebaseFunctions';
 import { submitGiftFlow } from '../callables';
 import { quizAnswersToRequest } from '../lib/quizAnswersToRequest';
+import { relationshipToAgentValue } from '../lib/relationshipToAgentValue';
 import type { QuizAnswers } from '../../components/landing/quiz/useQuizFlow';
-import type { TheaWebSubmitGiftFlowResponse } from '../schemas';
+import type { TheaWebSubmitGiftFlowRequest, TheaWebSubmitGiftFlowResponse } from '../schemas';
 
 export type SubmitGiftFlowState =
   | { status: 'idle' }
@@ -17,8 +19,33 @@ interface UseSubmitGiftFlow {
   reset: () => void;
 }
 
-// Owns the round-trip from quiz submission to receipt of recipient/recommendation IDs.
-// Does NOT subscribe to the recommendation doc — the results page owns that.
+// Fires getCarouselFeed/getFastCarouselFeed but doesn't await — the agent
+// streams progressive writes to carouselSessions/{sessionId}, and the results
+// page subscribes to that doc directly. Awaiting here would block submit()
+// for the full pipeline duration (~10-30s).
+function kickOffPipeline(
+  payload: TheaWebSubmitGiftFlowRequest,
+  carouselSessionId: string,
+) {
+  const callable = payload.mode === 'FAST' ? getFastCarouselFeed : getCarouselFeed;
+  const args = {
+    selected_chips: payload.input.interests,
+    recipient_gender: payload.recipient.gender ?? '',
+    recipient_age: payload.recipient.age ?? 0,
+    recipient_relationship: relationshipToAgentValue(payload.recipient.relationship),
+    freeform_text: payload.input.freeform,
+    session_id: carouselSessionId,
+  };
+  callable(args).catch((err) => {
+    // Failure here doesn't block the user — the results page surfaces the
+    // pipeline state from carouselSessions. Log so we can correlate later.
+    console.error('Carousel pipeline kick-off failed:', err);
+  });
+}
+
+// Owns the round-trip from quiz submission to receipt of recipient/recommendation IDs,
+// then fires the carousel pipeline in the background. Does NOT subscribe to the
+// recommendation doc or carousel session — the results page owns both.
 export function useSubmitGiftFlow(): UseSubmitGiftFlow {
   const [state, setState] = useState<SubmitGiftFlowState>({ status: 'idle' });
   // Guards against callers double-firing during the in-flight window.
@@ -34,6 +61,7 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
       await ensureAuth();
       const payload = quizAnswersToRequest(answers);
       const { data } = await submitGiftFlow(payload);
+      kickOffPipeline(payload, data.carouselSessionId);
       setState({ status: 'ready', result: data });
       return data;
     } catch (err) {

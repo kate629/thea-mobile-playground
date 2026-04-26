@@ -39,5 +39,8 @@ export interface TheaWebSubmitGiftFlowRequest {
 export interface TheaWebSubmitGiftFlowResponse {
   recipientId: string;
   recommendationId: string;
+  // Pass to getCarouselFeed/getFastCarouselFeed as session_id; subscribe to
+  // `carouselSessions/{carouselSessionId}` for the agent's progressive writes.
+  carouselSessionId: string;
   status: 'PROCESSING';
 }

@@ -7,11 +7,19 @@ import type { QuizAnswers } from '../../../components/landing/quiz/useQuizFlow';
 
 const mockEnsureAuth = jest.fn<Promise<string>, []>();
 const mockSubmitGiftFlow = jest.fn<Promise<{ data: any }>, [unknown]>();
+const mockGetCarouselFeed = jest.fn<Promise<unknown>, [unknown]>();
+const mockGetFastCarouselFeed = jest.fn<Promise<unknown>, [unknown]>();
 
 jest.mock('../../../firebaseConfig', () => ({
   ensureAuth: () => mockEnsureAuth(),
   db: {},
   auth: {},
+}));
+
+jest.mock('../../../firebaseFunctions', () => ({
+  getCarouselFeed: (args: unknown) => mockGetCarouselFeed(args),
+  getFastCarouselFeed: (args: unknown) => mockGetFastCarouselFeed(args),
+  functions: {},
 }));
 
 jest.mock('../../callables', () => ({
@@ -23,6 +31,7 @@ jest.mock('../../callables', () => ({
 const ANSWERS: QuizAnswers = {
   relationship: 'Mom',
   age: 50,
+  occasion: '',
   interests: ['gardening'],
   moreAbout: '',
   gender: 'female',
@@ -50,6 +59,10 @@ const renderHarness = () => {
 beforeEach(() => {
   mockEnsureAuth.mockReset();
   mockSubmitGiftFlow.mockReset();
+  mockGetCarouselFeed.mockReset();
+  mockGetFastCarouselFeed.mockReset();
+  mockGetCarouselFeed.mockResolvedValue({});
+  mockGetFastCarouselFeed.mockResolvedValue({});
 });
 
 // --- Tests ----------------------------------------------------------------
@@ -60,10 +73,15 @@ describe('useSubmitGiftFlow', () => {
     expect(screen.getByTestId('status').textContent).toBe('idle');
   });
 
-  test('idle → submitting → ready on success', async () => {
+  test('idle → submitting → ready on success; kicks off fast pipeline', async () => {
     mockEnsureAuth.mockResolvedValue('uid-1');
     mockSubmitGiftFlow.mockResolvedValue({
-      data: { recipientId: 'r1', recommendationId: 'rec1', status: 'PROCESSING' },
+      data: {
+        recipientId: 'r1',
+        recommendationId: 'rec1',
+        carouselSessionId: 'uid-1_rec1',
+        status: 'PROCESSING',
+      },
     });
 
     const { getApi } = renderHarness();
@@ -78,6 +96,16 @@ describe('useSubmitGiftFlow', () => {
     const callArg = mockSubmitGiftFlow.mock.calls[0][0] as any;
     expect(callArg.recipient.relationship).toBe('MOM');
     expect(callArg.mode).toBe('FAST');
+
+    // FAST mode should kick off the fast pipeline (not the thoughtful one)
+    // with the BE-provided carouselSessionId. Mom maps to PARENT for the
+    // agent's relationship vocab.
+    expect(mockGetFastCarouselFeed).toHaveBeenCalledTimes(1);
+    expect(mockGetCarouselFeed).not.toHaveBeenCalled();
+    const kickArg = mockGetFastCarouselFeed.mock.calls[0][0] as any;
+    expect(kickArg.session_id).toBe('uid-1_rec1');
+    expect(kickArg.recipient_relationship).toBe('PARENT');
+    expect(kickArg.selected_chips).toEqual(['gardening']);
   });
 
   test('idle → submitting → error on callable rejection', async () => {
@@ -100,7 +128,12 @@ describe('useSubmitGiftFlow', () => {
     let resolveAuth: (uid: string) => void = () => {};
     mockEnsureAuth.mockImplementation(() => new Promise((r) => (resolveAuth = r)));
     mockSubmitGiftFlow.mockResolvedValue({
-      data: { recipientId: 'r1', recommendationId: 'rec1', status: 'PROCESSING' },
+      data: {
+        recipientId: 'r1',
+        recommendationId: 'rec1',
+        carouselSessionId: 'uid-1_rec1',
+        status: 'PROCESSING',
+      },
     });
 
     const { getApi } = renderHarness();
