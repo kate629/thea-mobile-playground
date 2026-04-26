@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { Alert, Spinner } from 'react-bootstrap';
 import ProductCard from '../../components/carousel/ProductCard';
+import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
 import type { RecommendationCarousel, RecommendationProduct } from '../schemas';
 
@@ -42,7 +43,11 @@ const RecommendationResultsPage: React.FC = () => {
     recipientId: string;
     recommendationId: string;
   }>();
-  const { doc, loading, error } = useRecommendationDoc(recipientId, recommendationId);
+  const { doc, loading: docLoading, error: docError } = useRecommendationDoc(
+    recipientId,
+    recommendationId,
+  );
+  const { session, error: sessionError } = useCarouselSession(doc?.carouselSessionId);
 
   if (!recipientId || !recommendationId) {
     return (
@@ -52,15 +57,18 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  // Recommendation doc errors are fatal (we can't render anything without
+  // recipientSnapshot). Session errors are not — the doc still has metadata
+  // and the user can at least see the recipient header.
+  if (docError) {
     return (
       <Alert variant="danger" className="mt-4">
-        Couldn't load this recommendation: {error.message}
+        Couldn't load this recommendation: {docError.message}
       </Alert>
     );
   }
 
-  if (loading) {
+  if (docLoading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
         <Spinner animation="border" role="status" />
@@ -76,33 +84,44 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  const carousels = doc.carouselOrder.filter((key) => key in doc.carousels);
+  // The session drives carousel paint. Status/error fall back to the
+  // recommendation doc when the session hasn't materialized yet.
+  const status = session?.status ?? doc.status;
+  const errorMessage = session?.errorMessage ?? doc.errorMessage;
+  const carouselOrder = session?.carouselOrder ?? [];
+  const carousels = session?.carousels ?? {};
+  const renderable = carouselOrder.filter((key) => key in carousels);
 
   return (
     <div className="recommendation-results-page py-4">
       <header className="mb-4">
         <h2>Gift ideas for {doc.recipientSnapshot.name}</h2>
-        {doc.status === 'PROCESSING' && (
+        {status === 'PROCESSING' && (
           <small className="text-muted d-flex align-items-center gap-2">
             <Spinner animation="border" size="sm" /> Still finishing&hellip;
           </small>
         )}
-        {doc.status === 'FAILED' && (
+        {status === 'FAILED' && (
           <Alert variant="danger" className="mt-2">
-            Something went wrong: {doc.errorMessage || 'unknown error'}
+            Something went wrong: {errorMessage || 'unknown error'}
+          </Alert>
+        )}
+        {sessionError && status !== 'FAILED' && (
+          <Alert variant="warning" className="mt-2">
+            Lost connection to live updates: {sessionError.message}
           </Alert>
         )}
       </header>
 
-      {carousels.length === 0 && doc.status === 'PROCESSING' && (
+      {renderable.length === 0 && status === 'PROCESSING' && (
         <p className="text-muted">Setting up your carousels&hellip;</p>
       )}
-      {carousels.length === 0 && doc.status === 'COMPLETED' && (
+      {renderable.length === 0 && status === 'COMPLETED' && (
         <Alert variant="warning">No recommendations were generated for this submission.</Alert>
       )}
 
-      {carousels.map((key) => (
-        <CarouselRow key={key} carouselKey={key} carousel={doc.carousels[key]} />
+      {renderable.map((key) => (
+        <CarouselRow key={key} carouselKey={key} carousel={carousels[key]} />
       ))}
     </div>
   );
