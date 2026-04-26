@@ -1,0 +1,38 @@
+import { httpsCallable, type HttpsCallable } from 'firebase/functions';
+
+import { functions } from '../firebaseFunctions';
+import {
+  THEA_WEB_CALLABLES,
+  type TheaWebMergeGiftFlowRequest,
+  type TheaWebMergeGiftFlowResponse,
+  type TheaWebRecordActivityRequest,
+  type TheaWebRecordActivityResponse,
+  type TheaWebSubmitGiftFlowRequest,
+  type TheaWebSubmitGiftFlowResponse,
+  type TheaWebUpdateRecipientRequest,
+  type TheaWebUpdateRecipientResponse,
+} from './schemas';
+
+// Submit returns synchronously after queuing the recommendation pipeline; long
+// AI work runs in async triggers, so 60s is the wire ceiling not the work ceiling.
+export const submitGiftFlow: HttpsCallable<
+  TheaWebSubmitGiftFlowRequest,
+  TheaWebSubmitGiftFlowResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.submitGiftFlow, { timeout: 60_000 });
+
+export const recordActivity: HttpsCallable<
+  TheaWebRecordActivityRequest,
+  TheaWebRecordActivityResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.recordActivity, { timeout: 30_000 });
+
+export const updateRecipient: HttpsCallable<
+  TheaWebUpdateRecipientRequest,
+  TheaWebUpdateRecipientResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.updateRecipient, { timeout: 30_000 });
+
+// Merge fans out a WriteBatch across recipients/recommendations/giftActivities
+// then deletes the source — generous timeout matches the worst-case fan-out.
+export const mergeGiftFlow: HttpsCallable<
+  TheaWebMergeGiftFlowRequest,
+  TheaWebMergeGiftFlowResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.mergeGiftFlow, { timeout: 120_000 });

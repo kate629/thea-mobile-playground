@@ -14,6 +14,10 @@ const Login = lazy(() => import("./components/auth/Login"));
 const Signup = lazy(() => import("./components/auth/Signup"));
 const CarouselFeedPage = lazy(() => import("./components/carousel/CarouselFeedPage"));
 const FastCarouselFeedPage = lazy(() => import("./components/carousel/FastCarouselFeedPage"));
+const QuizPage = lazy(() => import("./theaWeb/pages/QuizPage"));
+const RecommendationResultsPage = lazy(() =>
+  import("./theaWeb/pages/RecommendationResultsPage"),
+);
 
 // Lazy so the ~600 hardcoded sample products don't bloat the root bundle.
 const OccasionRoute = lazy(() =>
@@ -73,6 +77,22 @@ function App() {
             element={
               <Suspense fallback={null}>
                 <FastCarouselFeedPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/quiz"
+            element={
+              <Suspense fallback={null}>
+                <QuizPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/quiz/results/:recipientId/:recommendationId"
+            element={
+              <Suspense fallback={null}>
+                <RecommendationResultsPage />
               </Suspense>
             }
           />
