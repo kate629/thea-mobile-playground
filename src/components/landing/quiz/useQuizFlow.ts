@@ -169,9 +169,20 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   const onSubmitRef = useRef(opts.onSubmit);
   onSubmitRef.current = opts.onSubmit;
 
+  // Refs mirror the latest values so the auto-advance setTimeout can read
+  // the just-set value instead of the stale closure captured at click time.
+  const relationshipRef = useRef(relationship);
+  const genderRef = useRef(gender);
+  const ageRef = useRef(age);
+  const occasionRef = useRef(occasion);
+
   const derivedGender: Gender = gender ?? getGenderFromRelationship(relationship);
 
   const setRelationship = useCallback((rel: string) => {
+    relationshipRef.current = rel;
+    genderRef.current = null;
+    ageRef.current = 0;
+    occasionRef.current = '';
     setRelationshipState(rel);
     // Reset downstream picks so re-selecting the relationship starts fresh.
     setGenderState(null);
@@ -180,30 +191,40 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   }, []);
 
   const goFromRelationship = useCallback(() => {
-    if (!relationship) return;
-    setStep(NEEDS_GENDER_RELATIONSHIPS.includes(relationship) ? 'gender' : 'age');
-  }, [relationship]);
+    const rel = relationshipRef.current;
+    if (!rel) return;
+    setStep(NEEDS_GENDER_RELATIONSHIPS.includes(rel) ? 'gender' : 'age');
+  }, []);
 
-  const setGender = useCallback((g: Gender) => setGenderState(g), []);
+  const setGender = useCallback((g: Gender) => {
+    genderRef.current = g;
+    setGenderState(g);
+  }, []);
 
   const goFromGender = useCallback(() => {
-    if (!gender) return;
+    if (!genderRef.current) return;
     setStep('age');
-  }, [gender]);
+  }, []);
 
-  const setAge = useCallback((value: number) => setAgeState(value), []);
+  const setAge = useCallback((value: number) => {
+    ageRef.current = value;
+    setAgeState(value);
+  }, []);
 
   const goFromAge = useCallback(() => {
-    if (!age) return;
+    if (!ageRef.current) return;
     setStep('occasion');
-  }, [age]);
+  }, []);
 
-  const setOccasion = useCallback((o: string) => setOccasionState(o), []);
+  const setOccasion = useCallback((o: string) => {
+    occasionRef.current = o;
+    setOccasionState(o);
+  }, []);
 
   const goFromOccasion = useCallback(() => {
-    if (!occasion) return;
+    if (!occasionRef.current) return;
     setStep('interests');
-  }, [occasion]);
+  }, []);
 
   const toggleInterest = useCallback((interest: string) => {
     setInterests((prev) =>
