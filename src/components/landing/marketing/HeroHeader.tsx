@@ -134,19 +134,26 @@ const InvisibleTail = styled.span`
 `;
 
 const CtaWrap = styled.div<{ $mobile?: boolean }>`
-  display: ${({ $mobile }) => ($mobile ? 'none' : 'block')};
   margin-top: 24px;
   text-align: center;
   @media (min-width: 768px) {
-    display: ${({ $mobile }) => ($mobile ? 'none' : 'block')};
     margin-top: 32px;
     text-align: left;
   }
-  ${({ $mobile }) => $mobile && css`
-    display: block;
-    text-align: center;
-    @media (min-width: 768px) { display: none; }
-  `}
+  ${({ $mobile }) =>
+    $mobile
+      ? css`
+          display: block;
+          @media (min-width: 768px) {
+            display: none;
+          }
+        `
+      : css`
+          display: none;
+          @media (min-width: 768px) {
+            display: block;
+          }
+        `}
 `;
 
 const CardArea = styled.div`
