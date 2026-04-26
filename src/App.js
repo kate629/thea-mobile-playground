@@ -1,11 +1,16 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 import { theme } from "./theme";
+
+function LandingRoute() {
+  const navigate = useNavigate();
+  return <LandingPage onCtaClick={() => navigate("/quiz")} />;
+}
 
 // Dev surfaces are lazy-loaded so the customer-facing root bundle stays slim.
 // Production users never download these chunks.
@@ -29,7 +34,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <UserAuthContextProvider>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<LandingRoute />} />
           <Route
             path="/occasion/:id"
             element={

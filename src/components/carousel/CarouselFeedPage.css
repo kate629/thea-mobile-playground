@@ -108,14 +108,6 @@
   flex-shrink: 0;
 }
 
-/* AI reasoning text on product cards */
-.product-card-why {
-  font-size: 0.75rem;
-  color: #6c63ff;
-  font-style: italic;
-  margin-top: 4px;
-}
-
 /* Carousel progress bar */
 .carousel-progress-wrapper {
   display: flex;

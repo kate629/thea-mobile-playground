@@ -21,7 +21,6 @@ export interface RecommendationProduct {
   interests?: string[];
   description?: string;
   url?: string;
-  agent_why?: string;
   carousel_tags?: string[];
 }
 

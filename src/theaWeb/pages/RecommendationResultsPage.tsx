@@ -136,7 +136,6 @@ function toCardProduct(p: RecommendationProduct) {
     brand: p.brand,
     images: p.images,
     description: p.description,
-    agent_why: p.agent_why,
     url: p.url,
   };
 }

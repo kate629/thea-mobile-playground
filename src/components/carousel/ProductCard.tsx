@@ -8,7 +8,6 @@ export interface Product {
   brand?: string;
   images?: string[];
   description?: string;
-  agent_why?: string;
   url?: string;
 }
 
@@ -45,9 +44,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, animationDelay }) =>
           <small className="text-muted d-block mb-1">{product.brand}</small>
         )}
         <strong>{formatPrice(product.price)}</strong>
-        {product.agent_why && (
-          <div className="product-card-why">{product.agent_why}</div>
-        )}
         <small className="text-muted d-block mt-1" style={{ fontSize: '0.65rem', opacity: 0.5 }}>{product.id}</small>
       </Card.Body>
     </Card>
@@ -67,6 +63,5 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, animationDelay }) =>
 
 export default React.memo(ProductCard, (prev, next) =>
   prev.product.id === next.product.id
-  && prev.product.agent_why === next.product.agent_why
   && prev.animationDelay === next.animationDelay
 );
