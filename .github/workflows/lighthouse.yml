@@ -29,9 +29,18 @@ jobs:
           CI: false
         run: npm run build
 
-      - name: Run Lighthouse CI (${{ matrix.preset }})
-        uses: treosh/lighthouse-ci-action@v12
+      - name: Install lhci + xvfb
+        run: |
+          npm install -g @lhci/cli@0.13.x
+          sudo apt-get update -qq && sudo apt-get install -yq xvfb
+
+      - name: Run Lighthouse CI (${{ matrix.preset }}) under Xvfb
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1366x768x24" lhci autorun --config=./lighthouserc.${{ matrix.preset }}.json
+
+      - name: Upload Lighthouse artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          configPath: ./lighthouserc.${{ matrix.preset }}.json
-          uploadArtifacts: true
-          temporaryPublicStorage: true
+          name: lhci-${{ matrix.preset }}-reports
+          path: .lighthouseci
+          if-no-files-found: ignore
