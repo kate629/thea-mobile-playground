@@ -2,7 +2,7 @@ import React from 'react';
 import { OccasionGrid, OCCASION_TILES } from './OccasionGrid';
 
 export default {
-  title: 'Landing/OccasionGrid',
+  title: 'Landing/Marketing/OccasionGrid',
   component: OccasionGrid,
 };
 

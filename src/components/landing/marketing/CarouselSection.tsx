@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { OccasionProductCard, OccasionProductCardProps } from '../ui/OccasionProductCard';
+import { OccasionProductCard, OccasionProductCardProps } from '../../ui/OccasionProductCard';
 
 export interface CarouselProduct
   extends Pick<OccasionProductCardProps, 'imageUrl' | 'title' | 'brand' | 'price' | 'productUrl'> {

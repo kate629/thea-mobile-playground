@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { SiteHeader } from './SiteHeader';
+import { SiteHeader } from '../SiteHeader';
 import { HeroHeader } from './HeroHeader';
 import { HeroHeaderAnimated } from './HeroHeaderAnimated';
 import { ValuePropsCard, ValuePropItem } from './ValuePropsCard';

@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Card } from '../ui/Card';
-import { IconFeature } from '../ui/IconFeature';
+import { Card } from '../../ui/Card';
+import { IconFeature } from '../../ui/IconFeature';
 
 export interface ValuePropItem {
   emoji: string;

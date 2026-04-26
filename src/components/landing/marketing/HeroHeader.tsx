@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
-import { cursorBlink } from '../../animations';
-import { Button } from '../ui/Button';
+import { cursorBlink } from '../../../animations';
+import { Button } from '../../ui/Button';
 import { SCENARIO_CARDS, HERO_COLOR } from './scenarios';
 
 export interface HeroHeaderProps {

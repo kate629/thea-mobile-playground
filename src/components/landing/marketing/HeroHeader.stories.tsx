@@ -3,7 +3,7 @@ import { HeroHeader, HeroHeaderProps } from './HeroHeader';
 import { SCENARIO_CARDS } from './scenarios';
 
 export default {
-  title: 'Landing/HeroHeader',
+  title: 'Landing/Marketing/HeroHeader',
   component: HeroHeader,
 };
 

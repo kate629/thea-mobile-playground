@@ -2,7 +2,7 @@ import React from 'react';
 import { LandingPage, FrozenHeroSlot } from './LandingPage';
 
 export default {
-  title: 'Landing/LandingPageFrozen',
+  title: 'Landing/Marketing/LandingPageFrozen',
   component: LandingPage,
 };
 

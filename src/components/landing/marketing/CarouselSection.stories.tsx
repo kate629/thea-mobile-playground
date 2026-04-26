@@ -3,7 +3,7 @@ import { CarouselSection } from './CarouselSection';
 import { SAMPLE_BIRTHDAY_SECTIONS } from './sampleBirthdayCarousels';
 
 export default {
-  title: 'Landing/CarouselSection',
+  title: 'Landing/Marketing/CarouselSection',
   component: CarouselSection,
 };
 
