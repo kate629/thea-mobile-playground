@@ -5,6 +5,7 @@ import { Button } from './Button';
 export default {
   title: 'UI/DropdownMenu',
   component: DropdownMenu,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const items = [

@@ -4,6 +4,7 @@ import { Chip } from './Chip';
 export default {
   title: 'UI/Chip',
   component: Chip,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const Unselected = {

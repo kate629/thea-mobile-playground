@@ -4,6 +4,7 @@ import { RadioGroup } from './RadioGroup';
 export default {
   title: 'UI/RadioGroup',
   component: RadioGroup,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const OPTIONS = [

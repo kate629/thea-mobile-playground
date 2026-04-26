@@ -4,6 +4,7 @@ import { Card } from './Card';
 export default {
   title: 'UI/Card',
   component: Card,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const Cream = {

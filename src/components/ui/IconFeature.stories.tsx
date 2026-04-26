@@ -4,6 +4,7 @@ import { IconFeature } from './IconFeature';
 export default {
   title: 'UI/IconFeature',
   component: IconFeature,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const TellUs = {

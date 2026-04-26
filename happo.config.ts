@@ -11,6 +11,8 @@ export default defineConfig({
   },
 
   // https://docs.happo.io/docs/configuration#targets
+  // Two targets per story = ~33% fewer snapshots vs adding accessibility.
+  // Re-add a third target only if there's an active reviewer for it.
   targets: {
     'chrome-large': {
       type: 'chrome',
@@ -20,11 +22,6 @@ export default defineConfig({
     'chrome-small': {
       type: 'chrome',
       viewport: '375x667',
-    },
-
-    'accessibility': {
-      type: 'accessibility',
-      viewport: '1024x768',
     },
   },
 });

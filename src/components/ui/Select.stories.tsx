@@ -4,6 +4,7 @@ import { Select } from './Select';
 export default {
   title: 'UI/Select',
   component: Select,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 240 };

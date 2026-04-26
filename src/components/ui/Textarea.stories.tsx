@@ -4,6 +4,7 @@ import { Textarea } from './Textarea';
 export default {
   title: 'UI/Textarea',
   component: Textarea,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 480 };

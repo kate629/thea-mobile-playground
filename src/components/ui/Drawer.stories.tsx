@@ -5,6 +5,7 @@ import { Button } from './Button';
 export default {
   title: 'UI/Drawer',
   component: Drawer,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const fillerStyle: React.CSSProperties = {

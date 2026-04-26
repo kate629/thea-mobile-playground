@@ -4,6 +4,7 @@ import { Button } from './Button';
 export default {
   title: 'UI/Button',
   component: Button,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const Primary = {
