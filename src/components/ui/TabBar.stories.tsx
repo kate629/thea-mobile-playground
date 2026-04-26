@@ -6,6 +6,7 @@ import { badgePop } from '../../animations';
 export default {
   title: 'UI/TabBar',
   component: TabBar,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 type DemoKey = 'recommended' | 'liked' | 'purchased';

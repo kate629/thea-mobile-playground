@@ -5,6 +5,7 @@ import { Button } from './Button';
 export default {
   title: 'UI/Modal',
   component: Modal,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const OpenWithText = {

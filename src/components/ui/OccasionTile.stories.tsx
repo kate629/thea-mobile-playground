@@ -4,6 +4,7 @@ import { OccasionTile } from './OccasionTile';
 export default {
   title: 'UI/OccasionTile',
   component: OccasionTile,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 240 };

@@ -5,6 +5,7 @@ import { Button } from './Button';
 export default {
   title: 'UI/AlertDialog',
   component: AlertDialog,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const BackGuard = {

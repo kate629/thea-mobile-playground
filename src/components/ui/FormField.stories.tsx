@@ -7,6 +7,7 @@ import { Select } from './Select';
 export default {
   title: 'UI/FormField',
   component: FormField,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 360 };

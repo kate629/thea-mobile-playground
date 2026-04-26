@@ -4,6 +4,7 @@ import { OccasionProductCard } from './OccasionProductCard';
 export default {
   title: 'UI/OccasionProductCard',
   component: OccasionProductCard,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 320 };

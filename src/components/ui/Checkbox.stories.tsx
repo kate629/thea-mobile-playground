@@ -4,6 +4,7 @@ import { Checkbox } from './Checkbox';
 export default {
   title: 'UI/Checkbox',
   component: Checkbox,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 export const Unchecked = {

@@ -4,6 +4,7 @@ import { Input } from './Input';
 export default {
   title: 'UI/Input',
   component: Input,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 320 };

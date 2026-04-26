@@ -4,6 +4,7 @@ import { Slider } from './Slider';
 export default {
   title: 'UI/Slider',
   component: Slider,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = { width: 360 };

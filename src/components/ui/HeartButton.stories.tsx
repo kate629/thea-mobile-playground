@@ -4,6 +4,7 @@ import { HeartButton } from './HeartButton';
 export default {
   title: 'UI/HeartButton',
   component: HeartButton,
+  parameters: { happo: { targets: ['chrome-large'] } },
 };
 
 const wrapStyle: React.CSSProperties = {

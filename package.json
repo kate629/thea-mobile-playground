@@ -60,6 +60,7 @@
     "@storybook/addon-onboarding": "^10.3.5",
     "@storybook/preset-create-react-app": "^10.3.5",
     "@storybook/react-webpack5": "^10.3.5",
+    "babel-plugin-styled-components": "^2.1.4",
     "dotenv-cli": "^11.0.0",
     "eslint": "^8.57.0",
     "eslint-config-airbnb": "^19.0.4",
