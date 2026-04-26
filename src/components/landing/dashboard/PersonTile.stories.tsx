@@ -3,7 +3,7 @@ import { PersonTile } from './PersonTile';
 import { SAMPLE_PREVIEW_IMAGES } from './sampleDashboardData';
 
 export default {
-  title: 'Landing/Dashboard/PersonTile',
+  title: 'Surfaces/Dashboard/PersonTile',
   component: PersonTile,
 };
 

@@ -4,7 +4,7 @@ import { ResultsCarousel } from './ResultsCarousel';
 import { SAMPLE_RESULTS_CAROUSELS } from './sampleResultsData';
 
 export default {
-  title: 'Landing/Results/ResultsDiscoverTab',
+  title: 'Surfaces/Results/ResultsDiscoverTab',
   component: ResultsDiscoverTab,
 };
 

@@ -12,7 +12,7 @@ import {
 } from './sampleResultsData';
 
 export default {
-  title: 'Landing/Results/ResultsPage',
+  title: 'Surfaces/Results/ResultsPage',
   component: ResultsPage,
 };
 

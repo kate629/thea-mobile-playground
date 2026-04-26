@@ -4,7 +4,7 @@ import { ME_TILE_ID } from './types';
 import { SAMPLE_DASHBOARD_PEOPLE, SAMPLE_PREVIEW_IMAGES } from './sampleDashboardData';
 
 export default {
-  title: 'Landing/Dashboard/BrowseFriendsGrid',
+  title: 'Surfaces/Dashboard/BrowseFriendsGrid',
   component: BrowseFriendsGrid,
 };
 

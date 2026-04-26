@@ -8,7 +8,7 @@ import { ME_TILE_ID, AuthState } from './types';
 import { SAMPLE_DASHBOARD_PEOPLE, SAMPLE_PREVIEW_IMAGES } from './sampleDashboardData';
 
 export default {
-  title: 'Landing/Dashboard/BrowseFriendsPage',
+  title: 'Surfaces/Dashboard/BrowseFriendsPage',
   component: BrowseFriendsPage,
   parameters: { layout: 'fullscreen' },
 };

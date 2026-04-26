@@ -2,7 +2,7 @@ import React from 'react';
 import { QuizCard } from './QuizCard';
 
 export default {
-  title: 'Landing/Quiz/QuizCard',
+  title: 'Surfaces/Quiz/QuizCard',
   component: QuizCard,
 };
 

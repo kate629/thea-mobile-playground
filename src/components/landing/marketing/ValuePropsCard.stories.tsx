@@ -2,7 +2,7 @@ import React from 'react';
 import { ValuePropsCard } from './ValuePropsCard';
 
 export default {
-  title: 'Landing/Marketing/ValuePropsCard',
+  title: 'Surfaces/Marketing/ValuePropsCard',
   component: ValuePropsCard,
 };
 

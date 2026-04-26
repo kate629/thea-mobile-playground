@@ -4,7 +4,7 @@ import { Button } from '../../ui/Button';
 import { ResultsTabKey } from './types';
 
 export default {
-  title: 'Landing/Results/ResultsHeader',
+  title: 'Surfaces/Results/ResultsHeader',
   component: ResultsHeader,
 };
 

@@ -4,7 +4,7 @@ import { PLACEHOLDER_SEGMENTS, makeFilledSegment } from './constants';
 import { QuestPillSegmentKey, QuestPillSegments } from './types';
 
 export default {
-  title: 'Landing/Dashboard/QuestSummaryPill',
+  title: 'Surfaces/Dashboard/QuestSummaryPill',
   component: QuestSummaryPill,
 };
 
@@ -58,6 +58,70 @@ export const AllResolved = {
         onSegmentClick={() => {}}
         onClearSegment={() => {}}
         onSparkleClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+const sampleDropdown = (label: string) => (
+  <div
+    style={{
+      padding: 24,
+      borderRadius: 12,
+      background: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border))',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+      fontSize: 14,
+      color: 'hsl(var(--muted-foreground))',
+    }}
+  >
+    Dropdown content for the {label} segment goes here. v1 ships this slot empty so the
+    pill design can land independently.
+  </div>
+);
+
+export const WhatOpen = {
+  render: () => (
+    <Frame>
+      <QuestSummaryPill
+        segments={PartialResolved}
+        openSegment="what"
+        onSegmentClick={() => {}}
+        onClearSegment={() => {}}
+        onSparkleClick={() => {}}
+        canSearch={false}
+        dropdown={sampleDropdown('WHAT')}
+      />
+    </Frame>
+  ),
+};
+
+export const LikesOpen = {
+  render: () => (
+    <Frame>
+      <QuestSummaryPill
+        segments={RESOLVED}
+        openSegment="likes"
+        onSegmentClick={() => {}}
+        onClearSegment={() => {}}
+        onSparkleClick={() => {}}
+        dropdown={sampleDropdown('LIKES')}
+      />
+    </Frame>
+  ),
+};
+
+export const SecondSegmentOpenWithFilledNeighbors = {
+  name: 'WHAT open with WHO+LIKES filled',
+  render: () => (
+    <Frame>
+      <QuestSummaryPill
+        segments={RESOLVED}
+        openSegment="what"
+        onSegmentClick={() => {}}
+        onClearSegment={() => {}}
+        onSparkleClick={() => {}}
+        dropdown={sampleDropdown('WHAT')}
       />
     </Frame>
   ),

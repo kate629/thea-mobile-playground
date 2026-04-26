@@ -3,7 +3,7 @@ import { SavePromptSheet, SavePromptStep } from './SavePromptSheet';
 import { Button } from '../../ui/Button';
 
 export default {
-  title: 'Landing/Results/SavePromptSheet',
+  title: 'Surfaces/Results/SavePromptSheet',
   component: SavePromptSheet,
 };
 

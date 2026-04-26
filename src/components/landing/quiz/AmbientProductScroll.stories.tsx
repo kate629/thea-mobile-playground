@@ -4,7 +4,7 @@ import { AmbientProductScrollAnimated } from './AmbientProductScrollAnimated';
 import { SAMPLE_AMBIENT_IMAGES } from './sampleAmbientImages';
 
 export default {
-  title: 'Landing/Quiz/AmbientProductScroll',
+  title: 'Surfaces/Quiz/AmbientProductScroll',
   component: AmbientProductScroll,
 };
 

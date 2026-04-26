@@ -3,7 +3,7 @@ import { QuizCard } from './QuizCard';
 import { QuizStepKidOrAdult } from './QuizStepKidOrAdult';
 
 export default {
-  title: 'Landing/Quiz/StepKidOrAdult',
+  title: 'Surfaces/Quiz/StepKidOrAdult',
   component: QuizStepKidOrAdult,
 };
 

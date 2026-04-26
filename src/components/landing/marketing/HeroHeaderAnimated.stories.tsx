@@ -2,7 +2,7 @@ import React from 'react';
 import { HeroHeaderAnimated } from './HeroHeaderAnimated';
 
 export default {
-  title: 'Landing/Marketing/HeroHeaderAnimated',
+  title: 'Surfaces/Marketing/HeroHeaderAnimated',
   component: HeroHeaderAnimated,
   /* Live animation — non-deterministic. Excluded from Happo. Use the frozen
      Landing/HeroHeader stories for visual regression. */

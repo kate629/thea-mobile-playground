@@ -3,7 +3,7 @@ import { ResultsProductCard } from './ResultsProductCard';
 import { SAMPLE_RESULTS_CAROUSELS } from './sampleResultsData';
 
 export default {
-  title: 'Landing/Results/ResultsProductCard',
+  title: 'Surfaces/Results/ResultsProductCard',
   component: ResultsProductCard,
 };
 

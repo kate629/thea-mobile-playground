@@ -2,7 +2,7 @@ import React from 'react';
 import { Footer } from './Footer';
 
 export default {
-  title: 'Landing/Marketing/Footer',
+  title: 'Surfaces/Marketing/Footer',
   component: Footer,
 };
 

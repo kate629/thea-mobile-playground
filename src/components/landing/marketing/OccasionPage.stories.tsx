@@ -3,7 +3,7 @@ import { OccasionPage } from './OccasionPage';
 import { SAMPLE_BIRTHDAY_SECTIONS } from './sampleBirthdayCarousels';
 
 export default {
-  title: 'Landing/Marketing/OccasionPage',
+  title: 'Surfaces/Marketing/OccasionPage',
   component: OccasionPage,
 };
 

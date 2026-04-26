@@ -3,7 +3,7 @@ import { QuizCard } from './QuizCard';
 import { QuizStepRelationship } from './QuizStepRelationship';
 
 export default {
-  title: 'Landing/Quiz/StepRelationship',
+  title: 'Surfaces/Quiz/StepRelationship',
   component: QuizStepRelationship,
 };
 
@@ -24,5 +24,33 @@ export const SisterSelected = {
 export const PartnerSelected = {
   render: () => wrap(
     <QuizStepRelationship selected="Partner" onSelect={() => {}} onNext={() => {}} />,
+  ),
+};
+
+export const MomSelected = {
+  name: 'Mom selected (alwaysAdult — skips kid/adult step)',
+  render: () => wrap(
+    <QuizStepRelationship selected="Mom" onSelect={() => {}} onNext={() => {}} />,
+  ),
+};
+
+export const FriendSelected = {
+  name: 'Friend selected (gender-neutral)',
+  render: () => wrap(
+    <QuizStepRelationship selected="Friend" onSelect={() => {}} onNext={() => {}} />,
+  ),
+};
+
+export const MeSelected = {
+  name: 'Me! selected (alwaysAdult, self-shopping)',
+  render: () => wrap(
+    <QuizStepRelationship selected="Me!" onSelect={() => {}} onNext={() => {}} />,
+  ),
+};
+
+export const Mobile = {
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  render: () => wrap(
+    <QuizStepRelationship selected="" onSelect={() => {}} onNext={() => {}} />,
   ),
 };

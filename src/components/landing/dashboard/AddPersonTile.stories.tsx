@@ -2,7 +2,7 @@ import React from 'react';
 import { AddPersonTile } from './AddPersonTile';
 
 export default {
-  title: 'Landing/Dashboard/AddPersonTile',
+  title: 'Surfaces/Dashboard/AddPersonTile',
   component: AddPersonTile,
 };
 

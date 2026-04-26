@@ -5,7 +5,7 @@ import { makeDelayedMockPreviewLoader, SAMPLE_DASHBOARD_PEOPLE } from './sampleD
 import { AuthState } from './types';
 
 export default {
-  title: 'Landing/Dashboard/BrowseFriendsPageAnimated',
+  title: 'Surfaces/Dashboard/BrowseFriendsPageAnimated',
   component: BrowseFriendsPageAnimated,
   parameters: { happo: false, layout: 'fullscreen' },
 };

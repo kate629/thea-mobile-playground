@@ -3,7 +3,7 @@ import { PreviewCollage } from './PreviewCollage';
 import { SAMPLE_PREVIEW_IMAGES } from './sampleDashboardData';
 
 export default {
-  title: 'Landing/Dashboard/PreviewCollage',
+  title: 'Surfaces/Dashboard/PreviewCollage',
   component: PreviewCollage,
 };
 
