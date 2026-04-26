@@ -129,7 +129,8 @@ export const OccasionProductCard: React.FC<OccasionProductCardProps> = ({
                 src={imageUrl}
                 alt={title}
                 loading={priority ? 'eager' : 'lazy'}
-                decoding="async"
+                fetchPriority={priority ? 'high' : 'auto'}
+                decoding={priority ? 'auto' : 'async'}
                 onLoad={() => markImageLoaded(imageUrl)}
               />
             </picture>
