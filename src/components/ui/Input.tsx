@@ -9,6 +9,7 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
 const baseInput = css<{ $invalid: boolean }>`
   display: block;
   width: 100%;
+  box-sizing: border-box;
   height: 40px;
   padding: 0 12px;
   font-size: 14px;

@@ -22,6 +22,7 @@ const Wrap = styled.div`
 const StyledSelect = styled.select<{ $invalid: boolean }>`
   display: block;
   width: 100%;
+  box-sizing: border-box;
   height: 36px;
   padding: 0 32px 0 12px;
   font-size: 12px;
