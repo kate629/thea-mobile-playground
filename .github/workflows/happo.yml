@@ -1,12 +1,25 @@
 name: Happo
 
+# Skip Happo on draft PRs and on commits that only touch CI/workflow/config
+# files. Visual regression value comes from rendered-output changes; CI
+# tweaks and markdown edits don't move the storybook bundle and shouldn't
+# burn Happo budget or runner minutes.
 on:
   pull_request:
+    types: [opened, ready_for_review, synchronize, reopened]
+    paths-ignore:
+      - '.github/**'
+      - 'lighthouserc*.json'
+      - '**/*.md'
+      - '.gitignore'
+      - 'firebase.json'
+      - '.firebaserc'
   push:
     branches: [master]
 
 jobs:
   happo:
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
