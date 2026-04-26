@@ -6,9 +6,29 @@ import type {
 } from './enums';
 import type { RecipientSnapshot } from './recipient';
 
+// Snapshot of a product as written by the recommendation pipeline.
+// Mirrors carousel_agent._serialize_product_for_firestore (BE-side trimmer).
+// Inline in the recommendation doc — no second fetch needed to render.
+export interface RecommendationProduct {
+  id: string;
+  title: string;
+  price: number;
+  brand?: string;
+  images?: string[];
+  // CDN variants for fast first paint (populated by nightly backfill).
+  images_cdn?: string[];
+  images_cdn_mobile?: string[];
+  gift_gender?: string;
+  interests?: string[];
+  description?: string;
+  url?: string;
+  agent_why?: string;
+  carousel_tags?: string[];
+}
+
 export interface RecommendationCarousel {
   displayName: string;
-  productIds: string[];
+  products: RecommendationProduct[];
 }
 
 // Frozen quiz snapshot at submit time.
