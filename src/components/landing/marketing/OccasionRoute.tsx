@@ -28,36 +28,47 @@ const OCCASIONS: Record<string, OccasionConfig> = {
 };
 
 /**
- * Inject a high-priority preload for the LCP image — the first card of the
+ * Inject high-priority preloads for the LCP image — the first card of the
  * first section. We can't do this statically in index.html because the LCP
- * varies per route. Mobile gets the `_mobile.webp` (~600px); desktop falls
- * back to the orig variant via imagesrcset/imagesizes media query, mirroring
- * the <picture> element rendered by OccasionProductCard.
+ * varies per route. Each preload uses a `media` attribute that mirrors the
+ * <picture> element's source selection in OccasionProductCard, so the browser
+ * preloads exactly the variant the rendered <img> will pick (no double-fetch).
+ *
+ * Earlier version used imagesrcset/imagesizes, which caused the browser's
+ * srcset math (412px CSS × 1.75 DPR ≈ 721px) to pick the 1200w orig variant
+ * while the <picture> picked mobile via media query — wasting a fetch.
  */
 const useLcpPreload = (config: OccasionConfig | undefined) => {
   useEffect(() => {
     const lcp = config?.sections[0]?.products[0];
     if (!lcp) return;
-    const preloadHref = lcp.imageUrlCdnMobile || lcp.imageUrlCdn || lcp.imageUrl;
-    if (!preloadHref) return;
 
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.setAttribute('fetchpriority', 'high');
+    const links: HTMLLinkElement[] = [];
+    const addPreload = (href: string, media?: string) => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = href;
+      link.setAttribute('fetchpriority', 'high');
+      if (media) link.media = media;
+      if (href.includes('.webp')) link.type = 'image/webp';
+      document.head.appendChild(link);
+      links.push(link);
+    };
 
     if (lcp.imageUrlCdnMobile && lcp.imageUrlCdn) {
-      link.setAttribute('imagesrcset', `${lcp.imageUrlCdnMobile} 600w, ${lcp.imageUrlCdn} 1200w`);
-      link.setAttribute('imagesizes', '(max-width: 640px) 100vw, 33vw');
-      link.type = 'image/webp';
-    } else {
-      link.href = preloadHref;
-      if (preloadHref.endsWith('.webp')) link.type = 'image/webp';
+      addPreload(lcp.imageUrlCdnMobile, '(max-width: 640px)');
+      addPreload(lcp.imageUrlCdn, '(min-width: 641px)');
+    } else if (lcp.imageUrlCdn) {
+      addPreload(lcp.imageUrlCdn);
+    } else if (lcp.imageUrlCdnMobile) {
+      addPreload(lcp.imageUrlCdnMobile);
+    } else if (lcp.imageUrl) {
+      addPreload(lcp.imageUrl);
     }
 
-    document.head.appendChild(link);
     return () => {
-      link.remove();
+      links.forEach((l) => l.remove());
     };
   }, [config]);
 };
