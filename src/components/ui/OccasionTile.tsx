@@ -5,6 +5,10 @@ export interface OccasionTileProps {
   imageUrl: string;
   title: string;
   href: string;
+  /** Firebase Storage WebP original (images_cdn[0]). */
+  cdnUrl?: string;
+  /** Firebase Storage WebP mobile variant (~600px wide; images_cdn_mobile[0]). */
+  cdnMobileUrl?: string;
 }
 
 const Root = styled.a`
@@ -49,10 +53,22 @@ const Label = styled.span`
   }
 `;
 
-export const OccasionTile: React.FC<OccasionTileProps> = ({ imageUrl, title, href }) => (
+export const OccasionTile: React.FC<OccasionTileProps> = ({
+  imageUrl,
+  title,
+  href,
+  cdnUrl,
+  cdnMobileUrl,
+}) => (
   <Root href={href}>
     <ImageFrame>
-      <Img src={imageUrl} alt={title} loading="lazy" />
+      <picture>
+        {cdnMobileUrl && (
+          <source media="(max-width: 640px)" type="image/webp" srcSet={cdnMobileUrl} />
+        )}
+        {cdnUrl && <source type="image/webp" srcSet={cdnUrl} />}
+        <Img src={imageUrl} alt={title} loading="lazy" decoding="async" />
+      </picture>
     </ImageFrame>
     <Label>{title}</Label>
   </Root>
