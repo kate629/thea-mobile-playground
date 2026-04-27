@@ -103,7 +103,6 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
                 updatedAt: serverTimestamp(),
                 uid: user.uid,
             });
-            console.log("Form submitted:", values);
             setIsSubscribed(true);
         } catch (e) {
             console.error("Error adding document: ", e);

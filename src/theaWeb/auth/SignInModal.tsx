@@ -438,8 +438,7 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
       await sendPasswordReset(trimmedEmail);
     } catch (err) {
       // Firebase intentionally returns success-ish even for unknown emails to
-      // prevent enumeration. Log but show the same confirmation message.
-      console.warn('[SignInModal] sendPasswordReset:', err);
+      // prevent enumeration; mirror that by showing the same confirmation.
     }
     setResetSent(true);
   };

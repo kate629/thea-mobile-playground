@@ -31,7 +31,7 @@ const Login = () => {
       await googleSignIn();
       navigate("/home");
     } catch (error) {
-      console.log(error.message);
+      // intentionally silent
     }
   };
 
