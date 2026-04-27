@@ -5,12 +5,18 @@ import { ThemeProvider } from "styled-components";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
-import { AuthGateProvider } from "./theaWeb/auth/AuthGateContext";
+import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
 import { theme } from "./theme";
 
 function LandingRoute() {
   const navigate = useNavigate();
-  return <LandingPage onCtaClick={() => navigate("/quiz")} />;
+  const { requestSignIn } = useAuthGate();
+  return (
+    <LandingPage
+      onCtaClick={() => navigate("/quiz")}
+      onSignInClick={() => requestSignIn({ mode: "signin" })}
+    />
+  );
 }
 
 // Dev surfaces are lazy-loaded so the customer-facing root bundle stays slim.

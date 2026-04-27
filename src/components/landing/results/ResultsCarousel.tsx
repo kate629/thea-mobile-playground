@@ -1,5 +1,5 @@
 import React from 'react';
-import styled, { css } from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { ResultsProductCard } from './ResultsProductCard';
 import { ResultsProductCardItem, ResultsProductCardState } from './types';
 
@@ -116,6 +116,60 @@ const Slot = styled.div<{ $state: ResultsProductCardState }>`
   ${({ $state }) =>
     $state === 'exiting' ? exitingCss : $state === 'dismissing' ? dismissingCss : null}
 `;
+
+const shimmer = keyframes`
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+const SkeletonCard = styled.div`
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: ${({ theme }) => theme.radius.md};
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.6) 0%,
+    hsl(var(--muted) / 0.9) 50%,
+    hsl(var(--muted) / 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.4s ease-in-out infinite;
+`;
+
+const SkeletonTitleBar = styled.div`
+  width: 140px;
+  height: 16px;
+  border-radius: ${({ theme }) => theme.radius.pill};
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.6) 0%,
+    hsl(var(--muted) / 0.9) 50%,
+    hsl(var(--muted) / 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.4s ease-in-out infinite;
+`;
+
+/** Carousel chrome with shimmering tile placeholders. Rendered while the BE
+ *  carousel session is still processing and has no products to show. */
+export const SkeletonResultsCarousel: React.FC<{ tileCount?: number }> = ({
+  tileCount = 5,
+}) => (
+  <Section>
+    <TitleRow>
+      <SkeletonTitleBar />
+    </TitleRow>
+    <ScrollContainer>
+      <Scroller>
+        {Array.from({ length: tileCount }, (_, i) => (
+          <Slot key={`skel-${i}`} $state="idle">
+            <SkeletonCard />
+          </Slot>
+        ))}
+      </Scroller>
+    </ScrollContainer>
+  </Section>
+);
 
 export const ResultsCarousel: React.FC<ResultsCarouselProps> = ({
   title,

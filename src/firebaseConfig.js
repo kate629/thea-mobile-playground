@@ -19,9 +19,16 @@ export const db = getFirestore(app);
 
 /**
  * Sign in anonymously if not already signed in.
- * Returns the stable anonymous uid (persists across page reloads).
+ * Returns the stable uid (persists across page reloads).
  */
 export async function ensureAuth() {
+  // Wait for persistence to load before deciding whether to fall back to
+  // anon sign-in. Without this, `auth.currentUser` is briefly null on
+  // reload while indexedDB rehydrates the persisted user — we'd then
+  // race-replace the permanent session with a fresh anon one, and every
+  // listener (recommendation doc, giftActivity) would subscribe under the
+  // wrong subtree and hang.
+  await auth.authStateReady();
   if (auth.currentUser) {
     return auth.currentUser.uid;
   }

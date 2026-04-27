@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { OccasionPage } from './OccasionPage';
+import { useAuthGate } from '../../../theaWeb/auth/AuthGateContext';
 import { CarouselSectionData, SAMPLE_BIRTHDAY_SECTIONS } from './sampleBirthdayCarousels';
 import { SAMPLE_MOTHERS_DAY_SECTIONS } from './sampleMothersDayCarousels';
 import { SAMPLE_FATHERS_DAY_SECTIONS } from './sampleFathersDayCarousels';
@@ -76,6 +77,7 @@ const useLcpPreload = (config: OccasionConfig | undefined) => {
 export const OccasionRoute: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const config = id ? OCCASIONS[id.toLowerCase()] : undefined;
+  const { requestSignIn } = useAuthGate();
 
   useLcpPreload(config);
 
@@ -85,6 +87,11 @@ export const OccasionRoute: React.FC = () => {
     }
   }, []);
 
+  const handleSignInClick = useCallback(
+    () => requestSignIn({ mode: 'signin' }),
+    [requestSignIn],
+  );
+
   if (!config) return <Navigate to="/" replace />;
 
   return (
@@ -92,6 +99,7 @@ export const OccasionRoute: React.FC = () => {
       title={config.title}
       sections={config.sections}
       onProductClick={handleProductClick}
+      onSignInClick={handleSignInClick}
     />
   );
 };

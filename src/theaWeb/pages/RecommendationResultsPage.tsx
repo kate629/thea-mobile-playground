@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Alert, Spinner } from 'react-bootstrap';
@@ -6,6 +6,7 @@ import { Alert, Spinner } from 'react-bootstrap';
 import { ResultsPage } from '../../components/landing/results/ResultsPage';
 import { ResultsDiscoverTab } from '../../components/landing/results/ResultsDiscoverTab';
 import { ResultsCarouselAnimated } from '../../components/landing/results/ResultsCarouselAnimated';
+import { SkeletonResultsCarousel } from '../../components/landing/results/ResultsCarousel';
 import { ResultsSavedGrid } from '../../components/landing/results/ResultsSavedGrid';
 import { ResultsPurchasedGrid } from '../../components/landing/results/ResultsPurchasedGrid';
 import type {
@@ -25,15 +26,6 @@ import {
 import { useAuthGate } from '../auth/AuthGateContext';
 import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { auth } from '../../firebaseConfig';
-
-const StatusBanner = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-  margin-bottom: 16px;
-`;
 
 const ProcessingHint = styled.p`
   text-align: center;
@@ -62,6 +54,28 @@ const RecommendationResultsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ResultsTabKey>('recommended');
   const exitingIds = useExitAnimationQueue(liked, hydrated, EXIT_ANIMATION_MS);
 
+  // Optimistic heart fill: between click and the BE listener pushing the
+  // SAVED state (~500ms round-trip), the heart would otherwise stay empty
+  // and the card would just disappear with no red-heart moment. Stage the
+  // id locally on click so the heart fills instantly; clear it once the
+  // BE-truth `liked` Set catches up.
+  const [pendingLikedIds, setPendingLikedIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setPendingLikedIds((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Set(prev);
+      prev.forEach((id) => {
+        if (liked.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [liked]);
+
   // Carousel sections come from the session — reuse the adapter so the
   // mapping (image preference order, product → card item) lives in one place
   // and is independently unit-tested.
@@ -83,15 +97,31 @@ const RecommendationResultsPage: React.FC = () => {
   const fireActivity = useCallback(
     (productId: string, state: 'SAVED' | 'DISMISSED' | 'PURCHASED') => {
       if (!recipientId) return;
+      if (state === 'SAVED') {
+        setPendingLikedIds((prev) => {
+          if (prev.has(productId)) return prev;
+          const next = new Set(prev);
+          next.add(productId);
+          return next;
+        });
+      }
       recordActivity({
         productId,
         state,
         source: 'RESULTS_PAGE',
         recipientIds: [recipientId],
       }).catch(() => {
-        // Swallow — failed activity writes shouldn't block UX. Surface in
-        // logs only. The Firestore listener is the source of truth, so a
-        // dropped write means the heart simply won't fill.
+        // Drop the pending entry on failure so the heart doesn't stay
+        // optimistically filled with no BE-truth backing. The Firestore
+        // listener remains the source of truth for what the heart shows.
+        if (state === 'SAVED') {
+          setPendingLikedIds((prev) => {
+            if (!prev.has(productId)) return prev;
+            const next = new Set(prev);
+            next.delete(productId);
+            return next;
+          });
+        }
       });
     },
     [recipientId],
@@ -134,6 +164,12 @@ const RecommendationResultsPage: React.FC = () => {
   const isLiked = useCallback((id: string) => liked.has(id), [liked]);
   const isDismissed = useCallback((id: string) => dismissed.has(id), [dismissed]);
   const isPurchased = useCallback((id: string) => purchased.has(id), [purchased]);
+  // The carousel filter still uses `isLiked` (BE truth) so the card stays in
+  // place during the optimistic window; only the heart-icon fill flips early.
+  const isHeartFilled = useCallback(
+    (id: string) => liked.has(id) || pendingLikedIds.has(id),
+    [liked, pendingLikedIds],
+  );
 
   const savedItems = useMemo(
     () =>
@@ -166,7 +202,7 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  if (docLoading || !doc) {
+  if (docLoading) {
     return (
       <div
         className="d-flex justify-content-center align-items-center"
@@ -174,6 +210,21 @@ const RecommendationResultsPage: React.FC = () => {
       >
         <Spinner animation="border" role="status" />
       </div>
+    );
+  }
+
+  if (!doc) {
+    // BE listener resolved with no doc at this path. Either the recommendation
+    // doesn't exist, or the user is on a different uid than the one that
+    // created it (e.g. signed out, or session was lost before the
+    // `auth.authStateReady` guard shipped). Show a real message instead of
+    // hanging on a spinner.
+    return (
+      <Alert variant="warning" className="mt-4">
+        We couldn't find this recommendation. It may have been removed, or you
+        may be signed into a different account than when it was created.{' '}
+        <Alert.Link href="/">Back to home</Alert.Link>.
+      </Alert>
     );
   }
 
@@ -193,15 +244,19 @@ const RecommendationResultsPage: React.FC = () => {
           Lost connection to live updates: {sessionError.message}
         </Alert>
       )}
-      {status === 'PROCESSING' && sections.length === 0 && (
-        <StatusBanner>
-          <Spinner animation="border" size="sm" /> Setting up your carousels…
-        </StatusBanner>
-      )}
       {status === 'COMPLETED' && sections.length === 0 ? (
         <ProcessingHint>
           No recommendations were generated for this submission.
         </ProcessingHint>
+      ) : status === 'PROCESSING' && sections.length === 0 ? (
+        <ResultsDiscoverTab
+          summary={{ saves: liked.size, dismissed: dismissed.size }}
+          onRefresh={() => {}}
+        >
+          {Array.from({ length: 3 }, (_, i) => (
+            <SkeletonResultsCarousel key={`skel-row-${i}`} />
+          ))}
+        </ResultsDiscoverTab>
       ) : (
         <ResultsDiscoverTab
           summary={{ saves: liked.size, dismissed: dismissed.size }}
@@ -216,6 +271,7 @@ const RecommendationResultsPage: React.FC = () => {
               products={section.products}
               isFirstCarousel={i === 0}
               isLiked={isLiked}
+              isHeartFilled={isHeartFilled}
               isDismissed={isDismissed}
               isPurchased={isPurchased}
               exitingIds={exitingIds}
