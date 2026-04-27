@@ -15,6 +15,8 @@ import type {
 
 import { recordActivity } from '../callables';
 import { useCarouselSession } from '../hooks/useCarouselSession';
+import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
+import { useGiftActivities } from '../hooks/useGiftActivities';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
 import {
   carouselsToSections,
@@ -40,6 +42,11 @@ const ProcessingHint = styled.p`
   padding: 32px 16px;
 `;
 
+// Width of the slide-out animation owned by ResultsCarousel — keep in sync
+// with the styled-components transition there (750ms transform + 320ms delay
+// ≈ 1100ms total before the slot can stop rendering).
+const EXIT_ANIMATION_MS = 1100;
+
 const RecommendationResultsPage: React.FC = () => {
   const { recipientId, recommendationId } = useParams<{
     recipientId: string;
@@ -50,11 +57,10 @@ const RecommendationResultsPage: React.FC = () => {
     recommendationId,
   );
   const { session, error: sessionError } = useCarouselSession(doc?.carouselSessionId);
+  const { liked, dismissed, purchased, hydrated } = useGiftActivities(recipientId);
 
   const [activeTab, setActiveTab] = useState<ResultsTabKey>('recommended');
-  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
-  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set());
+  const exitingIds = useExitAnimationQueue(liked, hydrated, EXIT_ANIMATION_MS);
 
   // Carousel sections come from the session — reuse the adapter so the
   // mapping (image preference order, product → card item) lives in one place
@@ -65,7 +71,7 @@ const RecommendationResultsPage: React.FC = () => {
   );
 
   // Flat lookup of every card item by id so the Saved + Purchased grids can
-  // hydrate from local sets without re-walking the carousels each render.
+  // hydrate from the BE Sets without re-walking the carousels each render.
   const itemById = useMemo(() => {
     const map = new Map<string, ResultsProductCardItem>();
     for (const section of sections) {
@@ -77,8 +83,6 @@ const RecommendationResultsPage: React.FC = () => {
   const fireActivity = useCallback(
     (productId: string, state: 'SAVED' | 'DISMISSED' | 'PURCHASED') => {
       if (!recipientId) return;
-      // Fire-and-forget — UI feedback is local; persistence is best-effort
-      // until a hydration hook lands.
       recordActivity({
         productId,
         state,
@@ -86,7 +90,8 @@ const RecommendationResultsPage: React.FC = () => {
         recipientIds: [recipientId],
       }).catch(() => {
         // Swallow — failed activity writes shouldn't block UX. Surface in
-        // logs only.
+        // logs only. The Firestore listener is the source of truth, so a
+        // dropped write means the heart simply won't fill.
       });
     },
     [recipientId],
@@ -94,62 +99,26 @@ const RecommendationResultsPage: React.FC = () => {
 
   const { requestSignIn } = useAuthGate();
 
-  // Commits the optimistic like + fires the BE activity write. The "save"
-  // half of `handleSaveClick`; pulled out so the AuthGate `onAuthed` callback
-  // can replay it post-sign-in.
-  const commitSave = useCallback(
-    (item: ResultsProductCardItem) => {
-      setLikedIds((prev) => {
-        if (prev.has(item.id)) return prev;
-        const next = new Set(prev);
-        next.add(item.id);
-        return next;
-      });
-      fireActivity(item.id, 'SAVED');
-    },
-    [fireActivity],
-  );
-
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
-      const alreadyLiked = likedIds.has(item.id);
-      if (alreadyLiked) {
-        // Unsave: local-only — no UNLIKE state in the activity enum, so the
-        // BE write is intentionally skipped on un-save until we add a
-        // dedicated unsave endpoint. No auth gate either; if they've got
-        // anything saved at all, they were already mid-flow.
-        setLikedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
-        return;
-      }
+      // No UNSAVED state on the BE — un-save is a follow-up endpoint. Until
+      // then, a second click on an already-liked product is a no-op.
+      if (liked.has(item.id)) return;
 
-      // First save while anon → gate behind the auth modal. The modal's
-      // onAuthed runs commitSave after a successful sign-in/sign-up so the
-      // heart click survives the auth boundary.
       if (auth.currentUser?.isAnonymous !== false) {
         requestSignIn({
           mode: 'signup',
-          onAuthed: () => commitSave(item),
+          onAuthed: () => fireActivity(item.id, 'SAVED'),
         });
         return;
       }
-
-      commitSave(item);
+      fireActivity(item.id, 'SAVED');
     },
-    [likedIds, commitSave, requestSignIn],
+    [liked, fireActivity, requestSignIn],
   );
 
   const handleDismissFinalize = useCallback(
     (item: ResultsProductCardItem) => {
-      setDismissedIds((prev) => {
-        if (prev.has(item.id)) return prev;
-        const next = new Set(prev);
-        next.add(item.id);
-        return next;
-      });
       fireActivity(item.id, 'DISMISSED');
     },
     [fireActivity],
@@ -157,20 +126,29 @@ const RecommendationResultsPage: React.FC = () => {
 
   const handleMarkPurchased = useCallback(
     (item: ResultsProductCardItem) => {
-      setPurchasedIds((prev) => {
-        if (prev.has(item.id)) return prev;
-        const next = new Set(prev);
-        next.add(item.id);
-        return next;
-      });
       fireActivity(item.id, 'PURCHASED');
     },
     [fireActivity],
   );
 
-  const isLiked = useCallback((id: string) => likedIds.has(id), [likedIds]);
-  const isDismissed = useCallback((id: string) => dismissedIds.has(id), [dismissedIds]);
-  const isPurchased = useCallback((id: string) => purchasedIds.has(id), [purchasedIds]);
+  const isLiked = useCallback((id: string) => liked.has(id), [liked]);
+  const isDismissed = useCallback((id: string) => dismissed.has(id), [dismissed]);
+  const isPurchased = useCallback((id: string) => purchased.has(id), [purchased]);
+
+  const savedItems = useMemo(
+    () =>
+      Array.from(liked)
+        .map((id) => itemById.get(id))
+        .filter((x): x is ResultsProductCardItem => Boolean(x)),
+    [liked, itemById],
+  );
+  const purchasedItems = useMemo(
+    () =>
+      Array.from(purchased)
+        .map((id) => itemById.get(id))
+        .filter((x): x is ResultsProductCardItem => Boolean(x)),
+    [purchased, itemById],
+  );
 
   if (!recipientId || !recommendationId) {
     return (
@@ -203,13 +181,6 @@ const RecommendationResultsPage: React.FC = () => {
   const status = session?.status ?? doc.status;
   const errorMessage = session?.errorMessage ?? doc.errorMessage;
 
-  const savedItems = Array.from(likedIds)
-    .map((id) => itemById.get(id))
-    .filter((x): x is ResultsProductCardItem => Boolean(x));
-  const purchasedItems = Array.from(purchasedIds)
-    .map((id) => itemById.get(id))
-    .filter((x): x is ResultsProductCardItem => Boolean(x));
-
   const discoverBody = (
     <>
       {status === 'FAILED' && (
@@ -233,7 +204,7 @@ const RecommendationResultsPage: React.FC = () => {
         </ProcessingHint>
       ) : (
         <ResultsDiscoverTab
-          summary={{ saves: likedIds.size, dismissed: dismissedIds.size }}
+          summary={{ saves: liked.size, dismissed: dismissed.size }}
           // TODO: wire to a dedicated regenerate callable; for now the
           // button is decorative and resolves to a no-op.
           onRefresh={() => {}}
@@ -247,6 +218,7 @@ const RecommendationResultsPage: React.FC = () => {
               isLiked={isLiked}
               isDismissed={isDismissed}
               isPurchased={isPurchased}
+              exitingIds={exitingIds}
               onSaveClick={handleSaveClick}
               onDismissFinalize={handleDismissFinalize}
               onMarkPurchased={handleMarkPurchased}
@@ -265,8 +237,8 @@ const RecommendationResultsPage: React.FC = () => {
       rightActions={<HeaderAccountMenu />}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      likedCount={likedIds.size}
-      purchasedCount={purchasedIds.size}
+      likedCount={liked.size}
+      purchasedCount={purchased.size}
     >
       {activeTab === 'recommended' && discoverBody}
       {activeTab === 'liked' && (

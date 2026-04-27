@@ -13,6 +13,9 @@ export interface ResultsCarouselAnimatedProps {
   isHeartFilled?: (id: string) => boolean;
   isDismissed: (id: string) => boolean;
   isPurchased: (id: string) => boolean;
+  /** Page-owned set of ids currently mid-exit-animation. Lifted out of the
+   *  hook so the animation survives carousel remount on tab-switch. */
+  exitingIds: Set<string>;
   onProductClick?: (item: ResultsProductCardItem) => void;
   onSaveClick?: (item: ResultsProductCardItem) => void;
   onDismissFinalize?: (item: ResultsProductCardItem) => void;
@@ -27,6 +30,7 @@ export const ResultsCarouselAnimated: React.FC<ResultsCarouselAnimatedProps> = (
   isHeartFilled,
   isDismissed,
   isPurchased,
+  exitingIds,
   onProductClick,
   onSaveClick,
   onDismissFinalize,
@@ -36,6 +40,7 @@ export const ResultsCarouselAnimated: React.FC<ResultsCarouselAnimatedProps> = (
     isLiked,
     isDismissed,
     isPurchased,
+    exitingIds,
     isHeartFilled,
   });
   return (

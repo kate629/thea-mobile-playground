@@ -62,29 +62,40 @@ const Scroller = styled.div`
   &::-webkit-scrollbar { display: none; }
 `;
 
+// The base Slot pins min-width/max-width to viewport-relative values inside
+// @media blocks so the scroller doesn't collapse cards. styled-components
+// emits the base rule first, then the @media overrides — so a plain
+// `min-width: 0` here is shadowed by every matching media query, leaving
+// the slot at full layout width while opacity:0 makes it look like a gap.
+// `!important` sidesteps the cascade: exit/dismiss states win over the
+// breakpoint rules and the layout actually reflows.
 const exitingCss = css`
   opacity: 0;
   transform: translate(18px, -20px) scale(0.82) rotate(1.5deg);
-  width: 0;
+  min-width: 0 !important;
+  max-width: 0 !important;
   margin-right: -16px;
   pointer-events: none;
   transition:
     opacity 750ms ease,
     transform 950ms cubic-bezier(0.34, 1.15, 0.64, 1),
-    width 750ms cubic-bezier(0.65, 0, 0.35, 1) 320ms,
+    min-width 750ms cubic-bezier(0.65, 0, 0.35, 1) 320ms,
+    max-width 750ms cubic-bezier(0.65, 0, 0.35, 1) 320ms,
     margin-right 750ms cubic-bezier(0.65, 0, 0.35, 1) 320ms;
 `;
 
 const dismissingCss = css`
   opacity: 0;
   transform: translateX(-12px) scale(0.96);
-  width: 0;
+  min-width: 0 !important;
+  max-width: 0 !important;
   margin-right: -16px;
   pointer-events: none;
   transition:
     opacity 250ms ease-out,
     transform 250ms ease-out,
-    width 200ms ease-out 50ms,
+    min-width 200ms ease-out 50ms,
+    max-width 200ms ease-out 50ms,
     margin-right 200ms ease-out 50ms;
 `;
 

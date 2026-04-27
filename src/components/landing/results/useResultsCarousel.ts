@@ -1,25 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ResultsCarouselSlot } from './ResultsCarousel';
 import { ResultsProductCardItem } from './types';
 
 export interface UseResultsCarouselOptions {
-  /** Persisted likes only — see anon-heart fix. Pending anon hearts must NOT
-   *  hide products from the carousel before sign-in. */
+  /** Source of truth for the liked filter. The hook does NOT watch this for
+   *  rising-edge transitions — exit animations are driven imperatively by
+   *  the page-level click handler (which owns auth gating + commit timing)
+   *  via `exitingIds`. Watching `isLiked` here would conflate "user just
+   *  clicked" with "BE says liked", and break on carousel remount where
+   *  every persisted like would re-animate. */
   isLiked: (id: string) => boolean;
   isDismissed: (id: string) => boolean;
   isPurchased: (id: string) => boolean;
+  /** Caller-owned set of ids currently mid-exit-animation. Lifted out of
+   *  this hook so it survives tab-switch unmounts (Kate report 2026-04-26:
+   *  "white gaps between cards where I've liked a product when I jump
+   *  between Discover and Saved"). */
+  exitingIds: Set<string>;
   /** Bonus: caller-controlled `liked` flag rendered on each card.
    *  Defaults to `isLiked(id)` if omitted. */
   isHeartFilled?: (id: string) => boolean;
 }
 
-const EXITING_HOLD_MS = 1100; // matches source line 310
 const DISMISS_HOLD_MS = 250;  // matches source line 430
 
-/** Pure-state hook owning the exit + dismiss animation queues for a single
- *  carousel. Renders the hidden products only while their exit animation is
- *  still in flight, so the slot finishes its transform before falling out
- *  of the DOM. */
+/** Presenter for a single carousel. Owns only the dismiss animation queue —
+ *  exit ("just liked") animations are driven by `exitingIds` from the caller
+ *  so they survive carousel remounts. Renders hidden products while their
+ *  animation is in flight so the slot finishes its transform before falling
+ *  out of the DOM. */
 export function useResultsCarousel(
   products: ResultsProductCardItem[],
   opts: UseResultsCarouselOptions,
@@ -27,37 +36,9 @@ export function useResultsCarousel(
   slots: ResultsCarouselSlot[];
   dismiss: (id: string) => void;
 } {
-  const { isLiked, isDismissed, isPurchased, isHeartFilled } = opts;
+  const { isLiked, isDismissed, isPurchased, exitingIds, isHeartFilled } = opts;
 
-  const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(() => new Set());
-  const prevLikedRef = useRef<Set<string>>(new Set());
-
-  // Detect rising-edge of `liked` — when a product flips from unliked to
-  // liked, queue it for exit animation.
-  useEffect(() => {
-    const newlyLiked: string[] = [];
-    products.forEach((p) => {
-      if (isLiked(p.id) && !prevLikedRef.current.has(p.id)) newlyLiked.push(p.id);
-    });
-    prevLikedRef.current = new Set(products.filter((p) => isLiked(p.id)).map((p) => p.id));
-    if (newlyLiked.length === 0) return;
-    setExitingIds((prev) => {
-      const next = new Set(prev);
-      newlyLiked.forEach((id) => next.add(id));
-      return next;
-    });
-    const timers = newlyLiked.map((id) =>
-      setTimeout(() => {
-        setExitingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }, EXITING_HOLD_MS),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [products, isLiked]);
 
   const dismiss = useCallback((id: string) => {
     setDismissingIds((prev) => {

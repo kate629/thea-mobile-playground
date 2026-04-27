@@ -106,6 +106,7 @@ export const ResultsPageAnimated: React.FC = () => {
               isLiked={(id) => liked.has(id)}
               isDismissed={(id) => dismissed.has(id)}
               isPurchased={(id) => purchased.has(id)}
+              exitingIds={new Set()}
               onSaveClick={(p) => {
                 setLiked((prev) => {
                   const next = new Set(prev);
