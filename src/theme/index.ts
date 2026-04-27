@@ -38,6 +38,11 @@ export const theme = {
     /* Warm border used on the profile pill + tab strip divider
        (ResultsPageAuth.tsx:1370). */
     warmBorder: '#E8E5E0',
+    /* Sovrn-pinned auth-modal tokens. The auth surface uses a slightly cooler
+       muted gray than the rest of the app and a flat error red — pinning here
+       so the modal palette doesn't drift. */
+    mutedText: '#8A8A8A',
+    errorRed: '#D94444',
   },
   shadow: {
     soft: 'var(--shadow-soft)',

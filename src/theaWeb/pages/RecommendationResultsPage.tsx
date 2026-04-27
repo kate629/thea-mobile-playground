@@ -20,6 +20,9 @@ import {
   carouselsToSections,
   recipientHeaderProps,
 } from '../lib/resultsAdapters';
+import { useAuthGate } from '../auth/AuthGateContext';
+import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
+import { auth } from '../../firebaseConfig';
 
 const StatusBanner = styled.div`
   display: flex;
@@ -89,23 +92,54 @@ const RecommendationResultsPage: React.FC = () => {
     [recipientId],
   );
 
-  const handleSaveClick = useCallback(
+  const { requestSignIn } = useAuthGate();
+
+  // Commits the optimistic like + fires the BE activity write. The "save"
+  // half of `handleSaveClick`; pulled out so the AuthGate `onAuthed` callback
+  // can replay it post-sign-in.
+  const commitSave = useCallback(
     (item: ResultsProductCardItem) => {
       setLikedIds((prev) => {
+        if (prev.has(item.id)) return prev;
         const next = new Set(prev);
-        if (next.has(item.id)) {
-          // Toggle off in UI; no UNLIKE state in the activity enum, so the
-          // BE write is intentionally skipped on un-save until we add a
-          // dedicated unsave endpoint.
-          next.delete(item.id);
-        } else {
-          next.add(item.id);
-          fireActivity(item.id, 'SAVED');
-        }
+        next.add(item.id);
         return next;
       });
+      fireActivity(item.id, 'SAVED');
     },
     [fireActivity],
+  );
+
+  const handleSaveClick = useCallback(
+    (item: ResultsProductCardItem) => {
+      const alreadyLiked = likedIds.has(item.id);
+      if (alreadyLiked) {
+        // Unsave: local-only — no UNLIKE state in the activity enum, so the
+        // BE write is intentionally skipped on un-save until we add a
+        // dedicated unsave endpoint. No auth gate either; if they've got
+        // anything saved at all, they were already mid-flow.
+        setLikedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        return;
+      }
+
+      // First save while anon → gate behind the auth modal. The modal's
+      // onAuthed runs commitSave after a successful sign-in/sign-up so the
+      // heart click survives the auth boundary.
+      if (auth.currentUser?.isAnonymous !== false) {
+        requestSignIn({
+          mode: 'signup',
+          onAuthed: () => commitSave(item),
+        });
+        return;
+      }
+
+      commitSave(item);
+    },
+    [likedIds, commitSave, requestSignIn],
   );
 
   const handleDismissFinalize = useCallback(
@@ -228,6 +262,7 @@ const RecommendationResultsPage: React.FC = () => {
       {...headerProps}
       // TODO: open a profile drawer that wires to updateRecipient.
       onProfilePillClick={() => {}}
+      rightActions={<HeaderAccountMenu />}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       likedCount={likedIds.size}

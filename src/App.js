@@ -5,6 +5,7 @@ import { ThemeProvider } from "styled-components";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
+import { AuthGateProvider } from "./theaWeb/auth/AuthGateContext";
 import { theme } from "./theme";
 
 function LandingRoute() {
@@ -33,6 +34,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <UserAuthContextProvider>
+        <AuthGateProvider>
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route
@@ -102,6 +104,7 @@ function App() {
             }
           />
         </Routes>
+        </AuthGateProvider>
       </UserAuthContextProvider>
     </ThemeProvider>
   );

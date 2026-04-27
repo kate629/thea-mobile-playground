@@ -5,6 +5,8 @@ import {
   THEA_WEB_CALLABLES,
   type TheaWebMergeGiftFlowRequest,
   type TheaWebMergeGiftFlowResponse,
+  type TheaWebMintMergeTokenRequest,
+  type TheaWebMintMergeTokenResponse,
   type TheaWebRecordActivityRequest,
   type TheaWebRecordActivityResponse,
   type TheaWebSubmitGiftFlowRequest,
@@ -36,3 +38,11 @@ export const mergeGiftFlow: HttpsCallable<
   TheaWebMergeGiftFlowRequest,
   TheaWebMergeGiftFlowResponse
 > = httpsCallable(functions, THEA_WEB_CALLABLES.mergeGiftFlow, { timeout: 120_000 });
+
+// Mints a single-use, 60s-TTL merge token while the caller is still anon.
+// The returned token is paired with the anon uid in `mergeGiftFlow({fromUid, token})`
+// after the caller authenticates as the surviving permanent uid.
+export const mintMergeToken: HttpsCallable<
+  TheaWebMintMergeTokenRequest,
+  TheaWebMintMergeTokenResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.mintMergeToken, { timeout: 30_000 });
