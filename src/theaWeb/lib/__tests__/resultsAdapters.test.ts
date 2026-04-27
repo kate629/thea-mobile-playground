@@ -1,0 +1,132 @@
+import {
+  carouselsToSections,
+  productToCardItem,
+  recipientHeaderProps,
+} from '../resultsAdapters';
+import type { CarouselSession, Recommendation, RecommendationProduct } from '../../schemas';
+
+const baseDoc = (overrides: Partial<Recommendation> = {}): Recommendation =>
+  ({
+    recommendationId: 'rec1',
+    isActive: true,
+    input: { occasion: 'JUST_BECAUSE', interests: [], freeform: '' },
+    recipientSnapshot: {
+      name: 'Mom',
+      relationship: 'MOM',
+      isMe: false,
+    },
+    status: 'PROCESSING',
+    mode: 'THOUGHTFUL',
+    carouselSessionId: 'uid_rec1',
+    _schemaVersion: 1,
+    createdAt: null as never,
+    updatedAt: null as never,
+    ...overrides,
+  } as Recommendation);
+
+describe('recipientHeaderProps', () => {
+  test('uses snapshot emoji when present', () => {
+    const r = recipientHeaderProps(
+      baseDoc({
+        recipientSnapshot: { name: 'Bestie', relationship: 'FRIEND', isMe: false, emoji: '🎉' },
+      }),
+    );
+    expect(r.personEmoji).toBe('🎉');
+    expect(r.personName).toBe('Bestie');
+  });
+
+  test('falls back to relationship-based emoji when snapshot omits one', () => {
+    expect(recipientHeaderProps(baseDoc()).personEmoji).toBe('🌷'); // Mom
+    expect(
+      recipientHeaderProps(
+        baseDoc({ recipientSnapshot: { name: 'Dad', relationship: 'DAD', isMe: false } }),
+      ).personEmoji,
+    ).toBe('⛳');
+    expect(
+      recipientHeaderProps(
+        baseDoc({ recipientSnapshot: { name: 'Pal', relationship: 'FRIEND', isMe: false } }),
+      ).personEmoji,
+    ).toBe('🤝');
+  });
+
+  test('isMe overrides relationship and uses Me! emoji', () => {
+    const r = recipientHeaderProps(
+      baseDoc({ recipientSnapshot: { name: 'Me', relationship: 'OTHER', isMe: true } }),
+    );
+    expect(r.personEmoji).toBe('🙋');
+    expect(r.personName).toBe('Me');
+  });
+
+  test('unknown relationship falls back to sparkle', () => {
+    const r = recipientHeaderProps(
+      baseDoc({
+        // @ts-expect-error — covering a defensive path
+        recipientSnapshot: { name: 'X', relationship: 'COWORKER', isMe: false },
+      }),
+    );
+    expect(r.personEmoji).toBe('✨');
+  });
+
+  test('interestsLabel handles 0/1/2/3+ interests', () => {
+    expect(recipientHeaderProps(baseDoc()).interestsLabel).toBe('No interests yet');
+    expect(
+      recipientHeaderProps(baseDoc({ input: { occasion: 'JUST_BECAUSE', interests: ['cooking'], freeform: '' } }))
+        .interestsLabel,
+    ).toBe('Cooking');
+    expect(
+      recipientHeaderProps(
+        baseDoc({ input: { occasion: 'JUST_BECAUSE', interests: ['cooking', 'plants'], freeform: '' } }),
+      ).interestsLabel,
+    ).toBe('Cooking, Plants');
+    expect(
+      recipientHeaderProps(
+        baseDoc({
+          input: { occasion: 'JUST_BECAUSE', interests: ['cooking', 'plants', 'books', 'travel'], freeform: '' },
+        }),
+      ).interestsLabel,
+    ).toBe('Cooking, Plants +2');
+  });
+});
+
+describe('productToCardItem', () => {
+  const base: RecommendationProduct = {
+    id: 'p1',
+    title: 'Title',
+    price: 25,
+    brand: 'Brand',
+    url: 'https://example.com',
+  };
+
+  test('prefers mobile CDN, then desktop CDN, then raw images', () => {
+    expect(productToCardItem({ ...base, images_cdn_mobile: ['m'], images_cdn: ['d'], images: ['r'] }).imageUrl).toBe('m');
+    expect(productToCardItem({ ...base, images_cdn: ['d'], images: ['r'] }).imageUrl).toBe('d');
+    expect(productToCardItem({ ...base, images: ['r'] }).imageUrl).toBe('r');
+    expect(productToCardItem(base).imageUrl).toBe('');
+  });
+
+  test('passes through identifying fields and url', () => {
+    const c = productToCardItem(base);
+    expect(c).toMatchObject({ id: 'p1', title: 'Title', price: 25, brand: 'Brand', productUrl: 'https://example.com' });
+  });
+});
+
+describe('carouselsToSections', () => {
+  test('honors carouselOrder, skips missing keys, maps products', () => {
+    const session: CarouselSession = {
+      status: 'PROCESSING',
+      carouselOrder: ['gardening', 'ghost', 'cooking'],
+      carousels: {
+        gardening: {
+          displayName: 'Green Thumb',
+          products: [{ id: 'p1', title: 'Watering Can', price: 12, images: ['x'] }],
+        },
+        cooking: { displayName: 'The Kitchen', products: [] },
+      },
+    };
+    const sections = carouselsToSections(session);
+    expect(sections.map((s) => s.id)).toEqual(['gardening', 'cooking']);
+    expect(sections[0]).toMatchObject({ title: 'Green Thumb' });
+    expect(sections[0].products[0]).toMatchObject({ id: 'p1', imageUrl: 'x' });
+    expect(sections[1].products).toHaveLength(0);
+  });
+});

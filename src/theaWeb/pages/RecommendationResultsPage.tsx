@@ -1,42 +1,41 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import styled from 'styled-components';
 import { Alert, Spinner } from 'react-bootstrap';
-import ProductCard from '../../components/carousel/ProductCard';
+
+import { ResultsPage } from '../../components/landing/results/ResultsPage';
+import { ResultsDiscoverTab } from '../../components/landing/results/ResultsDiscoverTab';
+import { ResultsCarouselAnimated } from '../../components/landing/results/ResultsCarouselAnimated';
+import { ResultsSavedGrid } from '../../components/landing/results/ResultsSavedGrid';
+import { ResultsPurchasedGrid } from '../../components/landing/results/ResultsPurchasedGrid';
+import type {
+  ResultsProductCardItem,
+  ResultsTabKey,
+} from '../../components/landing/results/types';
+
+import { recordActivity } from '../callables';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
-import type { RecommendationCarousel, RecommendationProduct } from '../schemas';
+import {
+  carouselsToSections,
+  recipientHeaderProps,
+} from '../lib/resultsAdapters';
 
-interface CarouselRowProps {
-  carouselKey: string;
-  carousel: RecommendationCarousel;
-}
+const StatusBanner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 16px;
+`;
 
-const SKELETON_COUNT = 4;
-
-const CarouselRow: React.FC<CarouselRowProps> = ({ carouselKey, carousel }) => {
-  const isLoading = carousel.products.length === 0;
-
-  return (
-    <section className="mb-5" data-carousel-key={carouselKey}>
-      <h3 className="mb-3">{carousel.displayName}</h3>
-      <div className="d-flex flex-row flex-nowrap overflow-auto gap-3">
-        {isLoading
-          ? Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-              <div
-                key={`skeleton-${i}`}
-                className="bg-light rounded"
-                style={{ minWidth: 220, height: 280 }}
-              />
-            ))
-          : carousel.products.map((product, i) => (
-              <div key={product.id} style={{ minWidth: 220 }}>
-                <ProductCard product={toCardProduct(product)} animationDelay={i * 60} />
-              </div>
-            ))}
-      </div>
-    </section>
-  );
-};
+const ProcessingHint = styled.p`
+  text-align: center;
+  font-size: 16px;
+  color: hsl(var(--muted-foreground));
+  padding: 32px 16px;
+`;
 
 const RecommendationResultsPage: React.FC = () => {
   const { recipientId, recommendationId } = useParams<{
@@ -49,6 +48,96 @@ const RecommendationResultsPage: React.FC = () => {
   );
   const { session, error: sessionError } = useCarouselSession(doc?.carouselSessionId);
 
+  const [activeTab, setActiveTab] = useState<ResultsTabKey>('recommended');
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set());
+
+  // Carousel sections come from the session — reuse the adapter so the
+  // mapping (image preference order, product → card item) lives in one place
+  // and is independently unit-tested.
+  const sections = useMemo(
+    () => (session ? carouselsToSections(session) : []),
+    [session],
+  );
+
+  // Flat lookup of every card item by id so the Saved + Purchased grids can
+  // hydrate from local sets without re-walking the carousels each render.
+  const itemById = useMemo(() => {
+    const map = new Map<string, ResultsProductCardItem>();
+    for (const section of sections) {
+      for (const item of section.products) map.set(item.id, item);
+    }
+    return map;
+  }, [sections]);
+
+  const fireActivity = useCallback(
+    (productId: string, state: 'SAVED' | 'DISMISSED' | 'PURCHASED') => {
+      if (!recipientId) return;
+      // Fire-and-forget — UI feedback is local; persistence is best-effort
+      // until a hydration hook lands.
+      recordActivity({
+        productId,
+        state,
+        source: 'RESULTS_PAGE',
+        recipientIds: [recipientId],
+      }).catch(() => {
+        // Swallow — failed activity writes shouldn't block UX. Surface in
+        // logs only.
+      });
+    },
+    [recipientId],
+  );
+
+  const handleSaveClick = useCallback(
+    (item: ResultsProductCardItem) => {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(item.id)) {
+          // Toggle off in UI; no UNLIKE state in the activity enum, so the
+          // BE write is intentionally skipped on un-save until we add a
+          // dedicated unsave endpoint.
+          next.delete(item.id);
+        } else {
+          next.add(item.id);
+          fireActivity(item.id, 'SAVED');
+        }
+        return next;
+      });
+    },
+    [fireActivity],
+  );
+
+  const handleDismissFinalize = useCallback(
+    (item: ResultsProductCardItem) => {
+      setDismissedIds((prev) => {
+        if (prev.has(item.id)) return prev;
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+      fireActivity(item.id, 'DISMISSED');
+    },
+    [fireActivity],
+  );
+
+  const handleMarkPurchased = useCallback(
+    (item: ResultsProductCardItem) => {
+      setPurchasedIds((prev) => {
+        if (prev.has(item.id)) return prev;
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+      fireActivity(item.id, 'PURCHASED');
+    },
+    [fireActivity],
+  );
+
+  const isLiked = useCallback((id: string) => likedIds.has(id), [likedIds]);
+  const isDismissed = useCallback((id: string) => dismissedIds.has(id), [dismissedIds]);
+  const isPurchased = useCallback((id: string) => purchasedIds.has(id), [purchasedIds]);
+
   if (!recipientId || !recommendationId) {
     return (
       <Alert variant="danger" className="mt-4">
@@ -57,9 +146,6 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  // Recommendation doc errors are fatal (we can't render anything without
-  // recipientSnapshot). Session errors are not — the doc still has metadata
-  // and the user can at least see the recipient header.
   if (docError) {
     return (
       <Alert variant="danger" className="mt-4">
@@ -68,76 +154,98 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  if (docLoading) {
+  if (docLoading || !doc) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: 300 }}
+      >
         <Spinner animation="border" role="status" />
       </div>
     );
   }
 
-  if (!doc) {
-    return (
-      <Alert variant="warning" className="mt-4">
-        This recommendation doesn't exist (or you don't have access).
-      </Alert>
-    );
-  }
-
-  // The session drives carousel paint. Status/error fall back to the
-  // recommendation doc when the session hasn't materialized yet.
+  const headerProps = recipientHeaderProps(doc);
   const status = session?.status ?? doc.status;
   const errorMessage = session?.errorMessage ?? doc.errorMessage;
-  const carouselOrder = session?.carouselOrder ?? [];
-  const carousels = session?.carousels ?? {};
-  const renderable = carouselOrder.filter((key) => key in carousels);
+
+  const savedItems = Array.from(likedIds)
+    .map((id) => itemById.get(id))
+    .filter((x): x is ResultsProductCardItem => Boolean(x));
+  const purchasedItems = Array.from(purchasedIds)
+    .map((id) => itemById.get(id))
+    .filter((x): x is ResultsProductCardItem => Boolean(x));
+
+  const discoverBody = (
+    <>
+      {status === 'FAILED' && (
+        <Alert variant="danger">
+          Something went wrong: {errorMessage || 'unknown error'}
+        </Alert>
+      )}
+      {sessionError && status !== 'FAILED' && (
+        <Alert variant="warning">
+          Lost connection to live updates: {sessionError.message}
+        </Alert>
+      )}
+      {status === 'PROCESSING' && sections.length === 0 && (
+        <StatusBanner>
+          <Spinner animation="border" size="sm" /> Setting up your carousels…
+        </StatusBanner>
+      )}
+      {status === 'COMPLETED' && sections.length === 0 ? (
+        <ProcessingHint>
+          No recommendations were generated for this submission.
+        </ProcessingHint>
+      ) : (
+        <ResultsDiscoverTab
+          summary={{ saves: likedIds.size, dismissed: dismissedIds.size }}
+          // TODO: wire to a dedicated regenerate callable; for now the
+          // button is decorative and resolves to a no-op.
+          onRefresh={() => {}}
+        >
+          {sections.map((section, i) => (
+            <ResultsCarouselAnimated
+              key={section.id}
+              title={section.title}
+              products={section.products}
+              isFirstCarousel={i === 0}
+              isLiked={isLiked}
+              isDismissed={isDismissed}
+              isPurchased={isPurchased}
+              onSaveClick={handleSaveClick}
+              onDismissFinalize={handleDismissFinalize}
+              onMarkPurchased={handleMarkPurchased}
+            />
+          ))}
+        </ResultsDiscoverTab>
+      )}
+    </>
+  );
 
   return (
-    <div className="recommendation-results-page py-4">
-      <header className="mb-4">
-        <h2>Gift ideas for {doc.recipientSnapshot.name}</h2>
-        {status === 'PROCESSING' && (
-          <small className="text-muted d-flex align-items-center gap-2">
-            <Spinner animation="border" size="sm" /> Still finishing&hellip;
-          </small>
-        )}
-        {status === 'FAILED' && (
-          <Alert variant="danger" className="mt-2">
-            Something went wrong: {errorMessage || 'unknown error'}
-          </Alert>
-        )}
-        {sessionError && status !== 'FAILED' && (
-          <Alert variant="warning" className="mt-2">
-            Lost connection to live updates: {sessionError.message}
-          </Alert>
-        )}
-      </header>
-
-      {renderable.length === 0 && status === 'PROCESSING' && (
-        <p className="text-muted">Setting up your carousels&hellip;</p>
+    <ResultsPage
+      {...headerProps}
+      // TODO: open a profile drawer that wires to updateRecipient.
+      onProfilePillClick={() => {}}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      likedCount={likedIds.size}
+      purchasedCount={purchasedIds.size}
+    >
+      {activeTab === 'recommended' && discoverBody}
+      {activeTab === 'liked' && (
+        <ResultsSavedGrid
+          items={savedItems}
+          personName={headerProps.personName}
+          onUnsave={(item) => handleSaveClick(item)}
+        />
       )}
-      {renderable.length === 0 && status === 'COMPLETED' && (
-        <Alert variant="warning">No recommendations were generated for this submission.</Alert>
+      {activeTab === 'purchased' && (
+        <ResultsPurchasedGrid items={purchasedItems} personName={headerProps.personName} />
       )}
-
-      {renderable.map((key) => (
-        <CarouselRow key={key} carouselKey={key} carousel={carousels[key]} />
-      ))}
-    </div>
+    </ResultsPage>
   );
 };
-
-// ProductCard expects a slightly leaner type; pass through compatible fields.
-function toCardProduct(p: RecommendationProduct) {
-  return {
-    id: p.id,
-    title: p.title,
-    price: p.price,
-    brand: p.brand,
-    images: p.images,
-    description: p.description,
-    url: p.url,
-  };
-}
 
 export default RecommendationResultsPage;
