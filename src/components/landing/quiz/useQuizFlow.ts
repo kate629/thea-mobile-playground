@@ -53,7 +53,12 @@ const GENDERED_OCCASIONS: Record<Gender, QuizOccasionOption[]> = {
  *  with "E.g., " so the user reads them as suggestions ("E.g., She's been
  *  getting into mahjong") rather than statements. Generic fallback at the
  *  end stays unprefixed since it isn't an example. Closes QA #10. */
-function getQuizPlaceholder(gender: Gender | undefined, relationship: string): string {
+/**
+ * Gender + relationship-aware placeholder for the freeform "tell us more"
+ * step. Exported for reuse by the homepage SearchPill so the two surfaces
+ * stay in lockstep — single source of truth for the per-relationship copy.
+ */
+export function getQuizPlaceholder(gender: Gender | undefined, relationship: string): string {
   const rel = relationship.toLowerCase();
   if (rel === 'mom') return "E.g., She's been getting into mahjong";
   if (rel === 'dad') return 'E.g., He just retired and needs new hobbies';

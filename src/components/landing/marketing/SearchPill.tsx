@@ -272,24 +272,16 @@ export const SearchPill: React.FC<SearchPillProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [state, disableOutsideClick]);
 
+  // Auto-advance between segments lives in the state hook itself — once a
+  // segment becomes complete, `useSearchPillState` opens the next one (WHO →
+  // WHAT, WHAT → LIKES). These handlers are thin pass-throughs.
   const handleRelationshipPick = useCallback(
-    (rel: string) => {
-      state.setRelationship(rel);
-      // Auto-close WHO once both relationship + age are set.
-      if (state.age > 0) {
-        state.closeDropdown();
-      }
-    },
+    (rel: string) => state.setRelationship(rel),
     [state],
   );
 
   const handleAgePick = useCallback(
-    (ageValue: number) => {
-      state.setAge(ageValue);
-      if (state.relationship) {
-        state.closeDropdown();
-      }
-    },
+    (ageValue: number) => state.setAge(ageValue),
     [state],
   );
 
@@ -420,6 +412,31 @@ export const SearchPill: React.FC<SearchPillProps> = ({
               ))}
             </ChipRow>
           </DropdownSection>
+          {state.showGenderSelector && (
+            <DropdownSection aria-labelledby="search-pill-gender-heading">
+              <DropdownHeading id="search-pill-gender-heading">Gender</DropdownHeading>
+              <ChipRow role="group" aria-label="Gender">
+                <Chip
+                  selected={state.gender === 'female'}
+                  onClick={() => state.setGender('female')}
+                >
+                  Female
+                </Chip>
+                <Chip
+                  selected={state.gender === 'male'}
+                  onClick={() => state.setGender('male')}
+                >
+                  Male
+                </Chip>
+                <Chip
+                  selected={state.gender === 'other'}
+                  onClick={() => state.setGender('other')}
+                >
+                  Other
+                </Chip>
+              </ChipRow>
+            </DropdownSection>
+          )}
           <DropdownSection>
             <DropdownHeading>Age</DropdownHeading>
             <ChipRow>

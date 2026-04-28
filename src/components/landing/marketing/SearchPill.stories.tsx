@@ -185,6 +185,19 @@ export const MomLikesOpen = {
 };
 
 /**
+ * Friend + WHO open — confirms the Gender section appears for relationships
+ * that don't presume a gender (sheet bug #54). Visual baseline for the
+ * Female / Male / Other chip row sandwiched between Relationship and Age.
+ */
+export const FriendWhoOpenWithGender = {
+  render: () => (
+    <PaddedFrame>
+      <SeededPill relationship="Friend" finalOpen="who" />
+    </PaddedFrame>
+  ),
+};
+
+/**
  * Mobile-viewport happy path — empty state at 375x667.
  */
 export const ClosedMobile = {

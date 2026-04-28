@@ -64,14 +64,12 @@ describe('SearchPill', () => {
 
   it("dynamically shows Mother's Day when Mom is picked (mirrors useQuizFlow)", async () => {
     renderPill();
-    // Pick Mom in WHO
+    // Pick Mom + 30s in WHO. Auto-advance opens WHAT once both are set, so
+    // there's no separate click on the WHAT segment.
     await userEvent.click(screen.getByRole('button', { name: /who/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Mom' }));
-    // (WHO stays open until age is also picked, but we can pick age then move on)
     await userEvent.click(screen.getByRole('button', { name: /30s/i }));
 
-    // Open WHAT
-    await userEvent.click(screen.getByRole('button', { name: /what/i }));
     const dropdown = screen.getByRole('dialog', { name: /what's the occasion/i });
     expect(within(dropdown).getByRole('button', { name: /Mother's Day/i })).toBeInTheDocument();
     expect(within(dropdown).queryByRole('button', { name: /Father's Day/i })).not.toBeInTheDocument();
@@ -82,7 +80,7 @@ describe('SearchPill', () => {
     await userEvent.click(screen.getByRole('button', { name: /who/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Dad' }));
     await userEvent.click(screen.getByRole('button', { name: /30s/i }));
-    await userEvent.click(screen.getByRole('button', { name: /what/i }));
+    // WHO → WHAT auto-advance.
     const dropdown = screen.getByRole('dialog', { name: /what's the occasion/i });
     expect(within(dropdown).getByRole('button', { name: /Father's Day/i })).toBeInTheDocument();
     expect(within(dropdown).queryByRole('button', { name: /Mother's Day/i })).not.toBeInTheDocument();
@@ -90,10 +88,16 @@ describe('SearchPill', () => {
 
   it('shows Anniversary when Partner is picked', async () => {
     renderPill();
+    // Partner is non-presumed — picking rel + age leaves gender required, so
+    // auto-advance does NOT fire. User must pick gender first; WHO advances
+    // to WHAT once gender lands.
     await userEvent.click(screen.getByRole('button', { name: /who/i }));
-    await userEvent.click(screen.getByRole('button', { name: 'Partner' }));
-    await userEvent.click(screen.getByRole('button', { name: /30s/i }));
-    await userEvent.click(screen.getByRole('button', { name: /what/i }));
+    const whoDropdown = screen.getByRole('dialog', { name: /who are you shopping for/i });
+    await userEvent.click(within(whoDropdown).getByRole('button', { name: 'Partner' }));
+    await userEvent.click(within(whoDropdown).getByRole('button', { name: /30s/i }));
+    const genderGroup = within(whoDropdown).getByRole('group', { name: 'Gender' });
+    await userEvent.click(within(genderGroup).getByRole('button', { name: 'Female' }));
+    // WHO → WHAT auto-advance.
     const dropdown = screen.getByRole('dialog', { name: /what's the occasion/i });
     expect(within(dropdown).getByRole('button', { name: /Anniversary/i })).toBeInTheDocument();
   });
@@ -124,20 +128,18 @@ describe('SearchPill', () => {
     const onSubmit = jest.fn();
     renderPill({ onSubmit });
 
-    // WHO
+    // WHO — auto-advance opens WHAT once Mom + 30s are set.
     await userEvent.click(screen.getByRole('button', { name: /who/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Mom' }));
     await userEvent.click(screen.getByRole('button', { name: /30s/i }));
 
-    // WHAT
-    await userEvent.click(screen.getByRole('button', { name: /what/i }));
+    // WHAT — auto-advance opens LIKES once an occasion is picked.
     await userEvent.click(screen.getByRole('button', { name: /Mother's Day/i }));
 
     // Sparkles still disabled (no interests)
     expect(screen.getByRole('button', { name: /find a gift/i })).toBeDisabled();
 
-    // LIKES — pick 2
-    await userEvent.click(screen.getByRole('button', { name: /likes/i }));
+    // LIKES — auto-opened. Pick 2 interests.
     const likesDropdown = screen.getByRole('dialog', { name: /what do they like/i });
     await userEvent.click(within(likesDropdown).getByRole('button', { name: /Cooking/i }));
     await userEvent.click(within(likesDropdown).getByRole('button', { name: /Books/i }));
@@ -157,5 +159,58 @@ describe('SearchPill', () => {
         moreAbout: '',
       }),
     );
+  });
+
+  describe('gender selector (sheet bug #54)', () => {
+    it('does NOT render the Gender section for presumed-gender relationships (Mom)', async () => {
+      renderPill();
+      await userEvent.click(screen.getByRole('button', { name: /who/i }));
+      const whoDropdown = screen.getByRole('dialog', { name: /who are you shopping for/i });
+      await userEvent.click(within(whoDropdown).getByRole('button', { name: /Mom/i }));
+      expect(within(whoDropdown).queryByText('Gender')).not.toBeInTheDocument();
+    });
+
+    it('renders the Gender section with Female / Male / Other for non-presumed (Friend)', async () => {
+      renderPill();
+      await userEvent.click(screen.getByRole('button', { name: /who/i }));
+      const whoDropdown = screen.getByRole('dialog', { name: /who are you shopping for/i });
+      await userEvent.click(within(whoDropdown).getByRole('button', { name: /^Friend$/ }));
+      // Scope to the Gender group — the relationship list also contains an
+      // "Other" chip, so a global query would match both.
+      const genderGroup = within(whoDropdown).getByRole('group', { name: 'Gender' });
+      expect(within(genderGroup).getByRole('button', { name: 'Female' })).toBeInTheDocument();
+      expect(within(genderGroup).getByRole('button', { name: 'Male' })).toBeInTheDocument();
+      expect(within(genderGroup).getByRole('button', { name: 'Other' })).toBeInTheDocument();
+    });
+
+    it('user-picked gender flows through to onSubmit (Friend + Female + Birthday)', async () => {
+      const onSubmit = jest.fn();
+      renderPill({ onSubmit });
+
+      await userEvent.click(screen.getByRole('button', { name: /who/i }));
+      const whoDropdown = screen.getByRole('dialog', { name: /who are you shopping for/i });
+      await userEvent.click(within(whoDropdown).getByRole('button', { name: /^Friend$/ }));
+      const genderGroup = within(whoDropdown).getByRole('group', { name: 'Gender' });
+      await userEvent.click(within(genderGroup).getByRole('button', { name: 'Female' }));
+      await userEvent.click(within(whoDropdown).getByRole('button', { name: /30s/i }));
+      // WHO → WHAT auto-advance fires once rel + age + gender are all set.
+
+      const whatDropdown = screen.getByRole('dialog', { name: /what.*occasion/i });
+      await userEvent.click(within(whatDropdown).getByRole('button', { name: /^Birthday$/i }));
+      // WHAT → LIKES auto-advance.
+
+      const likesDropdown = screen.getByRole('dialog', { name: /what do they like/i });
+      await userEvent.click(within(likesDropdown).getByRole('button', { name: /Cooking/i }));
+      await userEvent.click(within(likesDropdown).getByRole('button', { name: /Books/i }));
+
+      await userEvent.click(screen.getByRole('button', { name: /find a gift/i }));
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relationship: 'Friend',
+          gender: 'female',
+          age: 35,
+        }),
+      );
+    });
   });
 });
