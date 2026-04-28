@@ -10,7 +10,10 @@ export interface ValuePropItem {
 }
 
 export interface ValuePropsCardProps {
-  heading: string;
+  /** Heading content. Accepts a plain string or a JSX node so callers can
+   *  break the line where they want (e.g. "You love them." / "Let it show."
+   *  on two lines). */
+  heading: React.ReactNode;
   items: ValuePropItem[];
 }
 

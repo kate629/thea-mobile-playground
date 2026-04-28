@@ -12,7 +12,7 @@ export interface LandingPageProps {
   /** Pass a frozen HeroHeader for deterministic Happo snapshots. Defaults to
    *  HeroHeaderAnimated for the live experience. */
   heroSlot?: React.ReactNode;
-  valuePropsHeading?: string;
+  valuePropsHeading?: React.ReactNode;
   valuePropsItems?: ValuePropItem[];
   occasionsHeading?: string;
   occasionTiles?: OccasionGridTile[];
@@ -47,7 +47,13 @@ const DEFAULT_VALUE_ITEMS: ValuePropItem[] = [
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   heroSlot,
-  valuePropsHeading = 'You love them. Let it show.',
+  valuePropsHeading = (
+    <>
+      You love them.
+      <br />
+      Let it show.
+    </>
+  ),
   valuePropsItems = DEFAULT_VALUE_ITEMS,
   occasionsHeading = 'Browse by occasion',
   occasionTiles = OCCASION_TILES,
