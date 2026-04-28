@@ -8,7 +8,7 @@ import type {
   RecommendationProduct,
   TheaWebRelationshipEnum,
 } from '../schemas';
-import { pickFriendlyName } from './friendlyCarouselNames';
+import { resolveDynamicCarouselTitle } from './dynamicCarouselTitle';
 
 // Wire-enum → display label, mirroring `quizAnswersToRequest`. Used to find
 // the matching emoji entry in `RELATIONSHIPS` when the recipient snapshot
@@ -88,26 +88,37 @@ export interface ResultsCarouselSection {
 }
 
 // Convert the `CarouselSession` document into the carousel-section view
-// model the results page renders. The `recipientInput` and
-// `recipientSnapshot` are passed through to `pickFriendlyName` so the
-// section title matches one of the 42 curated old-app names whenever the
-// (occasion, relationship, dominant interest) tuple matches the catalog —
-// bug #17 in Kate's 4/27 bug-bash. Callers that don't yet have the
-// recipient context (older call sites + tests) can omit them; the title
-// will then fall through to the agent's `displayName`.
+// model the results page renders. The `recipientSnapshot` is used by the
+// dynamic title resolver to apply chip→title overrides, "Perfect for X"
+// special chips, and pronoun genderization (bug #17). When no snapshot is
+// passed (older call sites + tests), titles fall through to the BE's
+// `displayName` unchanged.
+//
+// The `recipientInput` arg is no longer read by the title resolver but is
+// kept on the signature so existing call sites compile without churn.
 export function carouselsToSections(
   session: CarouselSession,
-  recipientInput?: RecommendationInput,
+  _recipientInput?: RecommendationInput,
   recipientSnapshot?: RecipientSnapshot,
 ): ResultsCarouselSection[] {
+  const relationshipDisplay = recipientSnapshot
+    ? recipientSnapshot.isMe
+      ? 'Me'
+      : DISPLAY_BY_RELATIONSHIP[recipientSnapshot.relationship]
+    : undefined;
+
   return session.carouselOrder
     .filter((key) => key in session.carousels)
     .map((key) => {
       const c = session.carousels[key];
-      const title =
-        recipientInput && recipientSnapshot
-          ? pickFriendlyName(c, recipientInput, recipientSnapshot)
-          : c.displayName;
+      const title = recipientSnapshot
+        ? resolveDynamicCarouselTitle({
+            chip: key,
+            fallbackDisplayName: c.displayName,
+            gender: recipientSnapshot.gender,
+            relationshipDisplay,
+          })
+        : c.displayName;
       return {
         id: key,
         title,

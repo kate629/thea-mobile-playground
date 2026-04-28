@@ -168,21 +168,23 @@ describe('carouselsToSections', () => {
     expect(sections.map((s) => s.id)).toEqual(['c_outdoors', 'c_books', 'c_cooking']);
   });
 
-  test('all-caps multi-word agent names get title-cased when no catalog match', () => {
+  test('chip with no override + no special case falls through to BE displayName unchanged', () => {
+    // The dynamic-title resolver does NOT title-case. If the BE writes
+    // ALL CAPS, it ships ALL CAPS — fixing voice is the BE's job (or comes
+    // through the override map for known chips). The previous PR #64 had
+    // an opinionated title-case fallback; we removed it to match the OLD
+    // repo's logic.
     const session: CarouselSession = {
       status: 'COMPLETE',
       carouselOrder: ['mystery'],
       carousels: {
         mystery: {
-          // No catalog entry for "mystery"; products have no useful tags.
-          displayName: 'BACKYARD & BEYOND',
+          displayName: 'Cosmic Mystery Box',
           products: [{ id: 'p1', title: 'Thing', price: 10 }],
         },
       },
     };
     const sections = carouselsToSections(session, baseInput, baseSnapshot);
-    expect(sections[0].title).toBe('Backyard & Beyond');
-    // Hard guarantee: no ALL-CAPS leaks through.
-    expect(sections[0].title).not.toEqual(sections[0].title.toUpperCase());
+    expect(sections[0].title).toBe('Cosmic Mystery Box');
   });
 });
