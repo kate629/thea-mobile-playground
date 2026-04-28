@@ -14,10 +14,3 @@ export const Birthday = {
   },
 };
 
-export const BirthdayWithSavedItems = {
-  args: {
-    title: 'Birthday Gifts',
-    sections: SAMPLE_BIRTHDAY_SECTIONS,
-    savedProductIds: new Set(['magnolia-confetti', 'bucket-list', 'cocktail-kit']),
-  },
-};

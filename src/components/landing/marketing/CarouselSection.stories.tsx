@@ -14,7 +14,6 @@ const wrapStyle: React.CSSProperties = {
 };
 
 const sweetTooth = SAMPLE_BIRTHDAY_SECTIONS[0];
-const justAddGuests = SAMPLE_BIRTHDAY_SECTIONS[1];
 
 export const SweetTooth = {
   render: (args: React.ComponentProps<typeof CarouselSection>) => (
@@ -25,18 +24,6 @@ export const SweetTooth = {
     shortTitle: sweetTooth.shortTitle,
     products: sweetTooth.products,
     isFirstCarousel: true,
-  },
-};
-
-export const WithSavedItems = {
-  render: (args: React.ComponentProps<typeof CarouselSection>) => (
-    <div style={wrapStyle}><CarouselSection {...args} /></div>
-  ),
-  args: {
-    title: justAddGuests.title,
-    shortTitle: justAddGuests.shortTitle,
-    products: justAddGuests.products,
-    savedProductIds: new Set(['birthday-in-a-bag', 'serving-stand']),
   },
 };
 

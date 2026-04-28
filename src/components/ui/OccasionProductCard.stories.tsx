@@ -19,21 +19,6 @@ export const Default = {
     title: 'Magnolia Bakery confetti cake',
     brand: 'Goldbelly',
     price: 62,
-    liked: false,
-  },
-};
-
-export const Liked = {
-  render: (args: React.ComponentProps<typeof OccasionProductCard>) => (
-    <div style={wrapStyle}><OccasionProductCard {...args} /></div>
-  ),
-  args: {
-    imageUrl:
-      'https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2FU2fnqRKyBkIHSBNBnGGm%2Fb7b1557be51afa71_orig.webp?alt=media&token=93aa5972-b6e5-428a-8cb9-be6f938d0a22',
-    title: 'Personalized Happy Birthday chocolate box',
-    brand: 'Uncommon Goods',
-    price: 56,
-    liked: true,
   },
 };
 

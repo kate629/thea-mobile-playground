@@ -7,7 +7,7 @@ export interface CarouselProduct
     OccasionProductCardProps,
     'imageUrl' | 'imageUrlCdn' | 'imageUrlCdnMobile' | 'title' | 'brand' | 'price' | 'productUrl'
   > {
-  /** Stable id used for liked-set lookup + React key. */
+  /** Stable React key. */
   id: string;
 }
 
@@ -16,12 +16,9 @@ export interface CarouselSectionProps {
   /** Optional shorter title for narrow viewports. */
   shortTitle?: string;
   products: CarouselProduct[];
-  /** Set of product ids currently saved/liked. */
-  savedProductIds?: ReadonlySet<string>;
   /** Whether to mark the first card eager-loaded (LCP boost on the first carousel of a page). */
   isFirstCarousel?: boolean;
   onProductClick?: (product: CarouselProduct, index: number) => void;
-  onSaveClick?: (product: CarouselProduct) => void;
   /** Visibility hints for the optional chevron arrows. View shows the arrow only when the corresponding flag is true. */
   canScrollLeft?: boolean;
   canScrollRight?: boolean;
@@ -127,10 +124,8 @@ export const CarouselSection: React.FC<CarouselSectionProps> = ({
   title,
   shortTitle,
   products,
-  savedProductIds,
   isFirstCarousel = false,
   onProductClick,
-  onSaveClick,
   canScrollLeft = false,
   canScrollRight = false,
   onScrollLeft,
@@ -156,9 +151,7 @@ export const CarouselSection: React.FC<CarouselSectionProps> = ({
               brand={p.brand}
               price={p.price}
               productUrl={p.productUrl}
-              liked={savedProductIds?.has(p.id) ?? false}
               onClick={() => onProductClick?.(p, i)}
-              onSaveClick={() => onSaveClick?.(p)}
               priority={isFirstCarousel && i === 0}
             />
           </Slide>

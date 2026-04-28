@@ -1,8 +1,11 @@
 import React, { useRef } from 'react';
 import styled from 'styled-components';
-import { HeartButton } from './HeartButton';
 import { isImageCached, markImageLoaded, useInViewportOnce } from './imageCache';
 
+// Static occasion gift guides (/occasion/:id) are pure browse surfaces — no
+// save / heart affordance regardless of auth state. The personalized quiz
+// results page handles save/dismiss/mark-purchased via ResultsProductCard
+// (a different component); HeartButton is still used there.
 export interface OccasionProductCardProps {
   /** Retailer URL (or other public CDN). Used as the <img> src and <picture> fallback. */
   imageUrl: string;
@@ -14,8 +17,6 @@ export interface OccasionProductCardProps {
   brand?: string;
   price?: number;
   productUrl?: string;
-  liked?: boolean;
-  onSaveClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   /** Render the card with rounded surface + shadow (used in standalone contexts). */
   asCard?: boolean;
@@ -105,8 +106,6 @@ export const OccasionProductCard: React.FC<OccasionProductCardProps> = ({
   title,
   brand,
   price,
-  liked = false,
-  onSaveClick,
   onClick,
   asCard = false,
   priority = false,
@@ -142,13 +141,6 @@ export const OccasionProductCard: React.FC<OccasionProductCardProps> = ({
           {price != null && <Price>${Math.ceil(price)}</Price>}
         </Meta>
       </Inner>
-      <HeartButton
-        liked={liked}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSaveClick?.(e);
-        }}
-      />
     </Root>
   );
 };

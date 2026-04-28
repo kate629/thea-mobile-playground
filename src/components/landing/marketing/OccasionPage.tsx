@@ -17,10 +17,8 @@ export interface OccasionPageProps {
   /** Page H1 (e.g. "Birthday Gifts"). */
   title: string;
   sections: OccasionPageSection[];
-  savedProductIds?: ReadonlySet<string>;
   onSignInClick?: () => void;
   onProductClick?: (product: CarouselProduct, sectionSlug: string, indexInSection: number) => void;
-  onSaveClick?: (product: CarouselProduct) => void;
   /** Click handler for the sticky "Find a gift" CTA. Same action a homepage
    *  hero CTA fires (route to /quiz). Optional so stories can omit it. */
   onCtaClick?: () => void;
@@ -72,10 +70,8 @@ const Disclaimer = styled.p`
 export const OccasionPage: React.FC<OccasionPageProps> = ({
   title,
   sections,
-  savedProductIds,
   onSignInClick,
   onProductClick,
-  onSaveClick,
   onCtaClick,
 }) => {
   /* Occasion pages have no hero CTA — observe the page H1 as the sentinel.
@@ -94,10 +90,8 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
               title={section.title}
               shortTitle={section.shortTitle}
               products={section.products}
-              savedProductIds={savedProductIds}
               isFirstCarousel={idx === 0}
               onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
-              onSaveClick={onSaveClick}
             />
           ))}
         </Sections>
