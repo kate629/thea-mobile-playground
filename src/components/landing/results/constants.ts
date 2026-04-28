@@ -37,7 +37,7 @@ export const ADULT_AGE_BUCKETS = [
   { value: 45, label: '40s' },
   { value: 55, label: '50s' },
   { value: 65, label: '60s' },
-  { value: 75, label: '70s' },
+  { value: 75, label: '70s+' },
 ];
 
 export const EMOJI_GRID = [

@@ -69,6 +69,18 @@ export const Sixties = {
   ),
 };
 
+export const SeventiesPlus = {
+  name: '70s+ selected (Grandpa variant)',
+  render: () => wrap(
+    <QuizStepAge
+      title="How old is he?"
+      chips={ADULT_AGE_CHIPS}
+      selectedAge={75}
+      onSelectAge={() => {}}
+    />,
+  ),
+};
+
 export const NeutralTitle = {
   name: 'Neutral title (Other / Friend with `other` gender)',
   render: () => wrap(

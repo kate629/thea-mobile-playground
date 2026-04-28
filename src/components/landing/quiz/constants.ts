@@ -40,8 +40,8 @@ export const ADULT_AGE_CHIPS: AgeChip[] = [
   { value: 35, label: '30s', emoji: '🪴' },
   { value: 45, label: '40s', emoji: '🌿' },
   { value: 55, label: '50s', emoji: '🌻' },
-  { value: 65, label: '60s', emoji: '🌸' },
-  { value: 75, label: '70s', emoji: '🌺' },
+  { value: 65, label: '60s', emoji: '🌳' },
+  { value: 75, label: '70s+', emoji: '🌲' },
 ];
 
 export const ALWAYS_ADULT_RELATIONSHIPS = ['Mom', 'Dad', 'Grandma', 'Grandpa', 'Partner', 'Me!'];
