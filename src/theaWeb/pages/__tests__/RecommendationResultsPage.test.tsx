@@ -68,7 +68,15 @@ jest.mock('../../hooks/useLeaveWarning', () => ({
     requestLeave: jest.fn(),
     confirmLeave: jest.fn(),
     cancelLeave: jest.fn(),
+    isSignedIn: false,
   }),
+}));
+
+// Stubbed because the page wires it for browser back-button + swipe-back
+// (bug #62). The hook attaches a real popstate listener; in tests we don't
+// exercise it, so an inert mock keeps the page tree quiet.
+jest.mock('../../hooks/useBackButtonGuard', () => ({
+  useBackButtonGuard: jest.fn(),
 }));
 
 jest.mock('../../hooks/useRedirectOnSignOut', () => ({

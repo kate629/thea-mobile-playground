@@ -62,4 +62,29 @@ describe('SiteHeader', () => {
     const wordmark = screen.getByText('thea').closest('a');
     expect(wordmark).toHaveAttribute('href', '/home');
   });
+
+  // Bug #62 regression: without preventDefault, the wordmark <a href="/">
+  // navigates immediately on click — bypassing any leave-warning modal the
+  // handler tries to open. SiteHeader must call preventDefault internally so
+  // every caller is safe by default.
+  describe('onLogoClick preventDefault behavior (bug #62)', () => {
+    test('calls onLogoClick AND preventDefaults the anchor navigation', () => {
+      const onLogoClick = jest.fn();
+      renderHeader(<SiteHeader onLogoClick={onLogoClick} />);
+      const wordmark = screen.getByText('thea').closest('a')!;
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      const prevented = !wordmark.dispatchEvent(event);
+      expect(onLogoClick).toHaveBeenCalledTimes(1);
+      expect(prevented).toBe(true); // dispatchEvent returns false when default was prevented
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    test('without onLogoClick, click falls through to default anchor navigation', () => {
+      renderHeader(<SiteHeader logoHref="/home" />);
+      const wordmark = screen.getByText('thea').closest('a')!;
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      wordmark.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    });
+  });
 });

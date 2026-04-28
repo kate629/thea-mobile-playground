@@ -16,11 +16,13 @@ export interface SiteHeaderProps {
    * AuthGateContext directly.
    */
   onSignInClick?: () => void;
-  /** Click handler for the wordmark. Receives the native click event so
-   *  callers can `preventDefault()` (the wordmark is an <a href={logoHref}>,
-   *  so without preventDefault the browser navigates immediately and any
-   *  `requestLeave`-style modal is bypassed). */
-  onLogoClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  /** Click handler for the wordmark. SiteHeader internally calls
+   *  `preventDefault()` before invoking this — callers don't need to handle
+   *  the click event. The wordmark is an <a href={logoHref}>, and without
+   *  preventDefault the browser would navigate immediately and bypass any
+   *  `requestLeave`-style confirmation modal the handler opens. Centralizing
+   *  preventDefault here means every caller is safe by default (bug #62). */
+  onLogoClick?: () => void;
   /** href for the wordmark link. Defaults to "/". */
   logoHref?: string;
 }
@@ -74,10 +76,20 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
 }) => {
   const renderedActions = actions === undefined ? <HeaderAccountMenu /> : actions;
 
+  // Wrap so the anchor's default navigation doesn't race ahead of the
+  // handler — see prop docs. When no handler is provided, fall through to
+  // the natural <a href={logoHref}> behavior.
+  const handleClick = onLogoClick
+    ? (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        onLogoClick();
+      }
+    : undefined;
+
   return (
     <Header>
       <Inner>
-        <Wordmark href={logoHref} onClick={onLogoClick}>
+        <Wordmark href={logoHref} onClick={handleClick}>
           thea
         </Wordmark>
         <Actions>{renderedActions}</Actions>

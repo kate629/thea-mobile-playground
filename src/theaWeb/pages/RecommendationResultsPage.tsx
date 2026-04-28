@@ -26,6 +26,7 @@ import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
 import { useGiftActivities } from '../hooks/useGiftActivities';
 import { useLeaveWarning } from '../hooks/useLeaveWarning';
+import { useBackButtonGuard } from '../hooks/useBackButtonGuard';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
 import { useRedirectOnSignOut } from '../hooks/useRedirectOnSignOut';
 import { useRegenerate } from '../hooks/useRegenerate';
@@ -98,6 +99,12 @@ const RecommendationResultsPage: React.FC = () => {
   // "you'll lose your results" copy is wrong/confusing — `skipWhenSignedIn`
   // routes them straight to `/` without the dialog (bug #46).
   const leaveWarning = useLeaveWarning('/', { skipWhenSignedIn: true });
+  // Browser back / mobile swipe-back: anon users get the same leave dialog
+  // they get from the wordmark click. Signed-in users have their results
+  // persisted server-side, so we leave the natural back behavior alone for
+  // them (bug #62). `isSignedIn` is reactive — if an anon user signs in
+  // while on this page, the guard disarms on the next render.
+  useBackButtonGuard(!leaveWarning.isSignedIn, leaveWarning.requestLeave);
   const exitingIds = useExitAnimationQueue(liked, hydrated, EXIT_ANIMATION_MS);
 
   const isRefreshing = regenerateState.status === 'regenerating';

@@ -29,6 +29,13 @@ export interface LeaveWarning {
   confirmLeave: () => void;
   /** Close the dialog without navigating. Wire to the dialog's secondary action + backdrop close. */
   cancelLeave: () => void;
+  /**
+   * True when the current Firebase user is non-anonymous. Tracked reactively
+   * via `onIdTokenChanged` so callers can wire additional navigation guards
+   * (e.g., `useBackButtonGuard`) gated on anonymous-only behavior — see
+   * `RecommendationResultsPage` for the canonical use (bug #62).
+   */
+  isSignedIn: boolean;
 }
 
 /**
@@ -88,5 +95,5 @@ export function useLeaveWarning(
 
   const cancelLeave = useCallback(() => setOpen(false), []);
 
-  return { open, requestLeave, confirmLeave, cancelLeave };
+  return { open, requestLeave, confirmLeave, cancelLeave, isSignedIn };
 }

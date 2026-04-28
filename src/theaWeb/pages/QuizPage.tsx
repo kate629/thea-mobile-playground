@@ -55,20 +55,9 @@ const QuizPage: React.FC = () => {
     [requestSignIn],
   );
 
-  // Intercept the wordmark click — without preventDefault the <a href="/">
-  // would still navigate even after the modal opens. The modal then drives
-  // the actual navigation through `confirmLeave`.
-  const handleLogoClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      leaveWarning.requestLeave();
-    },
-    [leaveWarning],
-  );
-
   return (
     <>
-      <SiteHeader onSignInClick={handleSignInClick} onLogoClick={handleLogoClick} />
+      <SiteHeader onSignInClick={handleSignInClick} onLogoClick={leaveWarning.requestLeave} />
       {state.status === 'error' && (
         <Alert variant="danger" className="mt-3">
           We couldn't submit your answers: {state.error.message}

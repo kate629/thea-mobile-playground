@@ -153,4 +153,26 @@ describe('useLeaveWarning', () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
+
+  // Bug #62: callers wiring `useBackButtonGuard` need to know whether the
+  // user is signed-in so they can disable the guard for non-anonymous users.
+  describe('isSignedIn return value (bug #62)', () => {
+    it('returns false when currentUser is anonymous', () => {
+      mockAuth.currentUser = { isAnonymous: true };
+      const { result } = renderHook(() => useLeaveWarning(), { wrapper });
+      expect(result.current.isSignedIn).toBe(false);
+    });
+
+    it('returns true when currentUser is non-anonymous', () => {
+      mockAuth.currentUser = { isAnonymous: false };
+      const { result } = renderHook(() => useLeaveWarning(), { wrapper });
+      expect(result.current.isSignedIn).toBe(true);
+    });
+
+    it('returns false when currentUser is null', () => {
+      mockAuth.currentUser = null;
+      const { result } = renderHook(() => useLeaveWarning(), { wrapper });
+      expect(result.current.isSignedIn).toBe(false);
+    });
+  });
 });
