@@ -1,7 +1,8 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth, useDb, useEnsureAuth } from '../firebase/FirebaseContext';
+import { useMergeStatus } from '../auth/MergeStateContext';
 import type { Recommendation } from '../schemas';
 
 interface UseRecommendationDocResult {
@@ -27,21 +28,18 @@ export function useRecommendationDoc(
   const auth = useAuth();
   const db = useDb();
   const ensureAuth = useEnsureAuth();
+  const mergeStatus = useMergeStatus();
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const prevMergeStatusRef = useRef(mergeStatus);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
       const nextUid = user?.uid ?? null;
       setUid((prev) => {
         if (prev === nextUid) return prev;
-        // Reset between uids so the page never renders the prior subtree's
-        // doc against the new auth context. The next effect run rebinds.
-        setRecommendation(null);
-        setLoading(true);
-        setError(null);
         return nextUid;
       });
     });
@@ -53,11 +51,33 @@ export function useRecommendationDoc(
       return;
     }
 
+    // Sheet bug #58: while the anon → permanent merge is in flight the
+    // permanent uid's subtree is empty (mergeGiftFlow hasn't run yet) and
+    // the anon subtree is being deleted. Subscribing now would render
+    // "we couldn't find this recommendation" between auth-flip and merge-
+    // complete. Hold the prior doc state instead — when mergeStatus flips
+    // to 'merged'/'failed'/'idle' this effect re-runs and binds at the
+    // permanent uid.
+    if (mergeStatus === 'merging') {
+      prevMergeStatusRef.current = mergeStatus;
+      return;
+    }
+
+    // When resuming after a merge, the new uid's doc is a 1:1 copy of the
+    // old uid's. Keep the prior doc visible until the new listener fires —
+    // a few hundred ms of stale-but-identical data is invisible, while a
+    // reset-to-loading would flash a spinner mid-page right after sign-in.
+    const resumingAfterMerge = prevMergeStatusRef.current === 'merging';
+    prevMergeStatusRef.current = mergeStatus;
+
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
-    setLoading(true);
-    setError(null);
+    if (!resumingAfterMerge) {
+      setRecommendation(null);
+      setLoading(true);
+      setError(null);
+    }
 
     ensureAuth()
       .then((resolvedUid) => {
@@ -95,7 +115,7 @@ export function useRecommendationDoc(
       cancelled = true;
       if (unsubscribe) unsubscribe();
     };
-  }, [uid, recipientId, recommendationId, db, ensureAuth]);
+  }, [uid, recipientId, recommendationId, db, ensureAuth, mergeStatus]);
 
   return { doc: recommendation, loading, error };
 }

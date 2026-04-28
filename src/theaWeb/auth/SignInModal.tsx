@@ -10,6 +10,7 @@ import {
   signInWithGoogle,
   signUpWithEmail,
 } from './accountAuth';
+import { useSetMergeStatus } from './MergeStateContext';
 
 export type AuthMode = 'signin' | 'signup';
 
@@ -306,6 +307,7 @@ interface AuthBodyProps {
 }
 
 const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) => {
+  const setMergeStatus = useSetMergeStatus();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -333,7 +335,7 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
   // Mobile-redirect Google flow: when modal opens, pick up any pending result.
   useEffect(() => {
     let cancelled = false;
-    consumeGoogleRedirectResult()
+    consumeGoogleRedirectResult(undefined, setMergeStatus)
       .then(async (user) => {
         if (cancelled || !user) return;
         await onSuccess();
@@ -353,7 +355,7 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
     setPasswordError('');
     setGoogleLoading(true);
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(undefined, setMergeStatus);
       if (result?.user) {
         await onSuccess();
       }
@@ -393,9 +395,9 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
     setSubmitting(true);
     try {
       if (mode === 'signup') {
-        await signUpWithEmail(trimmedEmail, password);
+        await signUpWithEmail(trimmedEmail, password, undefined, setMergeStatus);
       } else {
-        await signInWithEmail(trimmedEmail, password);
+        await signInWithEmail(trimmedEmail, password, undefined, setMergeStatus);
       }
       await onSuccess();
     } catch (err: unknown) {

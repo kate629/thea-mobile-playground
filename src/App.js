@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
+import { MergeStateProvider } from "./theaWeb/auth/MergeStateContext";
 import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
 import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
 import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
@@ -69,7 +70,8 @@ function App() {
     <ThemeProvider theme={theme}>
       <FirebaseProvider>
         <UserAuthContextProvider>
-          <AuthGateProvider>
+          <MergeStateProvider>
+            <AuthGateProvider>
         <PageTrackingMount />
         <Routes>
           <Route path="/" element={<LandingRoute />} />
@@ -148,7 +150,8 @@ function App() {
             }
           />
         </Routes>
-          </AuthGateProvider>
+            </AuthGateProvider>
+          </MergeStateProvider>
         </UserAuthContextProvider>
       </FirebaseProvider>
     </ThemeProvider>

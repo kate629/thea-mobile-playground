@@ -35,6 +35,17 @@ import {
 
 import { auth as defaultAuth } from '../../firebaseConfig';
 import { mergeGiftFlow, mintMergeToken } from '../callables';
+import type { MergeStatus } from './MergeStateContext';
+
+/**
+ * Optional callback the sign-in flow uses to drive `MergeStateContext` so
+ * downstream listeners can pause re-subscribing while the anon → permanent
+ * fan-out is in flight (sheet bug #58). Called with 'merging' before auth
+ * flips, then 'merged' on success or 'failed' on merge error. When the
+ * sign-in itself fails before any merge attempt, fires 'idle' so the
+ * status doesn't stay stuck.
+ */
+export type OnMergeStatus = (status: MergeStatus) => void;
 
 export function isMobileUserAgent(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -67,15 +78,23 @@ async function captureMergeIntent(authInstance: Auth): Promise<{
 /**
  * Best-effort merge from anon uid into the now-signed-in permanent uid.
  * Idempotent server-side via `_mergedFrom` markers — safe to retry.
+ *
+ * The caller is expected to have flipped MergeStatus to 'merging' BEFORE
+ * the auth-state change (so listeners pause from the moment the uid
+ * swaps). This wrapper transitions to 'merged' on success or 'failed' on
+ * mergeGiftFlow error.
  */
 async function tryMerge(
   intent: { fromUid: string; token: string } | null,
+  onMergeStatus?: OnMergeStatus,
 ): Promise<void> {
   if (!intent) return;
   try {
     await mergeGiftFlow(intent);
+    onMergeStatus?.('merged');
   } catch (err) {
     console.error('[accountAuth] mergeGiftFlow failed:', err);
+    onMergeStatus?.('failed');
   }
 }
 
@@ -90,6 +109,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
 ): Promise<UserCredential> {
   if (authInstance.currentUser?.isAnonymous) {
     const credential = EmailAuthProvider.credential(email, password);
@@ -104,11 +124,19 @@ export async function signUpWithEmail(
         // Capture merge intent while still anon, then sign in as the existing
         // real user — `mergeGiftFlow` migrates the anon subtree afterwards.
         const intent = await captureMergeIntent(authInstance);
-        const cred = await signInWithEmailAndPassword(authInstance, email, password).catch(
-          () => createUserWithEmailAndPassword(authInstance, email, password),
-        );
-        await tryMerge(intent);
-        return cred;
+        // Flip merging BEFORE the auth-state change so listeners pause from
+        // the moment the uid swaps (sheet bug #58).
+        if (intent) onMergeStatus?.('merging');
+        try {
+          const cred = await signInWithEmailAndPassword(authInstance, email, password).catch(
+            () => createUserWithEmailAndPassword(authInstance, email, password),
+          );
+          await tryMerge(intent, onMergeStatus);
+          return cred;
+        } catch (signInErr) {
+          if (intent) onMergeStatus?.('idle');
+          throw signInErr;
+        }
       }
       throw err;
     }
@@ -120,15 +148,24 @@ export async function signInWithEmail(
   email: string,
   password: string,
   authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
 ): Promise<UserCredential> {
   // If the current user is anon, capture merge intent first so we can migrate
   // their saves into the signed-in account afterwards.
   const intent = authInstance.currentUser?.isAnonymous
     ? await captureMergeIntent(authInstance)
     : null;
-  const cred = await signInWithEmailAndPassword(authInstance, email, password);
-  await tryMerge(intent);
-  return cred;
+  // Flip merging BEFORE the auth-state change so listeners pause from the
+  // moment the uid swaps (sheet bug #58).
+  if (intent) onMergeStatus?.('merging');
+  try {
+    const cred = await signInWithEmailAndPassword(authInstance, email, password);
+    await tryMerge(intent, onMergeStatus);
+    return cred;
+  } catch (err) {
+    if (intent) onMergeStatus?.('idle');
+    throw err;
+  }
 }
 
 /**
@@ -143,6 +180,7 @@ export async function signInWithEmail(
  */
 export async function signInWithGoogle(
   authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
 ): Promise<UserCredential | null> {
   const provider = new GoogleAuthProvider();
   const mobile = isMobileUserAgent();
@@ -167,9 +205,16 @@ export async function signInWithGoogle(
           // Capture intent while still anon (the failed link kept the anon
           // uid as currentUser), then signInWithCredential switches us.
           const intent = await captureMergeIntent(authInstance);
-          const result = await signInWithCredential(authInstance, credential);
-          await tryMerge(intent);
-          return result;
+          // Flip merging BEFORE the auth-state change (sheet bug #58).
+          if (intent) onMergeStatus?.('merging');
+          try {
+            const result = await signInWithCredential(authInstance, credential);
+            await tryMerge(intent, onMergeStatus);
+            return result;
+          } catch (signInErr) {
+            if (intent) onMergeStatus?.('idle');
+            throw signInErr;
+          }
         }
         // No recoverable credential — fall through to a fresh sign-in below
         // so the user at least gets an authenticated session.
@@ -193,6 +238,7 @@ export async function signInWithGoogle(
  */
 export async function consumeGoogleRedirectResult(
   authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
 ): Promise<User | null> {
   try {
     const result = await getRedirectResult(authInstance);
@@ -207,9 +253,16 @@ export async function consumeGoogleRedirectResult(
         // We're back from the redirect; the currentUser is still the anon
         // uid (the link failed). Capture intent before we sign in.
         const intent = await captureMergeIntent(authInstance);
-        const signInResult = await signInWithCredential(authInstance, credential);
-        await tryMerge(intent);
-        return signInResult.user;
+        // Flip merging BEFORE the auth-state change (sheet bug #58).
+        if (intent) onMergeStatus?.('merging');
+        try {
+          const signInResult = await signInWithCredential(authInstance, credential);
+          await tryMerge(intent, onMergeStatus);
+          return signInResult.user;
+        } catch (signInErr) {
+          if (intent) onMergeStatus?.('idle');
+          throw signInErr;
+        }
       }
     }
     throw err;
