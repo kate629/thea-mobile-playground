@@ -47,10 +47,19 @@ export function useCarouselSession(carouselSessionId: string | undefined): UseCa
 
   useEffect(() => {
     if (!carouselSessionId) {
+      setSession(null);
       setLoading(false);
       return;
     }
 
+    // Reset session before subscribing to a different sessionId. Without
+    // this, when carouselSessionId changes (e.g. user clicks "Refresh my
+    // picks" → regenerate → new sessionId on the same component instance,
+    // or any other route param change that swaps the recommendation),
+    // the OLD session's data renders for ~100-500ms while the new
+    // subscription waits for its first snapshot. Mirrors the reset in
+    // `useRecommendationDoc.ts:77` for the same reason.
+    setSession(null);
     setLoading(true);
     setError(null);
 
