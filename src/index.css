@@ -52,8 +52,16 @@ body {
   /* Prevent stray horizontal overflow from any descendant from forcing the
      mobile viewport wider than the screen — which mobile browsers
      compensate for by zooming the entire page out (sheet bug #34). This
-     is a defensive global guard; per-component fixes still apply. */
-  overflow-x: hidden;
+     is a defensive global guard; per-component fixes still apply.
+
+     `overflow-x: clip` (NOT `hidden`) — `hidden` makes html/body a scroll
+     container, which breaks `position: sticky` for all descendants
+     (sheet bug #41 — sticky header on gift-recs page). `clip` does the
+     same horizontal-clipping without establishing a scroll container, so
+     sticky positioning continues to work. Browser support: Chrome 90+,
+     Safari 16+, Firefox 81+. Pre-Safari-16 users lose only the
+     defensive zoom-out guard, not core layout. */
+  overflow-x: clip;
   max-width: 100%;
 }
 
