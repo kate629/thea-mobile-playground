@@ -44,6 +44,9 @@ function kickOffPipeline(
     recipient_relationship: relationshipToAgentValue(payload.recipient.relationship),
     freeform_text: payload.input.freeform,
     session_id: carouselSessionId,
+    // See useSubmitGiftFlow for context — occasion drives event_context
+    // on the BE side so the agent can score + filter by it.
+    occasion: payload.input.occasion,
   };
   callable(args).catch((err) => {
     console.error('Carousel pipeline kick-off (regenerate) failed:', err);

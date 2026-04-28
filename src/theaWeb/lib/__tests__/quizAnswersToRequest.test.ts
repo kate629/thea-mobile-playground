@@ -4,6 +4,7 @@ import type { QuizAnswers } from '../../../components/landing/quiz/useQuizFlow';
 const baseAnswers: QuizAnswers = {
   relationship: 'Friend',
   age: 30,
+  occasion: 'Birthday',
   interests: ['coffee', 'books'],
   moreAbout: 'loves italian cooking',
   gender: 'other',
@@ -32,9 +33,43 @@ describe('quizAnswersToRequest', () => {
     expect(req.input.freeform).toBe('star wars fan');
   });
 
-  test('defaults occasion to JUST_BECAUSE and mode to THOUGHTFUL', () => {
-    const req = quizAnswersToRequest(baseAnswers);
+  test('maps each quiz occasion display string to its wire enum (regression: 79/79 prod docs were JUST_BECAUSE before this fix)', () => {
+    // Source of truth: BASE_OCCASION_OPTIONS + GENDERED_OCCASIONS in
+    // src/components/landing/quiz/useQuizFlow.ts
+    const cases: Array<[string, string]> = [
+      ['Birthday', 'BIRTHDAY'],
+      ["Mother's Day", 'MOTHERS_DAY'],
+      ["Father's Day", 'FATHERS_DAY'],
+      ['Anniversary', 'ANNIVERSARY'],
+      ['Graduation', 'GRADUATION'],
+      ['Wedding', 'WEDDING'],
+      ['New Baby', 'NEW_BABY'],
+      ['Housewarming', 'HOUSEWARMING'],
+      ['Thank You', 'THANK_YOU'],
+      ['Just Because', 'JUST_BECAUSE'],
+      ['Other', 'OTHER'],
+    ];
+    for (const [display, wire] of cases) {
+      const req = quizAnswersToRequest({ ...baseAnswers, occasion: display });
+      expect(req.input.occasion).toBe(wire);
+    }
+  });
+
+  test('falls back to JUST_BECAUSE for an unknown occasion display string', () => {
+    // Defensive: if the quiz UI ever emits a chip we don't have a mapping
+    // for (e.g. seasonal one-off), don't throw — degrade to JUST_BECAUSE
+    // so the BE call still succeeds.
+    const req = quizAnswersToRequest({ ...baseAnswers, occasion: 'Halloween' });
     expect(req.input.occasion).toBe('JUST_BECAUSE');
+  });
+
+  test('falls back to JUST_BECAUSE for empty occasion', () => {
+    const req = quizAnswersToRequest({ ...baseAnswers, occasion: '' });
+    expect(req.input.occasion).toBe('JUST_BECAUSE');
+  });
+
+  test('mode defaults to THOUGHTFUL', () => {
+    const req = quizAnswersToRequest(baseAnswers);
     expect(req.mode).toBe('THOUGHTFUL');
   });
 

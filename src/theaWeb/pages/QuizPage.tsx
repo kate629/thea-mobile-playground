@@ -148,12 +148,10 @@ const QuizPage: React.FC = () => {
   const handleSubmit = useCallback(
     async (answers: QuizAnswers) => {
       try {
-        // Read the occasion straight off the answers (display string like
-        // "Mother's Day") and convert to enum locally. We deliberately do
-        // NOT route through `quizAnswersToRequest` — that adapter hardcodes
-        // `JUST_BECAUSE` for the BE call regardless of what the user picked
-        // (separate bug). For the ambient-ring path here we want the actual
-        // user-selected occasion so the curated samples line up.
+        // Convert the user's occasion pick to its wire enum locally for the
+        // ambient-ring sample lookup. `quizAnswersToRequest` runs the same
+        // conversion for the actual BE call inside `submit()`; that map is
+        // duplicated here for now — a small cleanup PR could collapse them.
         const occasion = quizDisplayOccasionToEnum(answers.occasion);
         const result = await submit(answers);
         setPendingNav({

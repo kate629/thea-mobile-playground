@@ -40,9 +40,9 @@ export function liveImagesFromSession(
 
 // Quiz display strings → TheaWebOccasionEnum, mirroring the chip values
 // in `BASE_OCCASION_OPTIONS` / `GENDERED_OCCASIONS` in `useQuizFlow.ts`.
-// We do this conversion locally because `quizAnswersToRequest` (the wire
-// adapter) hardcodes `JUST_BECAUSE` for the BE call regardless of what
-// the user picked — separate bug to address coordinated-with-BE later.
+// Duplicates the same map in `quizAnswersToRequest.ts` — worth deduping
+// in a small follow-up cleanup PR. Both copies should stay in sync until
+// then; if you add a new chip in `useQuizFlow.ts`, add it here AND there.
 const OCCASION_BY_QUIZ_DISPLAY: Record<string, TheaWebOccasionEnum> = {
   Birthday: 'BIRTHDAY',
   "Mother's Day": 'MOTHERS_DAY',

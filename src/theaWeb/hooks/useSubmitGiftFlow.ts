@@ -37,6 +37,11 @@ function kickOffPipeline(
     recipient_relationship: relationshipToAgentValue(payload.recipient.relationship),
     freeform_text: payload.input.freeform,
     session_id: carouselSessionId,
+    // Send the user's selected occasion to the carousel pipeline so the
+    // agent can factor it into scoring + Typesense filtering. The BE
+    // ignores it when it's JUST_BECAUSE / OTHER (no occasion-specific
+    // tagging applies). See get_carousel_feed.py event_context handling.
+    occasion: payload.input.occasion,
   };
   callable(args).catch((err) => {
     // Failure here doesn't block the user — the results page surfaces the
