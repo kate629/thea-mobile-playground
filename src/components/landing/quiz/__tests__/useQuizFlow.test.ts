@@ -157,6 +157,73 @@ describe('useQuizFlow', () => {
     expect(result.current.occasion).toBe('');
   });
 
+  describe('textareaPlaceholder (QA #10)', () => {
+    /**
+     * Concrete-example placeholders are prefixed with "E.g., " so users read
+     * them as suggestions, not statements. The bare "Tell us more about
+     * them..." fallback stays unprefixed since it isn't an example.
+     */
+    it('prefixes Mom placeholder with "E.g.,"', () => {
+      const { result } = renderHook(() => useQuizFlow());
+      act(() => {
+        result.current.setRelationship('Mom');
+        result.current.goFromRelationship();
+      });
+      expect(result.current.textareaPlaceholder).toBe(
+        "E.g., She's been getting into mahjong",
+      );
+    });
+
+    it('prefixes Dad placeholder with "E.g.,"', () => {
+      const { result } = renderHook(() => useQuizFlow());
+      act(() => {
+        result.current.setRelationship('Dad');
+        result.current.goFromRelationship();
+      });
+      expect(result.current.textareaPlaceholder).toBe(
+        'E.g., He just retired and needs new hobbies',
+      );
+    });
+
+    it('prefixes gender-specific Partner copy with "E.g.,"', () => {
+      const { result } = renderHook(() => useQuizFlow());
+      act(() => {
+        result.current.setRelationship('Partner');
+        result.current.goFromRelationship();
+      });
+      // Partner needs the user to pick a gender; until they do, the hook
+      // still derives one and the placeholder must still be E.g.-prefixed.
+      act(() => {
+        result.current.setGender('male');
+        result.current.goFromGender();
+      });
+      expect(result.current.textareaPlaceholder).toMatch(/^E\.g\., /);
+    });
+
+    it('every relationship-specific placeholder is "E.g.,"-prefixed', () => {
+      const RELATIONSHIPS = [
+        'Mom', 'Dad', 'Sister', 'Brother', 'Friend', 'Grandma', 'Grandpa',
+        'Daughter', 'Granddaughter', 'Son', 'Grandson', 'Me!', 'Other',
+      ];
+      for (const rel of RELATIONSHIPS) {
+        const { result } = renderHook(() => useQuizFlow());
+        act(() => {
+          result.current.setRelationship(rel);
+          result.current.goFromRelationship();
+        });
+        // Some rels jump to gender first; nudge through it so the placeholder
+        // resolves on the (gender-aware) interests step.
+        if (result.current.step === 'gender') {
+          act(() => {
+            result.current.setGender('female');
+            result.current.goFromGender();
+          });
+        }
+        expect(result.current.textareaPlaceholder).toMatch(/^E\.g\., /);
+      }
+    });
+  });
+
   it('submitInterests requires at least 2 interests and emits answers', () => {
     const onSubmit = jest.fn();
     const { result } = renderHook(() => useQuizFlow({ onSubmit }));

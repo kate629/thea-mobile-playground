@@ -115,7 +115,16 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
         value={textareaValue}
         onChange={(e) => onTextareaChange(e.target.value)}
         placeholder={textareaPlaceholder}
-        style={{ minHeight: 100, resize: 'none', background: '#fff' }}
+        style={{
+          minHeight: 100,
+          resize: 'none',
+          background: '#fff',
+          // 16px reads more comfortably than the shared Textarea default
+          // (14px) on the quiz step, AND avoids iOS Safari's
+          // zoom-on-focus behavior for sub-16px form fields. Applied
+          // inline so other Textarea consumers are unaffected.
+          fontSize: 16,
+        }}
       />
     </Section>
     <SubmitWrap>

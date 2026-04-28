@@ -49,31 +49,36 @@ const GENDERED_OCCASIONS: Record<Gender, QuizOccasionOption[]> = {
   other: [],
 };
 
-/** Relationship-specific freeform placeholder (mirrors sovrn `getQuizPlaceholder`). */
+/** Relationship-specific freeform placeholder. Concrete examples are prefixed
+ *  with "E.g., " so the user reads them as suggestions ("E.g., She's been
+ *  getting into mahjong") rather than statements. Generic fallback at the
+ *  end stays unprefixed since it isn't an example. Closes QA #10. */
 function getQuizPlaceholder(gender: Gender | undefined, relationship: string): string {
   const rel = relationship.toLowerCase();
-  if (rel === 'mom') return "She's been getting into mahjong";
-  if (rel === 'dad') return 'He just retired and needs new hobbies';
+  if (rel === 'mom') return "E.g., She's been getting into mahjong";
+  if (rel === 'dad') return 'E.g., He just retired and needs new hobbies';
   if (rel === 'partner' || rel === 'spouse') {
     return gender === 'male'
-      ? "He's really into grilling lately"
-      : "We're planning a trip to Italy";
+      ? "E.g., He's really into grilling lately"
+      : "E.g., We're planning a trip to Italy";
   }
-  if (rel === 'sister') return 'She’s learning to make sourdough';
-  if (rel === 'brother') return 'He’s a huge SF Giants fan';
+  if (rel === 'sister') return 'E.g., She’s learning to make sourdough';
+  if (rel === 'brother') return 'E.g., He’s a huge SF Giants fan';
   if (rel === 'friend') {
-    return gender === 'male' ? 'He’s a huge SF Giants fan' : 'She’s learning to make sourdough';
+    return gender === 'male'
+      ? 'E.g., He’s a huge SF Giants fan'
+      : 'E.g., She’s learning to make sourdough';
   }
-  if (rel === 'grandma') return "She's obsessed with her garden this year";
-  if (rel === 'grandpa') return 'He does the crossword puzzle every morning';
+  if (rel === 'grandma') return "E.g., She's obsessed with her garden this year";
+  if (rel === 'grandpa') return 'E.g., He does the crossword puzzle every morning';
   if (rel === 'daughter' || rel === 'granddaughter') {
-    return 'She just moved to NYC and loves matcha';
+    return 'E.g., She just moved to NYC and loves matcha';
   }
-  if (rel === 'son' || rel === 'grandson') return 'He just moved to NYC and loves coffee';
-  if (rel === 'me!' || rel === 'me') return "I've been trying to get more into mindfulness";
-  if (rel === 'other') return 'My boss loves pickleball';
-  if (gender === 'female') return 'She’s learning to make sourdough';
-  if (gender === 'male') return 'He’s a huge SF Giants fan';
+  if (rel === 'son' || rel === 'grandson') return 'E.g., He just moved to NYC and loves coffee';
+  if (rel === 'me!' || rel === 'me') return "E.g., I've been trying to get more into mindfulness";
+  if (rel === 'other') return 'E.g., My boss loves pickleball';
+  if (gender === 'female') return 'E.g., She’s learning to make sourdough';
+  if (gender === 'male') return 'E.g., He’s a huge SF Giants fan';
   return 'Tell us more about them...';
 }
 
