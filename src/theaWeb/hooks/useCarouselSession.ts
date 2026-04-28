@@ -1,6 +1,7 @@
 import { doc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { useDb } from '../firebase/FirebaseContext';
+import { useAuth, useDb } from '../firebase/FirebaseContext';
 import { normalizeCarouselSession } from '../lib/normalizeCarouselSession';
 import type { CarouselSession } from '../schemas';
 
@@ -18,11 +19,31 @@ interface UseCarouselSessionResult {
 // writes land in carouselSessions, not in the recommendation doc. The
 // recommendation doc owns user-scoped metadata (input, recipientSnapshot,
 // status); the session doc owns carousel chrome + product stream.
+//
+// Tracks uid even though the carouselSessions/{id} path is uid-less: the
+// listener's auth token rotates on link/upgrade, and Firestore rules
+// re-evaluate against the new uid. Re-binding on swap flushes any stale
+// token state.
 export function useCarouselSession(carouselSessionId: string | undefined): UseCarouselSessionResult {
+  const auth = useAuth();
   const db = useDb();
+  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [session, setSession] = useState<CarouselSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => {
+      const nextUid = user?.uid ?? null;
+      setUid((prev) => {
+        if (prev === nextUid) return prev;
+        setSession(null);
+        setLoading(true);
+        setError(null);
+        return nextUid;
+      });
+    });
+  }, [auth]);
 
   useEffect(() => {
     if (!carouselSessionId) {
@@ -48,7 +69,7 @@ export function useCarouselSession(carouselSessionId: string | undefined): UseCa
     );
 
     return () => unsubscribe();
-  }, [carouselSessionId, db]);
+  }, [uid, carouselSessionId, db]);
 
   return { session, loading, error };
 }

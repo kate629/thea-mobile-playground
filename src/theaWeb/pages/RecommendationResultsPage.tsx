@@ -27,6 +27,7 @@ import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
 import { useGiftActivities } from '../hooks/useGiftActivities';
 import { useLeaveWarning } from '../hooks/useLeaveWarning';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
+import { useRedirectOnSignOut } from '../hooks/useRedirectOnSignOut';
 import { useRegenerate } from '../hooks/useRegenerate';
 import {
   carouselsToSections,
@@ -69,6 +70,10 @@ const EMPTY_DRAFT: import('../../components/landing/results/types').ProfileDraft
 
 const RecommendationResultsPage: React.FC = () => {
   const auth = useAuth();
+  // If the user signs out (or signOut is called and they fall back to a fresh
+  // anon), the rec doc under the prior uid is no longer readable — redirect
+  // home rather than render the "couldn't find this recommendation" alert.
+  useRedirectOnSignOut('/');
   const { recipientId, recommendationId } = useParams<{
     recipientId: string;
     recommendationId: string;

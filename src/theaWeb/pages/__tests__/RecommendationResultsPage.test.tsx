@@ -59,9 +59,9 @@ jest.mock('../../auth/HeaderAccountMenu', () => ({
   HeaderAccountMenu: () => null,
 }));
 
-// useLeaveWarning + useBackButtonGuard pull in firebase/auth via firebaseConfig,
-// which crashes jsdom (undici/TextDecoder chain). Stub the hooks down to inert
-// shapes so the page tree mounts.
+// useLeaveWarning + useBackButtonGuard + useRedirectOnSignOut pull in
+// firebase/auth via firebaseConfig, which crashes jsdom (undici/TextDecoder
+// chain). Stub the hooks down to inert shapes so the page tree mounts.
 jest.mock('../../hooks/useLeaveWarning', () => ({
   useLeaveWarning: () => ({
     open: false,
@@ -69,6 +69,10 @@ jest.mock('../../hooks/useLeaveWarning', () => ({
     confirmLeave: jest.fn(),
     cancelLeave: jest.fn(),
   }),
+}));
+
+jest.mock('../../hooks/useRedirectOnSignOut', () => ({
+  useRedirectOnSignOut: jest.fn(),
 }));
 
 // useRegenerate pulls in firebaseFunctions → firebase/functions → undici chain.
