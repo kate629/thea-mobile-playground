@@ -1,10 +1,16 @@
 import React, { useRef } from 'react';
 import styled from 'styled-components';
+import { type Auth } from 'firebase/auth';
+import { useAuth } from '../../../theaWeb/firebase/FirebaseContext';
 import { SiteHeader } from '../SiteHeader';
 import { Footer } from './Footer';
 import { CarouselSection, CarouselProduct } from './CarouselSection';
 import { StickyPrimaryCta, StickyPrimaryCtaMobileSpacer } from './StickyPrimaryCta';
 import { Button } from '../../ui/Button';
+import {
+  useIsSignedIn,
+  type AuthOverride,
+} from '../../../theaWeb/hooks/useIsSignedIn';
 
 export interface OccasionPageSection {
   title: string;
@@ -22,6 +28,17 @@ export interface OccasionPageProps {
   /** Click handler for the sticky "Find a gift" CTA. Same action a homepage
    *  hero CTA fires (route to /quiz). Optional so stories can omit it. */
   onCtaClick?: () => void;
+  /** Story/test override: force the signed-in or signed-out branch without
+   *  touching Firebase auth. */
+  authOverride?: AuthOverride;
+  /** Override the auth instance for tests/stories. Defaults to the
+   *  FirebaseProvider's auth via `useAuth()`. */
+  authInstance?: Auth;
+  /** Story override: replace the default `<HeaderAccountMenu />` in the
+   *  SiteHeader so a signed-in story can render the header in a faithful
+   *  signed-in state too (the storybook fakeAuth otherwise leaves the
+   *  header reading currentUser=null). Production callers omit this. */
+  headerActions?: React.ReactNode;
 }
 
 const Page = styled.div`
@@ -73,14 +90,20 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
   onSignInClick,
   onProductClick,
   onCtaClick,
+  authOverride,
+  authInstance: authInstanceProp,
+  headerActions,
 }) => {
   /* Occasion pages have no hero CTA — observe the page H1 as the sentinel.
      Once the title is scrolled off the top, the sticky CTA appears so the
      primary action ("Find a gift") is reachable while browsing carousels. */
   const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const ctxAuth = useAuth();
+  const authInstance = authInstanceProp ?? ctxAuth;
+  const { ready, signedIn } = useIsSignedIn(authOverride, authInstance);
   return (
     <Page>
-      <SiteHeader onSignInClick={onSignInClick} />
+      <SiteHeader onSignInClick={onSignInClick} actions={headerActions} />
       <Inner>
         <PageTitle ref={titleRef}>{title}</PageTitle>
         <Sections>
@@ -106,7 +129,10 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
         triggerRef={titleRef}
         onCtaClick={onCtaClick}
         signInSlot={
-          onSignInClick ? (
+          // Hide the secondary "Sign in" CTA once the user is authenticated
+          // (sheet bug #59). Wait for `ready` so we don't flash a Sign-in
+          // button during the bootstrap and yank it once auth lands.
+          ready && !signedIn && onSignInClick ? (
             <Button label="Sign in" variant="ghost" onClick={onSignInClick} />
           ) : null
         }

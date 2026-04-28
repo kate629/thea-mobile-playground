@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import styled from 'styled-components';
-import { onAuthStateChanged, type Auth, type User } from 'firebase/auth';
+import { type Auth } from 'firebase/auth';
 import { useAuth } from '../../../theaWeb/firebase/FirebaseContext';
+import { useIsSignedIn } from '../../../theaWeb/hooks/useIsSignedIn';
 import { SiteHeader } from '../SiteHeader';
 import { HeroHeader } from './HeroHeader';
 import { HeroHeaderAnimated } from './HeroHeaderAnimated';
@@ -97,36 +98,9 @@ const SearchPillSection = styled.section`
   }
 `;
 
-/**
- * Resolves whether the live Firebase user is authenticated as a permanent
- * (non-anonymous) account. Anon users see the marketing hero — same as
- * fully signed-out users. Only permanent accounts see "Browse my friends".
- */
-function useIsSignedIn(
-  authOverride: LandingPageProps['authOverride'],
-  authInstance: Auth,
-): { ready: boolean; signedIn: boolean } {
-  const [user, setUser] = useState<User | null>(
-    authOverride ? null : authInstance.currentUser,
-  );
-  const [ready, setReady] = useState<boolean>(
-    authOverride ? true : !!authInstance.currentUser,
-  );
-
-  useEffect(() => {
-    if (authOverride) return;
-    const unsub = onAuthStateChanged(authInstance, (next) => {
-      setUser(next);
-      setReady(true);
-    });
-    return () => unsub();
-  }, [authInstance, authOverride]);
-
-  if (authOverride === 'signed-in') return { ready: true, signedIn: true };
-  if (authOverride === 'signed-out') return { ready: true, signedIn: false };
-  if (authOverride === 'loading') return { ready: false, signedIn: false };
-  return { ready, signedIn: !!user && !user.isAnonymous };
-}
+// `useIsSignedIn` lifted to src/theaWeb/hooks/useIsSignedIn.ts so the same
+// auth read can drive the StickyPrimaryCta's signInSlot on both the homepage
+// and occasion pages (sheet bug #59).
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   heroSlot,
@@ -185,7 +159,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         triggerRef={heroSentinelRef}
         onCtaClick={onCtaClick}
         signInSlot={
-          onSignInClick ? (
+          // Hide the secondary "Sign in" CTA once the user is authenticated
+          // (sheet bug #59). We wait for `ready` so the bootstrap moment
+          // doesn't flash a Sign-in button and then yank it once auth lands.
+          // Anon Firebase users still see the CTA — they aren't "signed in"
+          // for product purposes.
+          ready && !signedIn && onSignInClick ? (
             <Button label="Sign in" variant="ghost" onClick={onSignInClick} />
           ) : null
         }
