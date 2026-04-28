@@ -223,7 +223,20 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
 
   const setOccasion = useCallback((o: string) => {
     occasionRef.current = o;
-    setOccasionState(o);
+    setOccasionState((prev) => {
+      // When the user picks a DIFFERENT occasion (typically after hitting
+      // back to revise), clear interest selections so chips on the next
+      // step start fresh. Without this, manual picks (and any future
+      // occasion-driven defaults) leak across occasion changes — e.g. the
+      // user picks Housewarming → toggles Cooking → goes back → picks
+      // Birthday, and Cooking still appears selected on the interests
+      // step. Re-confirming the same occasion is a no-op so we don't wipe
+      // selections when the user simply re-clicks their existing choice.
+      if (prev && prev !== o) {
+        setInterests([]);
+      }
+      return o;
+    });
   }, []);
 
   const goFromOccasion = useCallback(() => {

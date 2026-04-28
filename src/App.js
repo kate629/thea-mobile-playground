@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
 
@@ -6,15 +6,35 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
+import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
+import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
+import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
 import { theme } from "./theme";
 
 function LandingRoute() {
   const navigate = useNavigate();
   const { requestSignIn } = useAuthGate();
+  const { submit } = useSubmitGiftFlow();
+  // SearchPill submit on the signed-in homepage. Same pattern as QuizPage:
+  // submitGiftFlow returns { recipientId, recommendationId }; navigate routes
+  // the user to the results page where the carousel doc streams in.
+  const handleSearchSubmit = useCallback(
+    async (answers) => {
+      try {
+        const { recipientId, recommendationId } = await submit(answers);
+        navigate(`/quiz/results/${recipientId}/${recommendationId}`);
+      } catch {
+        // Surface to the user via results-page error handling on next pass;
+        // the SearchPill itself doesn't have a banner slot.
+      }
+    },
+    [submit, navigate],
+  );
   return (
     <LandingPage
       onCtaClick={() => navigate("/quiz")}
       onSignInClick={() => requestSignIn({ mode: "signin" })}
+      onSearchSubmit={handleSearchSubmit}
     />
   );
 }
@@ -36,11 +56,20 @@ const OccasionRoute = lazy(() =>
   import("./components/landing/marketing/OccasionRoute").then((m) => ({ default: m.OccasionRoute }))
 );
 
+// Mounted inside BrowserRouter (see src/index.js) so useLocation works.
+// Fires Meta pixel PageView on every route change.
+function PageTrackingMount() {
+  usePageTracking();
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
-      <UserAuthContextProvider>
-        <AuthGateProvider>
+      <FirebaseProvider>
+        <UserAuthContextProvider>
+          <AuthGateProvider>
+        <PageTrackingMount />
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route
@@ -110,8 +139,9 @@ function App() {
             }
           />
         </Routes>
-        </AuthGateProvider>
-      </UserAuthContextProvider>
+          </AuthGateProvider>
+        </UserAuthContextProvider>
+      </FirebaseProvider>
     </ThemeProvider>
   );
 }

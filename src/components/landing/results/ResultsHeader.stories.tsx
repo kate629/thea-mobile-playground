@@ -71,10 +71,7 @@ export const ActivePurchased = {
 
 /**
  * Mobile-only layout — pinned to the small viewport so Happo baselines the
- * `MobileTopRow` (logo + sign-in row above the profile pill) explicitly.
- * Closes QA #25. The Default story already snapshots at both viewports
- * via Happo's chrome-large/chrome-small targets, but documenting mobile
- * here makes the intent obvious to anyone reading the storybook.
+ * mobile composition of the embedded SiteHeader + profile pill explicitly.
  */
 export const Mobile = {
   parameters: { happo: { targets: ['chrome-small'] } },
@@ -86,6 +83,41 @@ export const Mobile = {
         likedCount={0}
         purchasedCount={0}
       />
+    </div>
+  ),
+};
+
+// Scrolled-state story for sheet bug #41: shows the header pinned to the top
+// while page content scrolls underneath. The fixed-height scroll container
+// makes the sticky behavior visible at story time and gives Happo a stable
+// pixel snapshot to diff against.
+export const Scrolled = {
+  render: () => (
+    <div
+      style={{
+        background: '#fff',
+        height: 480,
+        overflowY: 'scroll',
+      }}
+      ref={(el) => {
+        // Pre-scroll so the sticky bar is visibly pinned in the snapshot.
+        if (el) el.scrollTop = 200;
+      }}
+    >
+      <ResultsHeader
+        {...baseArgs}
+        activeTab="recommended"
+        likedCount={2}
+        purchasedCount={0}
+      />
+      <div style={{ padding: 24, height: 800 }}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <p key={i} style={{ margin: '0 0 24px' }}>
+            Sample scrollable content row {i + 1}. The sticky header should
+            remain pinned to the top while this text scrolls beneath it.
+          </p>
+        ))}
+      </div>
     </div>
   ),
 };

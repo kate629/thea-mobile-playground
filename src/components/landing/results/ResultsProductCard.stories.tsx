@@ -36,3 +36,30 @@ export const Live = {
     );
   },
 };
+
+/**
+ * Card rendered at the size of a real mobile carousel slot (~150px). Pairs
+ * with the bug #21 fix — the overflow menu must clamp inside the card
+ * boundary even when the card is narrow. Use the Live variant below to open
+ * the menu interactively.
+ */
+export const MobileSlot = {
+  render: () => (
+    <div style={{ width: 150, padding: 16, background: '#fff', overflow: 'hidden' }}>
+      <ResultsProductCard item={item} liked={false} />
+    </div>
+  ),
+};
+
+export const MobileSlotLive = {
+  parameters: { happo: false },
+  render: () => (
+    <div style={{ width: 150, padding: 16, background: '#fff', overflow: 'hidden' }}>
+      <ResultsProductCard
+        item={item}
+        liked={false}
+        onMarkPurchased={() => alert('Marked purchased')}
+      />
+    </div>
+  ),
+};

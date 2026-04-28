@@ -224,6 +224,95 @@ describe('useQuizFlow', () => {
     });
   });
 
+  it('clears interest selections when the occasion changes (prevents prior-occasion leak)', () => {
+    // Bug #9: user picks Housewarming, toggles Cooking on the interests
+    // step, hits back, picks Birthday — Cooking should NOT remain selected
+    // because the prior occasion's context no longer applies.
+    const { result } = renderHook(() => useQuizFlow());
+
+    act(() => {
+      result.current.setRelationship('Mom');
+      result.current.goFromRelationship();
+    });
+    act(() => {
+      result.current.setAge(35);
+      result.current.goFromAge();
+    });
+    act(() => {
+      result.current.setOccasion('Housewarming');
+      result.current.goFromOccasion();
+    });
+
+    // User toggles two interests under Housewarming.
+    act(() => result.current.toggleInterest('Cooking'));
+    act(() => result.current.toggleInterest('Hosting'));
+    expect(result.current.interests).toEqual(['Cooking', 'Hosting']);
+
+    // User hits back and picks a different occasion.
+    act(() => result.current.goBack());
+    expect(result.current.step).toBe('occasion');
+    act(() => result.current.setOccasion('Birthday'));
+
+    // Interests should be cleared — no stale defaults from Housewarming.
+    expect(result.current.interests).toEqual([]);
+  });
+
+  it('does NOT clear interests when re-selecting the same occasion', () => {
+    // If the user lands back on the occasion step and clicks the same
+    // chip they already had, that's a no-op; their interest selections
+    // on the next step should not be wiped.
+    const { result } = renderHook(() => useQuizFlow());
+
+    act(() => {
+      result.current.setRelationship('Mom');
+      result.current.goFromRelationship();
+    });
+    act(() => {
+      result.current.setAge(35);
+      result.current.goFromAge();
+    });
+    act(() => {
+      result.current.setOccasion('Birthday');
+      result.current.goFromOccasion();
+    });
+    act(() => result.current.toggleInterest('Cooking'));
+    act(() => result.current.toggleInterest('Books'));
+
+    act(() => result.current.goBack());
+    act(() => result.current.setOccasion('Birthday')); // same occasion
+
+    expect(result.current.interests).toEqual(['Cooking', 'Books']);
+  });
+
+  it('clearing on occasion change handles longer interest lists too', () => {
+    // Defensive: ensure the clear handles >2 toggled interests, not just
+    // two-item flows. Confirms canSubmitInterests flips back to false.
+    const { result } = renderHook(() => useQuizFlow());
+
+    act(() => {
+      result.current.setRelationship('Mom');
+      result.current.goFromRelationship();
+    });
+    act(() => {
+      result.current.setAge(35);
+      result.current.goFromAge();
+    });
+    act(() => {
+      result.current.setOccasion('Housewarming');
+      result.current.goFromOccasion();
+    });
+    act(() => result.current.toggleInterest('Cooking'));
+    act(() => result.current.toggleInterest('Hosting'));
+    act(() => result.current.toggleInterest('Decor'));
+    expect(result.current.canSubmitInterests).toBe(true);
+
+    act(() => result.current.goBack());
+    act(() => result.current.setOccasion('Just Because'));
+
+    expect(result.current.interests).toEqual([]);
+    expect(result.current.canSubmitInterests).toBe(false);
+  });
+
   it('submitInterests requires at least 2 interests and emits answers', () => {
     const onSubmit = jest.fn();
     const { result } = renderHook(() => useQuizFlow({ onSubmit }));

@@ -172,7 +172,15 @@ const CardLayer = styled.div<{ $visible: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 300ms ease-out;
+  /* Hide is instant, show is animated. Without this asymmetry the new
+     scenario's image is mounted (displayedIndex flip) the same render
+     cardVisible goes false, but opacity still transitions 1 → 0 over
+     300ms — so the NEW card is briefly visible at high opacity for
+     ~50-100ms after the swap. The visible "flash" Kate reported as
+     bug #1 even after the useTypewriterHero fix. Snapping opacity to
+     0 instantly on hide guarantees the image swap happens while the
+     layer is fully invisible. */
+  transition: ${({ $visible }) => ($visible ? 'opacity 300ms ease-out' : 'none')};
   opacity: ${({ $visible }) => ($visible ? 1 : 0)};
 `;
 

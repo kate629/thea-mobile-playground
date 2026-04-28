@@ -9,16 +9,24 @@ export interface ResultsDiscoverTabProps {
    *  count is sparse (< 4). Triggers the "Running low on picks" prompt. */
   sparse?: boolean;
   /** True when a refresh is in flight. Carousels render at opacity 0.6 and
-   *  a fixed-position floating "Updating" indicator overlays. */
+   *  the Refresh button (both the sticky floating one and the SummaryCard
+   *  CTA) swap to a disabled, spinner-fronted "Refreshing…" loading state
+   *  IN PLACE — no skeleton, no page jump. */
   refreshing?: boolean;
   /** Optional slot for the future MeSetupCard above the carousels. */
   topSlot?: React.ReactNode;
-  /** End-of-session save/dismiss summary stats — when present, we render
-   *  the beige summary card with the Refresh CTA below the carousels. */
+  /** End-of-session save/dismiss summary stats — when present AND
+   *  `showSummary` is true, we render the beige summary card with the
+   *  "the more you react…" hint and the Refresh CTA below the carousels. */
   summary?: {
     saves: number;
     dismissed: number;
   };
+  /** Gates the summary card. Defaults to true for backwards-compat with
+   *  callers that don't yet know whether products are loaded. The page sets
+   *  this to false during PROCESSING / regenerate so the hint copy doesn't
+   *  render under empty skeleton rows (bug #35). */
+  showSummary?: boolean;
   onRefresh?: () => void;
   /** Carousel rows. Caller composes <ResultsCarousel> or
    *  <ResultsCarouselAnimated> instances. */
@@ -84,18 +92,28 @@ const RefreshLink = styled.button`
   &:hover { opacity: 0.8; }
 `;
 
-const FloatingUpdating = styled.div`
-  position: fixed;
-  left: 0;
-  right: 0;
+// Sticky floating Refresh button — visible at viewport bottom-right (desktop)
+// or bottom-center (mobile) so users can re-roll without scrolling to find
+// the end-of-session SummaryCard. Transitions to a loading state IN PLACE
+// during refresh: spinner + "Refreshing…" label + disabled clicks. The
+// in-place transition is what makes the loading feel smooth — no page-level
+// skeleton, no jump.
+const StickyRefreshSlot = styled.div`
+  position: sticky;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
   z-index: 40;
   display: flex;
   justify-content: center;
   pointer-events: none;
+  margin-top: -8px;
+  @media (min-width: 1024px) {
+    justify-content: flex-end;
+    bottom: 24px;
+    padding-right: 24px;
+  }
 `;
 
-const UpdatingPill = styled.button`
+const StickyRefreshButton = styled.button<{ $refreshing: boolean }>`
   pointer-events: auto;
   background: ${({ theme }) => theme.color.clay};
   color: #fff;
@@ -109,9 +127,13 @@ const UpdatingPill = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  opacity: 0.9;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  cursor: default;
+  opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 1)};
+  cursor: ${({ $refreshing }) => ($refreshing ? 'default' : 'pointer')};
+  transition: opacity 150ms ease, transform 150ms ease;
+  &:hover { opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 0.92)}; }
+  &:active { transform: ${({ $refreshing }) => ($refreshing ? 'none' : 'scale(0.98)')}; }
+  &:disabled { cursor: default; }
 `;
 
 const Spinner = styled.span`
@@ -169,7 +191,7 @@ const SummaryHint = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
-const RefreshCta = styled.button`
+const RefreshCta = styled.button<{ $refreshing: boolean }>`
   background: ${({ theme }) => theme.color.clay};
   color: #fff;
   font-family: inherit;
@@ -183,12 +205,14 @@ const RefreshCta = styled.button`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  cursor: pointer;
+  cursor: ${({ $refreshing }) => ($refreshing ? 'default' : 'pointer')};
+  opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 1)};
   width: 100%;
   max-width: 360px;
   transition: opacity 150ms ease, transform 150ms ease;
-  &:hover { opacity: 0.9; }
-  &:active { transform: scale(0.98); }
+  &:hover { opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 0.9)}; }
+  &:active { transform: ${({ $refreshing }) => ($refreshing ? 'none' : 'scale(0.98)')}; }
+  &:disabled { cursor: default; }
 `;
 
 const HeartGlyph: React.FC = () => (
@@ -216,6 +240,7 @@ export const ResultsDiscoverTab: React.FC<ResultsDiscoverTabProps> = ({
   refreshing = false,
   topSlot,
   summary,
+  showSummary = true,
   onRefresh,
   children,
 }) => (
@@ -239,41 +264,44 @@ export const ResultsDiscoverTab: React.FC<ResultsDiscoverTabProps> = ({
       </SparsePrompt>
     )}
 
-    {refreshing ? (
-      <>
-        <div aria-hidden style={{ height: 96 }} />
-        <FloatingUpdating>
-          <UpdatingPill type="button" disabled>
-            Updating
-            <Spinner aria-hidden="true" />
-          </UpdatingPill>
-        </FloatingUpdating>
-      </>
-    ) : (
-      summary && (
-        <SummaryCard>
-          <SummaryInner>
-            <SummaryStatsRow>
-              <SummaryStat>
-                <HeartGlyph />
-                <strong>{summary.saves}</strong>
-                <span>saves</span>
-              </SummaryStat>
-              <SummaryDot aria-hidden="true">·</SummaryDot>
-              <SummaryStat>
-                <XGlyph />
-                <strong>{summary.dismissed}</strong>
-                <span>dismissed</span>
-              </SummaryStat>
-            </SummaryStatsRow>
-            <SummaryHint>The more you react, the better your picks.</SummaryHint>
-            <RefreshCta type="button" onClick={onRefresh}>
-              <SparkleGlyph />
-              Refresh my picks
-            </RefreshCta>
-          </SummaryInner>
-        </SummaryCard>
-      )
+    {summary && showSummary && (
+      <SummaryCard>
+        <SummaryInner>
+          <SummaryStatsRow>
+            <SummaryStat>
+              <HeartGlyph />
+              <strong>{summary.saves}</strong>
+              <span>saves</span>
+            </SummaryStat>
+            <SummaryDot aria-hidden="true">·</SummaryDot>
+            <SummaryStat>
+              <XGlyph />
+              <strong>{summary.dismissed}</strong>
+              <span>dismissed</span>
+            </SummaryStat>
+          </SummaryStatsRow>
+          <SummaryHint>The more you react, the better your picks.</SummaryHint>
+          <RefreshCta
+            type="button"
+            onClick={refreshing ? undefined : onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing || undefined}
+            $refreshing={refreshing}
+          >
+            {refreshing ? (
+              <>
+                <Spinner aria-hidden="true" />
+                Refreshing…
+              </>
+            ) : (
+              <>
+                <SparkleGlyph />
+                Refresh my picks
+              </>
+            )}
+          </RefreshCta>
+        </SummaryInner>
+      </SummaryCard>
     )}
   </Wrap>
 );

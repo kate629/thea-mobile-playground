@@ -18,7 +18,7 @@ const userInitial: User = {
   photoURL: null,
 } as unknown as User;
 
-const userPhoto: User = {
+const userWithDisplayName: User = {
   uid: 'permanent-uid',
   isAnonymous: false,
   displayName: 'Mom Tester',
@@ -58,10 +58,10 @@ export const SignedInInitial = {
   ),
 };
 
-export const SignedInPhoto = {
+export const SignedInWithDisplayName = {
   render: () => (
     <Frame>
-      <HeaderAccountMenu userOverride={userPhoto} />
+      <HeaderAccountMenu userOverride={userWithDisplayName} />
     </Frame>
   ),
 };
@@ -69,7 +69,7 @@ export const SignedInPhoto = {
 export const DropdownOpen = {
   render: () => (
     <Frame>
-      <HeaderAccountMenu userOverride={userPhoto} defaultMenuOpen />
+      <HeaderAccountMenu userOverride={userWithDisplayName} defaultMenuOpen />
     </Frame>
   ),
 };

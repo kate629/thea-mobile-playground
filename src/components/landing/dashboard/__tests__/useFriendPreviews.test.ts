@@ -1,6 +1,34 @@
 import { renderHook, act } from '@testing-library/react';
-import { useFriendPreviews } from '../useFriendPreviews';
+import {
+  useFriendPreviews,
+  createFirestoreFriendPreviewLoader,
+  getFirestoreFriendPreviewLoader,
+  __resetFriendPreviewLoaderCache,
+} from '../useFriendPreviews';
 import { AuthState, FriendPreviewLoader } from '../types';
+
+// Mock firestore so the factory can be exercised without a live Firebase app.
+jest.mock('firebase/firestore', () => ({
+  __esModule: true,
+  onSnapshot: jest.fn(),
+  collection: jest.fn(() => ({ __collection: true })),
+  query: jest.fn((...args) => ({ __query: args })),
+  where: jest.fn((...args) => ({ __where: args })),
+}));
+
+jest.mock('../../../../firebaseConfig', () => ({
+  __esModule: true,
+  db: { __fakeDb: true },
+  auth: { currentUser: null },
+  ensureAuth: jest.fn(),
+}));
+
+const firestore = jest.requireMock('firebase/firestore') as {
+  onSnapshot: jest.Mock;
+  collection: jest.Mock;
+  query: jest.Mock;
+  where: jest.Mock;
+};
 
 function makeMockLoader() {
   const callbacks = new Map<string, (urls: string[]) => void>();
@@ -94,5 +122,73 @@ describe('useFriendPreviews', () => {
     rerender({ ids: ['p1'] });
     expect(unsubscribeMock).toHaveBeenCalledWith('p2');
     expect(unsubscribeMock).not.toHaveBeenCalledWith('p1');
+  });
+});
+
+describe('createFirestoreFriendPreviewLoader', () => {
+  beforeEach(() => {
+    firestore.onSnapshot.mockReset();
+    firestore.collection.mockClear();
+    firestore.query.mockClear();
+    firestore.where.mockClear();
+    __resetFriendPreviewLoaderCache();
+  });
+
+  it('subscribes to giftActivity filtered by state==SAVED and maps productSnapshot.imageUrl', () => {
+    let onNext: ((snap: unknown) => void) | undefined;
+    firestore.onSnapshot.mockImplementation((_q, next) => {
+      onNext = next;
+      return () => {};
+    });
+
+    const loader = createFirestoreFriendPreviewLoader('uid-1');
+    const cb = jest.fn();
+    const unsub = loader.subscribe('rid-7', cb);
+
+    expect(firestore.collection).toHaveBeenCalledWith(
+      { __fakeDb: true },
+      'theaWebUser',
+      'uid-1',
+      'recipient',
+      'rid-7',
+      'giftActivity',
+    );
+    expect(firestore.where).toHaveBeenCalledWith('state', '==', 'SAVED');
+
+    // Simulate a Firestore snapshot with three saved items, one with no image.
+    const fakeSnap = {
+      forEach: (fn: (d: { data: () => unknown }) => void) => {
+        fn({ data: () => ({ productSnapshot: { imageUrl: 'a.jpg' } }) });
+        fn({ data: () => ({ productSnapshot: { imageUrl: 'b.jpg' } }) });
+        fn({ data: () => ({ productSnapshot: {} }) });
+      },
+    };
+    onNext!(fakeSnap);
+    expect(cb).toHaveBeenCalledWith(['a.jpg', 'b.jpg']);
+
+    expect(typeof unsub).toBe('function');
+  });
+
+  it('passes through an empty list to the callback on Firestore error', () => {
+    let onError: ((err: Error) => void) | undefined;
+    firestore.onSnapshot.mockImplementation((_q, _next, err) => {
+      onError = err;
+      return () => {};
+    });
+
+    const loader = createFirestoreFriendPreviewLoader('uid-1');
+    const cb = jest.fn();
+    loader.subscribe('rid-7', cb);
+
+    onError!(new Error('permission denied'));
+    expect(cb).toHaveBeenCalledWith([]);
+  });
+
+  it('caches loader instances per uid', () => {
+    const a1 = getFirestoreFriendPreviewLoader('uid-A');
+    const a2 = getFirestoreFriendPreviewLoader('uid-A');
+    const b = getFirestoreFriendPreviewLoader('uid-B');
+    expect(a1).toBe(a2);
+    expect(a1).not.toBe(b);
   });
 });

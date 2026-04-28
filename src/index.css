@@ -47,6 +47,16 @@
   --radius: 0.5rem;
 }
 
+html,
+body {
+  /* Prevent stray horizontal overflow from any descendant from forcing the
+     mobile viewport wider than the screen — which mobile browsers
+     compensate for by zooming the entire page out (sheet bug #34). This
+     is a defensive global guard; per-component fixes still apply. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',

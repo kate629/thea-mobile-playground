@@ -34,7 +34,10 @@ const renderCarousels = () =>
 export const WithCarousels = {
   render: () => (
     <Wrap>
-      <ResultsDiscoverTab summary={{ saves: 3, dismissed: 2 }}>
+      <ResultsDiscoverTab
+        summary={{ saves: 3, dismissed: 2 }}
+        onRefresh={() => {}}
+      >
         {renderCarousels()}
       </ResultsDiscoverTab>
     </Wrap>
@@ -68,7 +71,13 @@ export const Sparse = {
 export const Refreshing = {
   render: () => (
     <Wrap>
-      <ResultsDiscoverTab refreshing>{renderCarousels()}</ResultsDiscoverTab>
+      <ResultsDiscoverTab
+        refreshing
+        summary={{ saves: 3, dismissed: 2 }}
+        onRefresh={() => {}}
+      >
+        {renderCarousels()}
+      </ResultsDiscoverTab>
     </Wrap>
   ),
 };
@@ -76,7 +85,10 @@ export const Refreshing = {
 export const WithEndOfSessionCard = {
   render: () => (
     <Wrap>
-      <ResultsDiscoverTab summary={{ saves: 7, dismissed: 4 }}>
+      <ResultsDiscoverTab
+        summary={{ saves: 7, dismissed: 4 }}
+        onRefresh={() => {}}
+      >
         {renderCarousels()}
       </ResultsDiscoverTab>
     </Wrap>

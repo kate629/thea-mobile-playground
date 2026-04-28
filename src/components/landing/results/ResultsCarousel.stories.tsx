@@ -73,6 +73,18 @@ export const OneCardDismissing = {
   ),
 };
 
+export const MobilePeekaboo = {
+  parameters: { happo: { targets: ['chrome-small'] } },
+  render: () => (
+    <Wrap>
+      <ResultsCarousel
+        title={SAMPLE_RESULTS_CAROUSELS[0].title}
+        slots={products.map((p) => ({ item: p, state: 'idle', liked: false }))}
+      />
+    </Wrap>
+  ),
+};
+
 export const Live = {
   parameters: { happo: false },
   render: () => {

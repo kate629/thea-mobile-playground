@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
-import { ensureAuth } from '../../firebaseConfig';
+import { useEnsureAuth } from '../firebase/FirebaseContext';
 import { getCarouselFeed, getFastCarouselFeed } from '../../firebaseFunctions';
 import { submitGiftFlow } from '../callables';
+import { ageBucket, metaQuizSearchSubmitted } from '../lib/metaPixel';
 import { quizAnswersToRequest } from '../lib/quizAnswersToRequest';
 import { relationshipToAgentValue } from '../lib/relationshipToAgentValue';
 import type { QuizAnswers } from '../../components/landing/quiz/useQuizFlow';
@@ -47,6 +48,7 @@ function kickOffPipeline(
 // then fires the carousel pipeline in the background. Does NOT subscribe to the
 // recommendation doc or carousel session — the results page owns both.
 export function useSubmitGiftFlow(): UseSubmitGiftFlow {
+  const ensureAuth = useEnsureAuth();
   const [state, setState] = useState<SubmitGiftFlowState>({ status: 'idle' });
   // Guards against callers double-firing during the in-flight window.
   const inFlightRef = useRef(false);
@@ -62,6 +64,14 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
       const payload = quizAnswersToRequest(answers);
       const { data } = await submitGiftFlow(payload);
       kickOffPipeline(payload, data.carouselSessionId);
+      // Fire Meta pixel after the callable resolves successfully — anonymized
+      // funnel params only (no name / uid / recipientId).
+      metaQuizSearchSubmitted({
+        occasion: payload.input.occasion,
+        relationship: payload.recipient.relationship,
+        age_bucket: ageBucket(payload.recipient.age ?? undefined),
+        interest_count: payload.input.interests?.length ?? 0,
+      });
       setState({ status: 'ready', result: data });
       return data;
     } catch (err) {
@@ -71,7 +81,7 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
     } finally {
       inFlightRef.current = false;
     }
-  }, []);
+  }, [ensureAuth]);
 
   const reset = useCallback(() => {
     setState({ status: 'idle' });

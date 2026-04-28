@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import styled from 'styled-components';
 import { SiteHeader } from '../SiteHeader';
 import { Footer } from './Footer';
 import { CarouselSection, CarouselProduct } from './CarouselSection';
+import { StickyPrimaryCta, StickyPrimaryCtaMobileSpacer } from './StickyPrimaryCta';
+import { Button } from '../../ui/Button';
 
 export interface OccasionPageSection {
   title: string;
@@ -19,6 +21,9 @@ export interface OccasionPageProps {
   onSignInClick?: () => void;
   onProductClick?: (product: CarouselProduct, sectionSlug: string, indexInSection: number) => void;
   onSaveClick?: (product: CarouselProduct) => void;
+  /** Click handler for the sticky "Find a gift" CTA. Same action a homepage
+   *  hero CTA fires (route to /quiz). Optional so stories can omit it. */
+  onCtaClick?: () => void;
 }
 
 const Page = styled.div`
@@ -71,30 +76,47 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
   onSignInClick,
   onProductClick,
   onSaveClick,
-}) => (
-  <Page>
-    <SiteHeader onSignInClick={onSignInClick} />
-    <Inner>
-      <PageTitle>{title}</PageTitle>
-      <Sections>
-        {sections.map((section, idx) => (
-          <CarouselSection
-            key={section.slug}
-            title={section.title}
-            shortTitle={section.shortTitle}
-            products={section.products}
-            savedProductIds={savedProductIds}
-            isFirstCarousel={idx === 0}
-            onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
-            onSaveClick={onSaveClick}
-          />
-        ))}
-      </Sections>
-      <Disclaimer>
-        Every gift is hand-picked by our (slightly obsessive) team. Some links may earn us a small
-        commission at no cost to you.
-      </Disclaimer>
-    </Inner>
-    <Footer />
-  </Page>
-);
+  onCtaClick,
+}) => {
+  /* Occasion pages have no hero CTA — observe the page H1 as the sentinel.
+     Once the title is scrolled off the top, the sticky CTA appears so the
+     primary action ("Find a gift") is reachable while browsing carousels. */
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  return (
+    <Page>
+      <SiteHeader onSignInClick={onSignInClick} />
+      <Inner>
+        <PageTitle ref={titleRef}>{title}</PageTitle>
+        <Sections>
+          {sections.map((section, idx) => (
+            <CarouselSection
+              key={section.slug}
+              title={section.title}
+              shortTitle={section.shortTitle}
+              products={section.products}
+              savedProductIds={savedProductIds}
+              isFirstCarousel={idx === 0}
+              onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
+              onSaveClick={onSaveClick}
+            />
+          ))}
+        </Sections>
+        <Disclaimer>
+          Every gift is hand-picked by our (slightly obsessive) team. Some links may earn us a small
+          commission at no cost to you.
+        </Disclaimer>
+      </Inner>
+      <Footer />
+      <StickyPrimaryCtaMobileSpacer />
+      <StickyPrimaryCta
+        triggerRef={titleRef}
+        onCtaClick={onCtaClick}
+        signInSlot={
+          onSignInClick ? (
+            <Button label="Sign in" variant="ghost" onClick={onSignInClick} />
+          ) : null
+        }
+      />
+    </Page>
+  );
+};

@@ -1,6 +1,6 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../../firebaseConfig';
+import { useDb } from '../firebase/FirebaseContext';
 import { normalizeCarouselSession } from '../lib/normalizeCarouselSession';
 import type { CarouselSession } from '../schemas';
 
@@ -19,6 +19,7 @@ interface UseCarouselSessionResult {
 // recommendation doc owns user-scoped metadata (input, recipientSnapshot,
 // status); the session doc owns carousel chrome + product stream.
 export function useCarouselSession(carouselSessionId: string | undefined): UseCarouselSessionResult {
+  const db = useDb();
   const [session, setSession] = useState<CarouselSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -47,7 +48,7 @@ export function useCarouselSession(carouselSessionId: string | undefined): UseCa
     );
 
     return () => unsubscribe();
-  }, [carouselSessionId]);
+  }, [carouselSessionId, db]);
 
   return { session, loading, error };
 }

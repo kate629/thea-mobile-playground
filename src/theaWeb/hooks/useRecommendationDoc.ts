@@ -1,6 +1,6 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db, ensureAuth } from '../../firebaseConfig';
+import { useDb, useEnsureAuth } from '../firebase/FirebaseContext';
 import type { Recommendation } from '../schemas';
 
 interface UseRecommendationDocResult {
@@ -16,6 +16,8 @@ export function useRecommendationDoc(
   recipientId: string | undefined,
   recommendationId: string | undefined,
 ): UseRecommendationDocResult {
+  const db = useDb();
+  const ensureAuth = useEnsureAuth();
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -68,7 +70,7 @@ export function useRecommendationDoc(
       cancelled = true;
       if (unsubscribe) unsubscribe();
     };
-  }, [recipientId, recommendationId]);
+  }, [recipientId, recommendationId, db, ensureAuth]);
 
   return { doc: recommendation, loading, error };
 }

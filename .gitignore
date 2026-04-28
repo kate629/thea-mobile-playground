@@ -31,3 +31,6 @@ storybook-static
 /playwright-report
 /test-results
 /playwright/.cache
+
+# firebase CLI cache (touched on every `firebase deploy` / `hosting:channel:deploy`)
+.firebase/

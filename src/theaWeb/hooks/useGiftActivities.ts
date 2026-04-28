@@ -1,7 +1,7 @@
 import { collection, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { auth, db, ensureAuth } from '../../firebaseConfig';
+import { useAuth, useDb, useEnsureAuth } from '../firebase/FirebaseContext';
 import { giftActivityCollectionPath } from '../schemas/paths';
 
 interface UseGiftActivitiesResult {
@@ -40,6 +40,9 @@ function reuseIfEqual(prev: Set<string>, next: Set<string>): Set<string> {
 export function useGiftActivities(
   recipientId: string | undefined,
 ): UseGiftActivitiesResult {
+  const auth = useAuth();
+  const db = useDb();
+  const ensureAuth = useEnsureAuth();
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [liked, setLiked] = useState<Set<string>>(() => new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
@@ -60,7 +63,7 @@ export function useGiftActivities(
         return nextUid;
       });
     });
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
     if (!recipientId) {
@@ -115,7 +118,7 @@ export function useGiftActivities(
       cancelled = true;
       if (unsubscribe) unsubscribe();
     };
-  }, [uid, recipientId]);
+  }, [uid, recipientId, db, ensureAuth]);
 
   return { liked, dismissed, purchased, hydrated, error };
 }

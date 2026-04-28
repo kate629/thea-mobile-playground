@@ -1,14 +1,26 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Button } from '../ui/Button';
+import { HeaderAccountMenu } from '../../theaWeb/auth/HeaderAccountMenu';
 
 export interface SiteHeaderProps {
-  /** Right-side actions slot. Defaults to a Sign-in ghost button. Pass `null` to render nothing. */
+  /**
+   * Right-side actions slot. Defaults to <HeaderAccountMenu />, which renders
+   * the Sign-in pill for anonymous users and an avatar + Log out dropdown for
+   * permanent users. Pass `null` to render nothing.
+   */
   actions?: React.ReactNode;
-  /** Click handler for the default Sign-in button. Ignored if `actions` is provided. */
+  /**
+   * Legacy prop kept for backward compatibility with callers that haven't
+   * migrated to AuthGateProvider yet. Ignored when `actions` is provided and
+   * has no effect on the default <HeaderAccountMenu />, which uses the
+   * AuthGateContext directly.
+   */
   onSignInClick?: () => void;
-  /** Click handler for the wordmark. */
-  onLogoClick?: () => void;
+  /** Click handler for the wordmark. Receives the native click event so
+   *  callers can `preventDefault()` (the wordmark is an <a href={logoHref}>,
+   *  so without preventDefault the browser navigates immediately and any
+   *  `requestLeave`-style modal is bypassed). */
+  onLogoClick?: React.MouseEventHandler<HTMLAnchorElement>;
   /** href for the wordmark link. Defaults to "/". */
   logoHref?: string;
 }
@@ -55,16 +67,12 @@ const Actions = styled.div`
 
 export const SiteHeader: React.FC<SiteHeaderProps> = ({
   actions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for API compatibility; see prop docs above.
   onSignInClick,
   onLogoClick,
   logoHref = '/',
 }) => {
-  const renderedActions =
-    actions === undefined ? (
-      <Button label="Sign in" variant="ghost" onClick={onSignInClick} />
-    ) : (
-      actions
-    );
+  const renderedActions = actions === undefined ? <HeaderAccountMenu /> : actions;
 
   return (
     <Header>

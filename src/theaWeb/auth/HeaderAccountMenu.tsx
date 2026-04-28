@@ -1,14 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useReducer, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, onIdTokenChanged, type Auth, type User } from 'firebase/auth';
 
-import { auth as defaultAuth } from '../../firebaseConfig';
+import { useAuth } from '../firebase/FirebaseContext';
 import { signOutUser } from './accountAuth';
-import { useAuthGate } from './AuthGateContext';
+import { AuthGateContext } from './AuthGateContext';
 
 interface HeaderAccountMenuProps {
-  /** Override the auth instance for tests/stories. */
-  authInstance?: typeof defaultAuth;
+  /** Override the auth instance for tests/stories. Defaults to the FirebaseProvider's auth. */
+  authInstance?: Auth;
   /** Override the resolved user for stories — when set, skips the listener. */
   userOverride?: User | null;
   /** Force the dropdown open (Storybook variants). */
@@ -46,16 +46,10 @@ const Avatar = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   flex-shrink: 0;
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.color.clay};
     outline-offset: 2px;
-  }
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 `;
 
@@ -120,22 +114,46 @@ function initialOf(user: User): string {
 }
 
 export const HeaderAccountMenu: React.FC<HeaderAccountMenuProps> = ({
-  authInstance = defaultAuth,
+  authInstance: authInstanceProp,
   userOverride,
   defaultMenuOpen = false,
 }) => {
-  const { requestSignIn } = useAuthGate();
-  const [user, setUser] = useState<User | null>(
-    userOverride !== undefined ? userOverride : authInstance.currentUser,
-  );
+  // Default to the FirebaseProvider's auth; the prop override remains the
+  // escape hatch for stories and tests that want to inject a stub directly.
+  const ctxAuth = useAuth();
+  const authInstance = authInstanceProp ?? ctxAuth;
+  // Read the gate context safely so this component can render under hosts that
+  // don't mount AuthGateProvider (e.g. Storybook, tests, isolated previews).
+  // When absent, the Sign-in pill becomes a no-op rather than throwing.
+  const gate = useContext(AuthGateContext);
+  const requestSignIn = gate?.requestSignIn;
+  // Force re-render via tick rather than `setState(user)` because Firebase
+  // mutates the User object in place during `linkWithPopup` — so the listener
+  // fires with the same reference React already has in state, and `setState`
+  // bails out via `Object.is`. Reading `authInstance.currentUser` fresh on
+  // each render avoids the bail-out entirely.
+  const [, forceTick] = useReducer((x: number) => x + 1, 0);
   const [menuOpen, setMenuOpen] = useState(defaultMenuOpen);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (userOverride !== undefined) return; // story-driven; skip the listener.
-    const unsub = onAuthStateChanged(authInstance, (next) => setUser(next));
-    return () => unsub();
+    // Subscribe to BOTH listeners. `onIdTokenChanged` covers the in-place
+    // anon→permanent link upgrade where the uid is preserved (and
+    // `onAuthStateChanged` is silent). `onAuthStateChanged` covers cold-load
+    // IndexedDB-restore on page refresh, which `onIdTokenChanged` sometimes
+    // misses due to subscription timing during Auth init. Both feed the same
+    // tick, and rendering reads `authInstance.currentUser` fresh below.
+    const unsubAuth = onAuthStateChanged(authInstance, () => forceTick());
+    const unsubToken = onIdTokenChanged(authInstance, () => forceTick());
+    return () => {
+      unsubAuth();
+      unsubToken();
+    };
   }, [authInstance, userOverride]);
+
+  const user: User | null =
+    userOverride !== undefined ? userOverride : authInstance.currentUser;
 
   // Close on outside click.
   useEffect(() => {
@@ -154,7 +172,10 @@ export const HeaderAccountMenu: React.FC<HeaderAccountMenuProps> = ({
 
   if (!isPermanent) {
     return (
-      <SignInButton type="button" onClick={() => requestSignIn({ mode: 'signin' })}>
+      <SignInButton
+        type="button"
+        onClick={() => requestSignIn?.({ mode: 'signin' })}
+      >
         Sign in
       </SignInButton>
     );
@@ -179,7 +200,7 @@ export const HeaderAccountMenu: React.FC<HeaderAccountMenuProps> = ({
         aria-expanded={menuOpen}
         aria-label="Account menu"
       >
-        {u.photoURL ? <img src={u.photoURL} alt="" /> : <span>{initialOf(u)}</span>}
+        <span>{initialOf(u)}</span>
       </Avatar>
       {menuOpen && (
         <Dropdown role="menu">
@@ -188,7 +209,7 @@ export const HeaderAccountMenu: React.FC<HeaderAccountMenuProps> = ({
             {u.email && u.displayName && <div className="email">{u.email}</div>}
           </DropdownHeader>
           <DropdownItem type="button" role="menuitem" onClick={handleSignOut}>
-            Sign out
+            Log out
           </DropdownItem>
         </Dropdown>
       )}

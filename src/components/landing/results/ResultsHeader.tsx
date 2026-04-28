@@ -2,10 +2,14 @@ import React from 'react';
 import styled from 'styled-components';
 import { TabBar } from '../../ui/TabBar';
 import { badgePop } from '../../../animations';
+import { SiteHeader } from '../SiteHeader';
 import { ResultsTabKey } from './types';
 
 export interface ResultsHeaderProps {
-  /** Right-side action area (md+ only). Stories pass a stand-in account button. */
+  /** Right-side actions slot for the SiteHeader. Caller passes the
+   *  HeaderAccountMenu (signed-in) or leaves undefined for the default Sign-in
+   *  ghost button. Replaces the previous md+-only `rightActions` slot — the
+   *  SiteHeader now renders this at every viewport, matching homepage UX. */
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
   /** Profile pill content. */
@@ -24,23 +28,59 @@ export interface ResultsHeaderProps {
   purchasedBadgePulseKey?: string | number;
 }
 
+// Sticky wrapper for the results header. Holds the search/profile pill row
+// and the tab bar — both stay pinned to the top of the viewport on scroll.
+//
+// Breakpoint behavior:
+// - Mobile (<768px): the wordmark + RightSlot inside PillRow are display:none,
+//   so visually only the search pill + tabs stick. This matches sheet bug #41
+//   ("on mobile, just the search-pill bar should be sticky").
+// - Desktop (>=768px): the full header — wordmark, search pill, sign-in/avatar
+//   in RightSlot, plus the tab bar — all sit inside this single sticky bar
+//   (matches the live preview at preview.givethea.com).
+//
+// z-index 40 sits below the profile drawer (z-index 210) and its scrim
+// (z-index 200) so the drawer overlays the sticky header cleanly.
+//
+// `isolation: isolate` creates a new stacking context so descendant z-index
+// values don't accidentally escape and overlay the drawer scrim.
 const Sticky = styled.div`
   position: sticky;
   top: 0;
   z-index: 40;
   background: ${({ theme }) => theme.color.creamLight};
   isolation: isolate;
+  /* Subtle separator so scrolled-under content doesn't bleed into the bar. */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+`;
+
+/* SiteHeader renders its own background (`hsl(var(--background))`). Wrap it
+   so the results-page sticky chrome reads as one cohesive cream stripe. */
+const HeaderShell = styled.div`
+  background: ${({ theme }) => theme.color.creamLight};
+  /* The SiteHeader's <Header> sets its own background — override here so the
+     wordmark/sign-in row inherits the cream surface that matches the pill
+     row + tabs row beneath it. */
+  & > header {
+    background: transparent;
+  }
 `;
 
 const PillRow = styled.div`
   background: ${({ theme }) => theme.color.creamLight};
-  padding: 16px 16px;
+  padding: 0 16px 16px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 16px;
+  /* Guard against horizontal overflow from long pill content on narrow
+     viewports — without these, flex children default to min-width: auto and
+     can push the row wider than the mobile viewport, which mobile browsers
+     compensate for by zooming the whole page out (sheet bug #34). */
+  min-width: 0;
+  max-width: 100%;
   @media (min-width: 768px) {
-    padding: 24px 40px 20px;
+    padding: 8px 40px 20px;
   }
   @media (min-width: 1024px) {
     padding-left: 40px;
@@ -48,28 +88,14 @@ const PillRow = styled.div`
   }
 `;
 
-const Wordmark = styled.button`
-  display: none;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: ${({ theme }) => theme.font.serif};
-  font-style: italic;
-  letter-spacing: 0.05em;
-  color: ${({ theme }) => theme.color.clay};
-  font-size: 28px;
-  line-height: 1;
-  flex-shrink: 0;
-  @media (min-width: 768px) {
-    display: inline-block;
-  }
-`;
-
 const PillCenter = styled.div`
   flex: 1;
   display: flex;
   justify-content: center;
+  /* Allow the inner pill to shrink below its intrinsic (nowrap) content
+     width on narrow viewports so the interests label can truncate instead
+     of pushing the layout wider than the screen. */
+  min-width: 0;
 `;
 
 const ProfilePill = styled.button`
@@ -85,6 +111,10 @@ const ProfilePill = styled.button`
   cursor: pointer;
   font-family: inherit;
   width: 100%;
+  /* Cap to parent so a long interests label can never push the pill wider
+     than the viewport (sheet bug #34). */
+  max-width: 100%;
+  min-width: 0;
   padding: 14px 20px;
   transition: background-color 150ms ease, transform 150ms ease;
   &:hover { background: #faf7f2; }
@@ -106,6 +136,8 @@ const PillName = styled.span`
   line-height: 1;
   font-size: 16px;
   color: hsl(var(--foreground));
+  white-space: nowrap;
+  flex-shrink: 0;
   @media (min-width: 768px) { font-size: 18px; }
 `;
 
@@ -120,7 +152,13 @@ const PillInterests = styled.span`
   font-size: 14px;
   line-height: 1;
   color: hsl(var(--muted-foreground));
-  max-width: 280px;
+  /* Take whatever room is left in the pill and truncate. The previous
+     fixed max-width: 280px meant a long interests string + emoji + name +
+     pencil could be wider than a 320–375px mobile viewport, which forced
+     the page to zoom out so the user couldn't see the top chrome (sheet
+     bug #34). flex: 1 1 auto + min-width: 0 lets the ellipsis kick in. */
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -132,44 +170,6 @@ const PencilIcon: React.FC = () => (
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
   </svg>
 );
-
-const RightSlot = styled.div`
-  display: none;
-  flex-shrink: 0;
-  @media (min-width: 768px) {
-    display: block;
-  }
-`;
-
-/**
- * Mobile-only top row: logo on the left, account/sign-in slot on the right.
- * On md+ the logo lives inside `PillRow.Wordmark` and `rightActions` lives in
- * `RightSlot`, so this row hides at 768px+. Mirrors the old givethea.com
- * `md:hidden` pattern. Closes QA #25.
- */
-const MobileTopRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px 0;
-  @media (min-width: 768px) {
-    display: none;
-  }
-`;
-
-const MobileWordmark = styled.button`
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: ${({ theme }) => theme.font.serif};
-  font-style: italic;
-  letter-spacing: 0.05em;
-  color: ${({ theme }) => theme.color.clay};
-  font-size: 28px;
-  line-height: 1;
-  flex-shrink: 0;
-`;
 
 const TabsRow = styled.div`
   background: ${({ theme }) => theme.color.creamLight};
@@ -249,17 +249,11 @@ export const ResultsHeader: React.FC<ResultsHeaderProps> = ({
   ];
 
   return (
-    <Sticky>
-      <MobileTopRow>
-        <MobileWordmark type="button" onClick={onLogoClick} aria-label="Home">
-          thea
-        </MobileWordmark>
-        {rightActions}
-      </MobileTopRow>
+    <Sticky data-testid="results-sticky-header">
+      <HeaderShell>
+        <SiteHeader actions={rightActions} onLogoClick={onLogoClick} />
+      </HeaderShell>
       <PillRow>
-        <Wordmark type="button" onClick={onLogoClick} aria-label="Home">
-          thea
-        </Wordmark>
         <PillCenter>
           <ProfilePill type="button" onClick={onProfilePillClick} aria-label="Edit profile">
             <PillEmoji aria-hidden="true">{personEmoji}</PillEmoji>
@@ -270,7 +264,6 @@ export const ResultsHeader: React.FC<ResultsHeaderProps> = ({
             <PencilIcon />
           </ProfilePill>
         </PillCenter>
-        <RightSlot>{rightActions}</RightSlot>
       </PillRow>
       <TabsRow>
         <TabBar tabs={tabs} value={activeTab} onChange={onTabChange} />

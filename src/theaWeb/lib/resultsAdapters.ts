@@ -3,9 +3,12 @@ import type { ResultsProductCardItem } from '../../components/landing/results/ty
 import type {
   CarouselSession,
   Recommendation,
+  RecipientSnapshot,
+  RecommendationInput,
   RecommendationProduct,
   TheaWebRelationshipEnum,
 } from '../schemas';
+import { pickFriendlyName } from './friendlyCarouselNames';
 
 // Wire-enum → display label, mirroring `quizAnswersToRequest`. Used to find
 // the matching emoji entry in `RELATIONSHIPS` when the recipient snapshot
@@ -84,14 +87,30 @@ export interface ResultsCarouselSection {
   products: ResultsProductCardItem[];
 }
 
-export function carouselsToSections(session: CarouselSession): ResultsCarouselSection[] {
+// Convert the `CarouselSession` document into the carousel-section view
+// model the results page renders. The `recipientInput` and
+// `recipientSnapshot` are passed through to `pickFriendlyName` so the
+// section title matches one of the 42 curated old-app names whenever the
+// (occasion, relationship, dominant interest) tuple matches the catalog —
+// bug #17 in Kate's 4/27 bug-bash. Callers that don't yet have the
+// recipient context (older call sites + tests) can omit them; the title
+// will then fall through to the agent's `displayName`.
+export function carouselsToSections(
+  session: CarouselSession,
+  recipientInput?: RecommendationInput,
+  recipientSnapshot?: RecipientSnapshot,
+): ResultsCarouselSection[] {
   return session.carouselOrder
     .filter((key) => key in session.carousels)
     .map((key) => {
       const c = session.carousels[key];
+      const title =
+        recipientInput && recipientSnapshot
+          ? pickFriendlyName(c, recipientInput, recipientSnapshot)
+          : c.displayName;
       return {
         id: key,
-        title: c.displayName,
+        title,
         products: c.products.map(productToCardItem),
       };
     });

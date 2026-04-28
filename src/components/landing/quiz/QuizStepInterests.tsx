@@ -35,11 +35,17 @@ const Title = styled.h2`
 const PillRow = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  /* Bug #13: tighter gap so more chips fit per row and the CTA stays above the fold. */
+  gap: 6px;
 `;
 
 const Pill = styled.button<{ $selected: boolean }>`
-  padding: 8px 16px;
+  /*
+   * Bug #13: horizontal padding reduced 16px -> 10px so more chips fit per row at
+   * 375px width. Vertical padding kept the same (touch target ~36px). Pill design
+   * (rounded full, emoji+label) is unchanged.
+   */
+  padding: 8px 10px;
   border-radius: 9999px;
   font-family: inherit;
   font-size: 16px;

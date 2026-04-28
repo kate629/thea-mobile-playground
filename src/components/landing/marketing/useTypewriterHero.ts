@@ -87,14 +87,20 @@ export function useTypewriterHero(
 
   /* 400ms grace period after typing finishes before fading the card back in.
      Only applied after the first cycle — the initial card is shown
-     immediately for LCP. */
+     immediately for LCP.
+
+     Note: hiding the card on `typingDone === false` is handled
+     synchronously inside the swap → typing transition (see the driver loop
+     below). Doing it here in an effect would land one render late, causing
+     the next scenario's image to flash at full opacity for a single frame
+     before the effect ran and faded it out — the bug this hook had prior to
+     2026-04-27. We keep this effect only for the fade-IN side. */
   useEffect(() => {
     if (!hasCycledRef.current) return undefined;
     if (typingDone) {
       const t = window.setTimeout(() => setShowCard(true), 400);
       return () => window.clearTimeout(t);
     }
-    setShowCard(false);
     return undefined;
   }, [typingDone]);
 
@@ -151,6 +157,13 @@ export function useTypewriterHero(
       // phase === 'swap'
       hasCycledRef.current = true;
       const nextIndex = (activeIndex + 1) % scenarios.length;
+      /* Hide the card BEFORE we flip displayedIndex + phase, in the same
+         setState batch. If we let the typingDone-driven effect handle this,
+         it lands one render late and the next scenario's image renders at
+         full opacity for one frame — the visible "flash" right before the
+         smooth fade-in. The fade-in itself is still gated on the 400ms
+         post-typing timer in the effect above. */
+      setShowCard(false);
       setDisplayedIndex(nextIndex);
       setActiveIndex(nextIndex);
       setTypedCount(1);

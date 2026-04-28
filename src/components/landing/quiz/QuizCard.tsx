@@ -38,9 +38,16 @@ const Body = styled.div`
   padding: 24px;
   display: flex;
   flex-direction: column;
-  min-height: 420px;
+  /*
+   * Sized to fit the tallest natural-content step (interests, ~17 chips + textarea + CTA)
+   * at a 375px viewport. Shorter steps render at this height with extra space below
+   * the StepFrame content (StepFrame uses flex:1 so dots/progress hug the bottom).
+   * Bug #11: keep step height consistent across all steps to avoid the visual lurch.
+   */
+  min-height: 600px;
   @media (min-width: 640px) {
     padding: 32px;
+    min-height: 540px;
   }
 `;
 

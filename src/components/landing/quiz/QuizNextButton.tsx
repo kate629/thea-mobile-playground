@@ -9,7 +9,7 @@ const Button = styled.button`
   width: 220px;
   height: 44px;
   border: none;
-  border-radius: 9999px;
+  border-radius: ${({ theme }) => theme.radius.pill};
   font-family: inherit;
   font-size: 16px;
   font-weight: 600;
@@ -17,14 +17,16 @@ const Button = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f1a805;
-  color: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: background-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+  background: ${({ theme }) => theme.gradient.cta};
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+  transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
   &:hover:not(:disabled) {
-    background: #d9940a;
-    transform: scale(1.02);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: scale(1.03);
+    box-shadow: ${({ theme }) => theme.shadow.xl};
+  }
+  &:active:not(:disabled) {
+    transform: scale(0.99);
   }
   &:disabled {
     background: #f0eeeb;

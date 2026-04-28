@@ -4,11 +4,35 @@ import 'happo/storybook/register';
 import happoDecorator from 'happo/storybook/decorator';
 import { isHappoRun } from 'happo/storybook/register';
 import { ThemeProvider } from 'styled-components';
+import type { Auth } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
 import { theme } from '../src/theme';
+import { FirebaseProvider } from '../src/theaWeb/firebase/FirebaseContext';
 import '../src/index.css';
 
 const themeDecorator = (Story: React.ComponentType) =>
   React.createElement(ThemeProvider, { theme }, React.createElement(Story));
+
+/* Inject a stub Firebase context so stories never trigger real
+   `getAuth(app)` / `getFirestore(app)` — Storybook builds in CI don't have
+   the REACT_APP_FIREBASE_* env vars, and a real call would throw
+   `auth/invalid-api-key`. Components that need a specific user state should
+   pass a `userOverride` (or equivalent) story prop. Stories that need real
+   Firestore data must wrap themselves in a custom FirebaseProvider. */
+const fakeAuth = {
+  currentUser: null,
+  authStateReady: () => Promise.resolve(),
+  onAuthStateChanged: () => () => {},
+  onIdTokenChanged: () => () => {},
+} as unknown as Auth;
+const fakeDb = {} as Firestore;
+const fakeEnsureAuth = async () => 'story-uid';
+const firebaseDecorator = (Story: React.ComponentType) =>
+  React.createElement(
+    FirebaseProvider,
+    { value: { auth: fakeAuth, db: fakeDb, ensureAuth: fakeEnsureAuth } },
+    React.createElement(Story)
+  );
 
 /* Pause CSS animations + transitions only when Happo is the renderer.
    Dev-mode Storybook keeps animations live (the typewriter cursor still
@@ -36,7 +60,12 @@ const happoFreezeAnimationsDecorator = (Story: React.ComponentType) => {
   return React.createElement(Story);
 };
 
-export const decorators = [themeDecorator, happoFreezeAnimationsDecorator, happoDecorator];
+export const decorators = [
+  firebaseDecorator,
+  themeDecorator,
+  happoFreezeAnimationsDecorator,
+  happoDecorator,
+];
 
 /* Viewports keyed to our theme breakpoints + Happo snapshot targets.
    The two `Happo:` entries match `chrome-small` and `chrome-large` in

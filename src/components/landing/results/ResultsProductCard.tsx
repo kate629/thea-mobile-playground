@@ -28,11 +28,15 @@ const Inner = styled.div`
   &:active { transform: scale(0.98); }
 `;
 
+/**
+ * Note: rounded corners + overflow:hidden moved off ImageFrame onto Img so the
+ * overflow menu (anchored on the bottom-right of the image area) can paint
+ * outside the visible image without being clipped (bug #21). The image itself
+ * still clips to the rounded shape via its own border-radius.
+ */
 const ImageFrame = styled.div`
   aspect-ratio: 4 / 5;
-  border-radius: 16px;
-  overflow: hidden;
-  background: hsl(var(--muted));
+  background: transparent;
   position: relative;
 `;
 
@@ -41,12 +45,19 @@ const Img = styled.img`
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 16px;
+  background: hsl(var(--muted));
 `;
 
+/**
+ * 44x44 invisible hit target so the dismiss tap area meets the iOS HIG minimum.
+ * Top/left are 4px so that the centered 36x36 pill lands at top:8/left:8 — visually
+ * matching the HeartButton on the opposite corner (bug #20).
+ */
 const DismissHit = styled.button`
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 4px;
+  left: 4px;
   z-index: 10;
   width: 44px;
   height: 44px;
@@ -65,18 +76,53 @@ const DismissPill = styled.span`
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 9999px;
+  border-radius: ${({ theme }) => theme.radius.pill};
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(4px);
   box-shadow: ${({ theme }) => theme.shadow.card};
   border: 1px solid hsl(var(--border) / 0.7);
 `;
 
+/**
+ * Anchor the dropdown's positioning context to the full card width so the
+ * menu's `right: 0` lands on the card edge instead of on the trigger button's
+ * right edge — keeping "Mark as purchased" inside the card, never leaking
+ * into the neighbor (bug #21).
+ *
+ * Mechanics, no shared-primitive changes:
+ *   - OverflowWrap spans full card width (left/right inset 10px).
+ *   - Force the DropdownMenu's <Wrap> (its only direct child here) to render
+ *     as a full-width block with `text-align: right`, so the inline-block
+ *     trigger button still floats to the right while the inner menu's
+ *     `right: 0` anchors to the OverflowWrap's right edge (= card edge).
+ *   - Override `[role='menu']` min/max width so the shared 180px min-width
+ *     doesn't blow past the slot on mobile (~150px wide cards).
+ *   - `pointer-events: none` on the wrap (with re-enabled on real children)
+ *     so the empty space to the left of the trigger doesn't swallow taps
+ *     on the underlying image area.
+ */
 const OverflowWrap = styled.div`
   position: absolute;
   bottom: 10px;
+  left: 10px;
   right: 10px;
   z-index: 10;
+  pointer-events: none;
+
+  /* DropdownMenu's <Wrap> is the only child; expand it to the full card width
+     and right-align the inline-block trigger inside it. */
+  > div {
+    display: block !important;
+    text-align: right;
+    pointer-events: auto;
+  }
+
+  [role='menu'] {
+    min-width: 0;
+    max-width: 100%;
+    width: max-content;
+    text-align: left;
+  }
 `;
 
 const OverflowButton = styled.button`

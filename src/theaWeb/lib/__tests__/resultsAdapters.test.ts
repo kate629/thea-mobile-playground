@@ -111,6 +111,9 @@ describe('productToCardItem', () => {
 });
 
 describe('carouselsToSections', () => {
+  const baseInput = baseDoc().input;
+  const baseSnapshot = baseDoc().recipientSnapshot;
+
   test('honors carouselOrder, skips missing keys, maps products', () => {
     const session: CarouselSession = {
       status: 'PROCESSING',
@@ -123,10 +126,63 @@ describe('carouselsToSections', () => {
         cooking: { displayName: 'The Kitchen', products: [] },
       },
     };
-    const sections = carouselsToSections(session);
+    const sections = carouselsToSections(session, baseInput, baseSnapshot);
     expect(sections.map((s) => s.id)).toEqual(['gardening', 'cooking']);
+    // Both names are 2-word and not in catalog, so the friendly-name fallback
+    // returns the agent's displayName as-is (last-resort path).
     expect(sections[0]).toMatchObject({ title: 'Green Thumb' });
     expect(sections[0].products[0]).toMatchObject({ id: 'p1', imageUrl: 'x' });
     expect(sections[1].products).toHaveLength(0);
+  });
+
+  test('preserves carousel ordering across the friendly rename', () => {
+    const session: CarouselSession = {
+      status: 'COMPLETE',
+      carouselOrder: ['c_outdoors', 'c_books', 'c_cooking'],
+      carousels: {
+        c_outdoors: {
+          displayName: 'BACKYARD & BEYOND',
+          products: [{ id: 'a', title: 'Tent', price: 100, carousel_tags: ['outdoors'] }],
+        },
+        c_books: {
+          displayName: 'ALWAYS LEARNING',
+          products: [{ id: 'b', title: 'Novel', price: 15, carousel_tags: ['books'] }],
+        },
+        c_cooking: {
+          displayName: 'IN THE KITCHEN',
+          products: [{ id: 'c', title: 'Pan', price: 40, carousel_tags: ['cooking'] }],
+        },
+      },
+    };
+    const input: Recommendation['input'] = {
+      occasion: 'BIRTHDAY',
+      interests: ['Outdoors', 'Books', 'Cooking'],
+      freeform: '',
+    };
+    const snapshot: Recommendation['recipientSnapshot'] = {
+      name: 'Mom',
+      relationship: 'MOM',
+      isMe: false,
+    };
+    const sections = carouselsToSections(session, input, snapshot);
+    expect(sections.map((s) => s.id)).toEqual(['c_outdoors', 'c_books', 'c_cooking']);
+  });
+
+  test('all-caps multi-word agent names get title-cased when no catalog match', () => {
+    const session: CarouselSession = {
+      status: 'COMPLETE',
+      carouselOrder: ['mystery'],
+      carousels: {
+        mystery: {
+          // No catalog entry for "mystery"; products have no useful tags.
+          displayName: 'BACKYARD & BEYOND',
+          products: [{ id: 'p1', title: 'Thing', price: 10 }],
+        },
+      },
+    };
+    const sections = carouselsToSections(session, baseInput, baseSnapshot);
+    expect(sections[0].title).toBe('Backyard & Beyond');
+    // Hard guarantee: no ALL-CAPS leaks through.
+    expect(sections[0].title).not.toEqual(sections[0].title.toUpperCase());
   });
 });

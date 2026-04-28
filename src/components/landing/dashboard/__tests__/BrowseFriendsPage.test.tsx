@@ -1,3 +1,22 @@
+// SiteHeader (transitively imported by BrowseFriendsPage) now defaults to
+// HeaderAccountMenu, which pulls in firebase/auth. jsdom can't parse undici/
+// busboy's TextDecoder usage at import time, so stub the surface we touch.
+jest.mock('firebase/auth', () => {
+  const noop = () => {};
+  return {
+    onAuthStateChanged: () => noop,
+    signOut: () => Promise.resolve(),
+  };
+});
+
+jest.mock('../../../../firebaseConfig', () => ({
+  auth: { currentUser: null },
+}));
+
+jest.mock('../../../../theaWeb/auth/accountAuth', () => ({
+  signOutUser: () => Promise.resolve(),
+}));
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';

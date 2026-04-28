@@ -69,6 +69,9 @@ const CloseButton = styled.button`
 const Body = styled.div`
   flex: 1;
   overflow-y: auto;
+  /* Keep wheel/touch scroll contained — don't chain to the underlying page
+     when the user reaches the top or bottom of the drawer. */
+  overscroll-behavior: contain;
   padding: 16px 20px 24px;
   display: flex;
   flex-direction: column;
