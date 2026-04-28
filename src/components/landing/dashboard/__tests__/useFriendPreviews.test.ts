@@ -141,7 +141,7 @@ describe('createFirestoreFriendPreviewLoader', () => {
       return () => {};
     });
 
-    const loader = createFirestoreFriendPreviewLoader('uid-1');
+    const loader = createFirestoreFriendPreviewLoader('uid-1', { __fakeDb: true } as never);
     const cb = jest.fn();
     const unsub = loader.subscribe('rid-7', cb);
 
@@ -176,7 +176,7 @@ describe('createFirestoreFriendPreviewLoader', () => {
       return () => {};
     });
 
-    const loader = createFirestoreFriendPreviewLoader('uid-1');
+    const loader = createFirestoreFriendPreviewLoader('uid-1', { __fakeDb: true } as never);
     const cb = jest.fn();
     loader.subscribe('rid-7', cb);
 
@@ -185,9 +185,9 @@ describe('createFirestoreFriendPreviewLoader', () => {
   });
 
   it('caches loader instances per uid', () => {
-    const a1 = getFirestoreFriendPreviewLoader('uid-A');
-    const a2 = getFirestoreFriendPreviewLoader('uid-A');
-    const b = getFirestoreFriendPreviewLoader('uid-B');
+    const a1 = getFirestoreFriendPreviewLoader('uid-A', { __fakeDb: true } as never);
+    const a2 = getFirestoreFriendPreviewLoader('uid-A', { __fakeDb: true } as never);
+    const b = getFirestoreFriendPreviewLoader('uid-B', { __fakeDb: true } as never);
     expect(a1).toBe(a2);
     expect(a1).not.toBe(b);
   });

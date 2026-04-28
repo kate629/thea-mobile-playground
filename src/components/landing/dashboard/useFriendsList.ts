@@ -4,7 +4,7 @@ import {
   onSnapshot,
   type Firestore,
 } from 'firebase/firestore';
-import { db as defaultDb } from '../../../firebaseConfig';
+import { useDb } from '../../../theaWeb/firebase/FirebaseContext';
 import {
   recipientCollectionPath,
 } from '../../../theaWeb/schemas/paths';
@@ -26,8 +26,10 @@ export interface UseFriendsListResult {
  */
 export function useFriendsList(
   uid: string | null,
-  firestore: Firestore = defaultDb,
+  firestoreOverride?: Firestore,
 ): UseFriendsListResult {
+  const ctxDb = useDb();
+  const firestore = firestoreOverride ?? ctxDb;
   const [friends, setFriends] = useState<DashboardPerson[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<Error | null>(null);

@@ -15,18 +15,18 @@ let _app = null;
 let _auth = null;
 let _db = null;
 
-function getApp() {
+export function getAppInstance() {
   if (!_app) _app = initializeApp(firebaseConfig);
   return _app;
 }
 
 export function getAuthInstance() {
-  if (!_auth) _auth = getAuth(getApp());
+  if (!_auth) _auth = getAuth(getAppInstance());
   return _auth;
 }
 
 export function getDbInstance() {
-  if (!_db) _db = getFirestore(getApp());
+  if (!_db) _db = getFirestore(getAppInstance());
   return _db;
 }
 
@@ -44,8 +44,29 @@ function lazyProxy(getInstance) {
         const value = inst[prop];
         return typeof value === "function" ? value.bind(inst) : value;
       },
+      set(_target, prop, value) {
+        // Firebase SDK lazily assigns internal state (e.g.
+        // `firestore._firestoreClient = new FirestoreClient(...)`) on first
+        // use. Without a set trap those writes hit the empty Proxy target
+        // and the SDK then reads `undefined` back → crash. Regression
+        // covered by `firebaseConfig.test.ts`.
+        const inst = getInstance();
+        inst[prop] = value;
+        return true;
+      },
       has(_target, prop) {
         return prop in getInstance();
+      },
+      deleteProperty(_target, prop) {
+        return delete getInstance()[prop];
+      },
+      ownKeys() {
+        return Reflect.ownKeys(getInstance());
+      },
+      getOwnPropertyDescriptor(_target, prop) {
+        const desc = Object.getOwnPropertyDescriptor(getInstance(), prop);
+        if (desc) desc.configurable = true;
+        return desc;
       },
       getPrototypeOf() {
         return Object.getPrototypeOf(getInstance());
@@ -83,5 +104,5 @@ export async function ensureAuth() {
 }
 
 /** @type {import('firebase/app').FirebaseApp} */
-const appProxy = lazyProxy(getApp);
+const appProxy = lazyProxy(getAppInstance);
 export default appProxy;

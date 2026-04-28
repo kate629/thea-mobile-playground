@@ -6,7 +6,7 @@ import {
   where,
   type Firestore,
 } from 'firebase/firestore';
-import { db as defaultDb } from '../../../firebaseConfig';
+import { useDb } from '../../../theaWeb/firebase/FirebaseContext';
 import { giftActivityCollectionPath } from '../../../theaWeb/schemas/paths';
 import { AuthState, FriendPreviewLoader } from './types';
 
@@ -100,7 +100,7 @@ export function useFriendPreviews(
  */
 export function createFirestoreFriendPreviewLoader(
   uid: string,
-  firestore: Firestore = defaultDb,
+  firestore: Firestore,
 ): FriendPreviewLoader {
   return {
     subscribe: (recipientId, cb) => {
@@ -139,10 +139,13 @@ export function createFirestoreFriendPreviewLoader(
  * on loader identity) doesn't re-fire on every render.
  */
 const loaderCache = new Map<string, FriendPreviewLoader>();
-export function getFirestoreFriendPreviewLoader(uid: string): FriendPreviewLoader {
+export function getFirestoreFriendPreviewLoader(
+  uid: string,
+  firestore: Firestore,
+): FriendPreviewLoader {
   let loader = loaderCache.get(uid);
   if (!loader) {
-    loader = createFirestoreFriendPreviewLoader(uid);
+    loader = createFirestoreFriendPreviewLoader(uid, firestore);
     loaderCache.set(uid, loader);
   }
   return loader;
@@ -161,5 +164,6 @@ export function __resetFriendPreviewLoaderCache(): void {
 export function useFirestoreFriendPreviewLoader(
   uid: string | null,
 ): FriendPreviewLoader | null {
-  return useMemo(() => (uid ? getFirestoreFriendPreviewLoader(uid) : null), [uid]);
+  const db = useDb();
+  return useMemo(() => (uid ? getFirestoreFriendPreviewLoader(uid, db) : null), [uid, db]);
 }
