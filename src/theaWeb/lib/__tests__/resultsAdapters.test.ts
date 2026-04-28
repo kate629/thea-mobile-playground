@@ -1,5 +1,6 @@
 import {
   carouselsToSections,
+  mergeHeaderWithDraft,
   productToCardItem,
   recipientHeaderProps,
 } from '../resultsAdapters';
@@ -197,5 +198,62 @@ describe('carouselsToSections', () => {
     };
     const sections = carouselsToSections(session, baseInput, baseSnapshot);
     expect(sections[0].title).toBe('Cosmic Mystery Box');
+  });
+});
+
+// Bug #51 followup: header (search pill, saved/purchased grid titles) must
+// reflect in-drawer name/emoji edits before the next regenerate, since the
+// rec doc's snapshot stays frozen until then.
+describe('mergeHeaderWithDraft (bug #51 followup)', () => {
+  const base = {
+    personEmoji: '🌷',
+    personName: 'Mom',
+    interestsLabel: 'Books · Travel',
+  };
+
+  it('returns base unchanged when draft is empty', () => {
+    expect(mergeHeaderWithDraft(base, {})).toEqual(base);
+  });
+
+  it('overrides personName when draft.name is set', () => {
+    const out = mergeHeaderWithDraft(base, { name: 'Mama' });
+    expect(out.personName).toBe('Mama');
+    expect(out.personEmoji).toBe('🌷'); // unchanged
+    expect(out.interestsLabel).toBe('Books · Travel'); // unchanged
+  });
+
+  it('overrides personEmoji when draft.emoji is set', () => {
+    const out = mergeHeaderWithDraft(base, { emoji: '🌹' });
+    expect(out.personEmoji).toBe('🌹');
+    expect(out.personName).toBe('Mom');
+  });
+
+  it('overrides both when draft has both fields', () => {
+    const out = mergeHeaderWithDraft(base, { name: 'Janet', emoji: '⭐' });
+    expect(out.personName).toBe('Janet');
+    expect(out.personEmoji).toBe('⭐');
+  });
+
+  it('falls back to base when draft.name is empty string (treats as unset)', () => {
+    const out = mergeHeaderWithDraft(base, { name: '' });
+    expect(out.personName).toBe('Mom');
+  });
+
+  it('falls back to base when draft.emoji is empty string', () => {
+    const out = mergeHeaderWithDraft(base, { emoji: '' });
+    expect(out.personEmoji).toBe('🌷');
+  });
+
+  it('falls back to base when draft fields are undefined', () => {
+    const out = mergeHeaderWithDraft(base, { name: undefined, emoji: undefined });
+    expect(out).toEqual(base);
+  });
+
+  it('never replaces interestsLabel — that one stays snapshot-driven (algo-trigger)', () => {
+    const out = mergeHeaderWithDraft(base, {
+      name: 'Anything',
+      emoji: '🔥',
+    });
+    expect(out.interestsLabel).toBe(base.interestsLabel);
   });
 });

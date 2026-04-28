@@ -21,9 +21,15 @@ interface UseRegenerate {
   // existing recommendation was generated from. Returns the new
   // {recipientId, recommendationId} so the caller can navigate after the
   // page-level "refreshing" affordance has run.
+  //
+  // Pass `requestOverride` to re-run with an edited payload (e.g. user
+  // changed gender/age/interests/freeform/relationship/occasion/vibes in the
+  // profile drawer — bug #51). When set, the override fully replaces the
+  // snapshot replay; build it via `profileDraftToRegenerateRequest`.
   regenerate: (args: {
     recipientId: string;
     recommendation: Recommendation;
+    requestOverride?: TheaWebSubmitGiftFlowRequest;
   }) => Promise<TheaWebSubmitGiftFlowResponse>;
   reset: () => void;
 }
@@ -95,7 +101,11 @@ export function useRegenerate(): UseRegenerate {
   const inFlightRef = useRef(false);
 
   const regenerate = useCallback(
-    async (args: { recipientId: string; recommendation: Recommendation }) => {
+    async (args: {
+      recipientId: string;
+      recommendation: Recommendation;
+      requestOverride?: TheaWebSubmitGiftFlowRequest;
+    }) => {
       if (inFlightRef.current) {
         throw new Error('Regenerate already in flight');
       }
@@ -103,7 +113,8 @@ export function useRegenerate(): UseRegenerate {
       setState({ status: 'regenerating' });
       try {
         await ensureAuth();
-        const payload = buildRegenerateRequest(args.recipientId, args.recommendation);
+        const payload =
+          args.requestOverride ?? buildRegenerateRequest(args.recipientId, args.recommendation);
         const { data } = await submitGiftFlow(payload);
         kickOffPipeline(payload, data.carouselSessionId);
         setState({ status: 'ready', result: data });

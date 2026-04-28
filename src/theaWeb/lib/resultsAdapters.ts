@@ -66,6 +66,29 @@ export function recipientHeaderProps(doc: Recommendation): RecipientHeaderProps 
   };
 }
 
+/**
+ * Layer in-flight drawer edits on top of the snapshot-derived header props
+ * so the search pill (and saved/purchased grid titles) reflect the user's
+ * live draft name/emoji — both while the drawer is open AND after a
+ * recipient-only auto-save on close (bug #51 followup). The rec doc's
+ * snapshot stays frozen until the next regenerate, so without this override
+ * the pill would show the stale pre-edit name.
+ *
+ * `interestsLabel` deliberately stays snapshot-driven since interest edits
+ * are an algo trigger and don't take effect until "Update picks" creates
+ * a new rec.
+ */
+export function mergeHeaderWithDraft(
+  base: RecipientHeaderProps,
+  draft: { name?: string; emoji?: string },
+): RecipientHeaderProps {
+  return {
+    ...base,
+    personName: draft.name && draft.name.length > 0 ? draft.name : base.personName,
+    personEmoji: draft.emoji && draft.emoji.length > 0 ? draft.emoji : base.personEmoji,
+  };
+}
+
 export function productToCardItem(p: RecommendationProduct): ResultsProductCardItem {
   // Prefer mobile CDN webp, then desktop CDN, then raw scrape URL. ResultsProductCard
   // doesn't yet take separate desktop/mobile srcsets, so we pick the first usable.

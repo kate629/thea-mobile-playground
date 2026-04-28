@@ -16,10 +16,8 @@ import type {
   ResultsProductCardItem,
   ResultsTabKey,
 } from '../../components/landing/results/types';
-import {
-  getInterestPills,
-  getPlaceholderText,
-} from '../../components/landing/quiz/ageBasedContent';
+import { getInterestPills } from '../../components/landing/quiz/ageBasedContent';
+import { getQuizPlaceholder } from '../../components/landing/quiz/useQuizFlow';
 
 import { recordActivity, updateRecipient } from '../callables';
 import { useCarouselSession } from '../hooks/useCarouselSession';
@@ -32,11 +30,13 @@ import { useRedirectOnSignOut } from '../hooks/useRedirectOnSignOut';
 import { useRegenerate } from '../hooks/useRegenerate';
 import {
   carouselsToSections,
+  mergeHeaderWithDraft,
   recipientHeaderProps,
 } from '../lib/resultsAdapters';
 import {
   recommendationToProfileDraft,
   profileDraftToUpdateRecipient,
+  profileDraftToRegenerateRequest,
 } from '../lib/profileDraftAdapter';
 import { useAuthGate } from '../auth/AuthGateContext';
 import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
@@ -225,35 +225,52 @@ const RecommendationResultsPage: React.FC = () => {
 
   // Bug #23 — wire the search-pill pencil to the existing slide-over drawer.
   // Builds the initial draft from the recipient snapshot + recommendation
-  // input frozen on the doc. Recipient-level fields (name/emoji/relationship/
-  // gender/age) commit through `theaWebUpdateRecipient`. The rec-level fields
-  // (occasion/interests/vibes/freeform/price range) need a regenerate path —
-  // tracked separately as bug #24. For now the drawer accepts edits to those
-  // visually but the commit only persists what the recipient callable supports.
+  // input frozen on the doc.
+  //
+  // Bug #51 — the "Update picks" CTA dispatches based on what the user
+  // changed. Algo-triggering fields (gender/age/interests/freeform/
+  // relationship/occasion/vibes) drive a regenerate via `useRegenerate` with
+  // a draft-built payload override; the new recipient state is upserted
+  // server-side as part of the same submitGiftFlow call. Recipient-only
+  // edits (name/emoji) don't enable the button — they auto-save through
+  // `theaWebUpdateRecipient` when the drawer closes.
   const initialDraft = useMemo(
     () => (doc ? recommendationToProfileDraft(doc) : EMPTY_DRAFT),
     [doc],
   );
-  const draftAge = initialDraft.age ?? 30;
-  const draftGender = initialDraft.gender ?? 'other';
-  const interestPills = useMemo(
-    () => getInterestPills(draftAge, draftGender),
-    [draftAge, draftGender],
-  );
-  const freeformPlaceholder = useMemo(
-    () => getPlaceholderText(draftGender, draftAge),
-    [draftGender, draftAge],
+
+  // "Update picks" path — fires only when an algo-triggering field changed
+  // (drawer's `isDirty` gates the button). Builds an override payload and
+  // hands it to `useRegenerate`; on success we navigate to the new rec URL
+  // so the page remounts on fresh results, mirroring `handleRefresh`.
+  const handleUpdatePicks = useCallback(
+    (next: typeof initialDraft) => {
+      if (!recipientId || !doc) return;
+      if (regenerateState.status === 'regenerating') return;
+      const requestOverride = profileDraftToRegenerateRequest(next, recipientId, doc);
+      regenerate({ recipientId, recommendation: doc, requestOverride })
+        .then((res) => {
+          navigate(`/quiz/results/${res.recipientId}/${res.recommendationId}`);
+        })
+        .catch(() => {
+          // state.status === 'error' surfaces inline below.
+        });
+    },
+    [recipientId, doc, regenerateState.status, regenerate, navigate],
   );
 
-  const handleProfileCommit = useCallback(
+  // Auto-save path — only fires on drawer close when the user changed
+  // recipient-only fields (name/emoji). The "Update picks" CTA stays
+  // disabled for these per bug #51, so without this hook the edits would
+  // be silently dropped.
+  const handleAutoSaveOnClose = useCallback(
     (next: typeof initialDraft) => {
       if (!recipientId) return;
       const req = profileDraftToUpdateRecipient(next, recipientId);
-      // Skip when nothing recipient-level changed (only rec-level fields edited).
       if (Object.keys(req).length <= 1) return;
       updateRecipient(req).catch((err) => {
-        // BE listener will heal back to truth on next read; surface to console
-        // for now since the drawer doesn't have a toast surface yet.
+        // BE listener will heal back to truth on next read; surface to
+        // console for now since the drawer has no toast surface yet.
         console.error('updateRecipient failed', err);
       });
     },
@@ -262,8 +279,47 @@ const RecommendationResultsPage: React.FC = () => {
 
   const drawer = useProfileDrawer({
     initial: initialDraft,
-    onCommit: handleProfileCommit,
+    onCommit: handleUpdatePicks,
+    onAutoSaveOnClose: handleAutoSaveOnClose,
   });
+
+  // Reactive to the live draft so the chip set + freeform placeholder
+  // update as the user edits gender/age/relationship inside the drawer
+  // (bug #51). Falling back to sane defaults when those fields are
+  // temporarily cleared keeps the helper functions from blowing up.
+  const liveAge = drawer.draft.age ?? 30;
+  const liveGender = drawer.draft.gender ?? 'other';
+  const liveRelationship = drawer.draft.relationship ?? '';
+  const interestPills = useMemo(
+    () => getInterestPills(liveAge, liveGender),
+    [liveAge, liveGender],
+  );
+  // Relationship-specific copy ("She's been getting into mahjong" for Mom)
+  // — same function the quiz uses, so the textarea hint matches the quiz
+  // step the user just completed.
+  const freeformPlaceholder = useMemo(
+    () => getQuizPlaceholder(liveGender, liveRelationship),
+    [liveGender, liveRelationship],
+  );
+
+  // Live price filter (bug #51) — price is a client-side filter, not an
+  // algo input, so we apply it to the rendered carousels as the user drags
+  // the slider rather than waiting for an Update picks click. Sections that
+  // become empty after filtering are dropped so the user doesn't see
+  // skeleton-shaped empty carousels.
+  const priceMin = drawer.draft.priceMin ?? 0;
+  const priceMax = drawer.draft.priceMax ?? Number.POSITIVE_INFINITY;
+  const filteredSections = useMemo(() => {
+    return sections
+      .map((s) => ({
+        ...s,
+        products: s.products.filter((p) => {
+          if (p.price === undefined || p.price === null) return true;
+          return p.price >= priceMin && p.price <= priceMax;
+        }),
+      }))
+      .filter((s) => s.products.length > 0);
+  }, [sections, priceMin, priceMax]);
 
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
@@ -416,7 +472,16 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  const headerProps = recipientHeaderProps(doc);
+  // Header reads from the rec's frozen `recipientSnapshot` (so old recs
+  // preserve their historical view). For the LIVE rec on screen, layer in
+  // any in-drawer name/emoji edits so the search pill reflects them —
+  // both while the drawer is open (live preview) and after close
+  // (recipient-only edits auto-save via `updateRecipient` but the snapshot
+  // stays stale until the next regenerate). Bug #51 followup.
+  const headerProps = mergeHeaderWithDraft(recipientHeaderProps(doc), {
+    name: drawer.draft.name,
+    emoji: drawer.draft.emoji,
+  });
   const status = session?.status ?? doc.status;
   const errorMessage = session?.errorMessage ?? doc.errorMessage;
 
@@ -467,7 +532,7 @@ const RecommendationResultsPage: React.FC = () => {
           onRefresh={handleRefresh}
           refreshing={isRefreshing}
         >
-          {sections.map((section, i) => (
+          {filteredSections.map((section, i) => (
             <ResultsCarouselAnimated
               key={section.id}
               title={section.title}
@@ -533,6 +598,7 @@ const RecommendationResultsPage: React.FC = () => {
         freeformPlaceholder={freeformPlaceholder}
         onChange={drawer.setField}
         onUpdatePicks={drawer.commit}
+        updatePicksDisabled={!drawer.canCommit}
       />
     </>
   );

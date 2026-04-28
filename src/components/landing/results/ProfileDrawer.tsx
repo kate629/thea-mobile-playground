@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Drawer } from '../../ui/Drawer';
 import { Chip } from '../../ui/Chip';
-import { Slider } from '../../ui/Slider';
+import { RangeSlider } from '../../ui/RangeSlider';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
 import { Input } from '../../ui/Input';
+import { Textarea } from '../../ui/Textarea';
 import { AlertDialog } from '../../ui/AlertDialog';
 import {
   EMOJI_GRID,
@@ -18,6 +19,8 @@ import {
   daysInMonth,
 } from './constants';
 import { RELATIONSHIPS } from '../quiz/constants';
+import { getInterestEmoji } from '../quiz/ageBasedContent';
+import { NEEDS_GENDER_RELATIONSHIPS } from '../quiz/useQuizFlow';
 import { ProfileDraft, ProfileSavedHints } from './types';
 
 export interface ProfileDrawerProps {
@@ -34,6 +37,12 @@ export interface ProfileDrawerProps {
   freeformPlaceholder: string;
   onChange: <K extends keyof ProfileDraft>(field: K, value: ProfileDraft[K]) => void;
   onUpdatePicks: () => void;
+  /**
+   * Disables the "Update picks" CTA. Set when no algo-triggering field has
+   * changed since the drawer opened — see `useProfileDrawer.isDirty` and
+   * bug #51.
+   */
+  updatePicksDisabled?: boolean;
   onRemove?: () => void;
 }
 
@@ -251,6 +260,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   freeformPlaceholder,
   onChange,
   onUpdatePicks,
+  updatePicksDisabled = false,
   onRemove,
 }) => {
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -336,29 +346,32 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             </TwoCol>
           </Section>
 
-          {/* Price */}
+          {/* Price — dual-thumb range; bug #51 mirrors the OLD givethea.com UI */}
           <Section>
             <Label>Price</Label>
             <RangeWrap>
-              <Slider
-                value={draft.priceMax}
+              <RangeSlider
+                value={[draft.priceMin ?? 0, draft.priceMax ?? 200]}
                 min={0}
                 max={200}
                 step={10}
-                onChange={(v) => onChange('priceMax', v)}
-                showValue
-                formatValue={(v) => `$${v}`}
+                ariaLabelLower="Minimum price"
+                ariaLabelUpper="Maximum price"
+                onChange={([next_min, next_max]) => {
+                  onChange('priceMin', next_min);
+                  onChange('priceMax', next_max);
+                }}
               />
               <RangeLabels>
-                <span>${draft.priceMin}</span>
-                <span>${draft.priceMax}+</span>
+                <span>${draft.priceMin ?? 0}</span>
+                <span>${draft.priceMax ?? 200}{(draft.priceMax ?? 200) >= 200 ? '+' : ''}</span>
               </RangeLabels>
             </RangeWrap>
           </Section>
 
           {/* Interests */}
           <Section>
-            <Label saved={savedHints?.interests}>Interests</Label>
+            <Label>Interests</Label>
             <ChipRow>
               {interestPills.map((label) => (
                 <Chip
@@ -366,7 +379,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                   selected={draft.interests.includes(label)}
                   onClick={() => toggleListField('interests', label)}
                 >
-                  {label}
+                  {getInterestEmoji(label, draft.gender)}{label}
                 </Chip>
               ))}
             </ChipRow>
@@ -374,7 +387,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
           {/* Vibes */}
           <Section>
-            <Label saved={savedHints?.vibes}>Vibes</Label>
+            <Label>Vibes</Label>
             <ChipRow>
               {visibleVibes.map((label) => (
                 <Chip
@@ -393,25 +406,30 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
           {/* Freeform */}
           <Section>
-            <Label saved={savedHints?.moreAbout}>Tell us more</Label>
-            <Input
-              value={draft.moreAbout}
+            <Label>Tell us more</Label>
+            <Textarea
+              value={draft.moreAbout ?? ''}
               onChange={(e) => onChange('moreAbout', e.target.value)}
               placeholder={freeformPlaceholder}
-              fullWidth
             />
           </Section>
 
-          {/* Gender */}
-          <Section>
-            <Label>Gender</Label>
-            <Select
-              value={draft.gender ?? ''}
-              onChange={(e) => onChange('gender', e.target.value as ProfileDraft['gender'])}
-              placeholder="Select"
-              options={GENDER_OPTIONS.map((o) => ({ value: o.value, label: `${o.emoji} ${o.label}` }))}
-            />
-          </Section>
+          {/* Gender — only surfaced for ambiguous relationships (Partner /
+              Friend / Me! / Other). Unambiguous ones (Mom, Brother, etc.)
+              auto-derive gender from the relationship via useProfileDrawer
+              and hide the picker, mirroring the quiz's NEEDS_GENDER gating.
+              Bug #51 followup. */}
+          {NEEDS_GENDER_RELATIONSHIPS.includes(draft.relationship ?? '') && (
+            <Section>
+              <Label>Gender</Label>
+              <Select
+                value={draft.gender ?? ''}
+                onChange={(e) => onChange('gender', e.target.value as ProfileDraft['gender'])}
+                placeholder="Select"
+                options={GENDER_OPTIONS.map((o) => ({ value: o.value, label: `${o.emoji} ${o.label}` }))}
+              />
+            </Section>
+          )}
 
           {/* Relationship */}
           <Section>
@@ -453,7 +471,12 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
           )}
         </Body>
         <Footer>
-          <Button label="Update picks" onClick={onUpdatePicks} size="md" />
+          <Button
+            label="Update picks"
+            onClick={onUpdatePicks}
+            size="md"
+            disabled={updatePicksDisabled}
+          />
         </Footer>
       </Container>
 
