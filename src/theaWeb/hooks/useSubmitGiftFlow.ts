@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useEnsureAuth } from '../firebase/FirebaseContext';
 import { getCarouselFeed, getFastCarouselFeed } from '../../firebaseFunctions';
 import { submitGiftFlow } from '../callables';
+import { gaQuizSearchSubmitted } from '../lib/gaPixel';
 import { ageBucket, metaQuizSearchSubmitted } from '../lib/metaPixel';
 import { quizAnswersToRequest } from '../lib/quizAnswersToRequest';
 import { relationshipToAgentValue } from '../lib/relationshipToAgentValue';
@@ -64,14 +65,16 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
       const payload = quizAnswersToRequest(answers);
       const { data } = await submitGiftFlow(payload);
       kickOffPipeline(payload, data.carouselSessionId);
-      // Fire Meta pixel after the callable resolves successfully — anonymized
-      // funnel params only (no name / uid / recipientId).
-      metaQuizSearchSubmitted({
+      // Fire Meta + GA4 pixels after the callable resolves successfully —
+      // anonymized funnel params only (no name / uid / recipientId).
+      const funnelParams = {
         occasion: payload.input.occasion,
         relationship: payload.recipient.relationship,
         age_bucket: ageBucket(payload.recipient.age ?? undefined),
         interest_count: payload.input.interests?.length ?? 0,
-      });
+      };
+      metaQuizSearchSubmitted(funnelParams);
+      gaQuizSearchSubmitted(funnelParams);
       setState({ status: 'ready', result: data });
       return data;
     } catch (err) {

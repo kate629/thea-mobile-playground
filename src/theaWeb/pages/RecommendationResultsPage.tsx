@@ -40,6 +40,7 @@ import {
 import { useAuthGate } from '../auth/AuthGateContext';
 import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { useAuth } from '../firebase/FirebaseContext';
+import { gaQuizResultsViewed, gaSelectItem } from '../lib/gaPixel';
 import { ageBucket, metaQuizResultsViewed, metaViewContent } from '../lib/metaPixel';
 
 const ProcessingHint = styled.p`
@@ -157,14 +158,16 @@ const RecommendationResultsPage: React.FC = () => {
     if (sessStatus !== 'COMPLETED') return;
     if (sections.length === 0) return;
     const productCount = sections.reduce((acc, s) => acc + s.products.length, 0);
-    metaQuizResultsViewed({
+    const resultsParams = {
       occasion: doc?.input?.occasion,
       relationship: doc?.recipientSnapshot?.relationship,
       age_bucket: ageBucket(doc?.recipientSnapshot?.age ?? undefined),
       interest_count: doc?.input?.interests?.length ?? 0,
       carousel_count: sections.length,
       product_count: productCount,
-    });
+    };
+    metaQuizResultsViewed(resultsParams);
+    gaQuizResultsViewed(resultsParams);
     setPixelResultsFired(true);
   }, [pixelResultsFired, session?.status, doc, sections]);
 
@@ -315,13 +318,21 @@ const RecommendationResultsPage: React.FC = () => {
 
   const handleProductClick = useCallback(
     (item: ResultsProductCardItem) => {
-      // Fire pixel BEFORE opening the new tab so a popup-blocker / mobile
+      // Fire pixels BEFORE opening the new tab so a popup-blocker / mobile
       // Safari race never strands the event.
+      const category = carouselTitleById.get(item.id) || 'quiz_results';
       metaViewContent({
         content_name: item.title,
         content_ids: [item.id],
-        content_category: carouselTitleById.get(item.id) || 'quiz_results',
+        content_category: category,
         value: item.price,
+        currency: 'USD',
+      });
+      gaSelectItem({
+        item_id: item.id,
+        item_name: item.title,
+        item_category: category,
+        price: item.price,
         currency: 'USD',
       });
       if (item.productUrl) {

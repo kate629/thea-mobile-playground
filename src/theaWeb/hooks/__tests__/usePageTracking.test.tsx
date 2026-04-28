@@ -24,19 +24,23 @@ function NavigateButton({ to }: { to: string }) {
 
 describe('usePageTracking', () => {
   let fbq: jest.Mock;
+  let gtag: jest.Mock;
 
   beforeEach(() => {
     fbq = jest.fn();
+    gtag = jest.fn();
     (window as unknown as { fbq?: unknown }).fbq = fbq;
+    (window as unknown as { gtag?: unknown }).gtag = gtag;
     mockIsBot.mockReset();
     mockIsBot.mockReturnValue(false);
   });
 
   afterEach(() => {
     delete (window as unknown as { fbq?: unknown }).fbq;
+    delete (window as unknown as { gtag?: unknown }).gtag;
   });
 
-  test('fires PageView on initial mount', () => {
+  test('fires PageView on both Meta and GA on initial mount', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <PageTrackingMount />
@@ -44,9 +48,11 @@ describe('usePageTracking', () => {
     );
     expect(fbq).toHaveBeenCalledWith('track', 'PageView');
     expect(fbq).toHaveBeenCalledTimes(1);
+    expect(gtag).toHaveBeenCalledWith('event', 'page_view', expect.any(Object));
+    expect(gtag).toHaveBeenCalledTimes(1);
   });
 
-  test('fires PageView again on route change', () => {
+  test('fires PageView on both pixels again on route change', () => {
     const { getByTestId } = render(
       <MemoryRouter initialEntries={['/']}>
         <PageTrackingMount />
@@ -57,6 +63,7 @@ describe('usePageTracking', () => {
       </MemoryRouter>,
     );
     expect(fbq).toHaveBeenCalledTimes(1);
+    expect(gtag).toHaveBeenCalledTimes(1);
 
     act(() => {
       getByTestId('nav-/quiz').click();
@@ -64,9 +71,11 @@ describe('usePageTracking', () => {
 
     expect(fbq).toHaveBeenCalledTimes(2);
     expect(fbq).toHaveBeenLastCalledWith('track', 'PageView');
+    expect(gtag).toHaveBeenCalledTimes(2);
+    expect(gtag).toHaveBeenLastCalledWith('event', 'page_view', expect.any(Object));
   });
 
-  test('does not fire when bot detected', () => {
+  test('does not fire either pixel when bot detected', () => {
     mockIsBot.mockReturnValue(true);
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -74,10 +83,12 @@ describe('usePageTracking', () => {
       </MemoryRouter>,
     );
     expect(fbq).not.toHaveBeenCalled();
+    expect(gtag).not.toHaveBeenCalled();
   });
 
-  test('does not throw when fbq is undefined', () => {
+  test('does not throw when fbq and gtag are undefined', () => {
     delete (window as unknown as { fbq?: unknown }).fbq;
+    delete (window as unknown as { gtag?: unknown }).gtag;
     expect(() =>
       render(
         <MemoryRouter initialEntries={['/']}>

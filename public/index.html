@@ -50,6 +50,15 @@
       fbq('init', '2511117595971258');
     </script>
     <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2511117595971258&ev=PageView&noscript=1" /></noscript>
+
+    <!-- Google Analytics 4 (send_page_view:false — usePageTracking hook owns every page_view fire so SPA route changes are attributed) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KV1K3W6CLJ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-KV1K3W6CLJ', { send_page_view: false });
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
