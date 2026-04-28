@@ -1,4 +1,9 @@
-import type { Recommendation, TheaWebGenderEnum, TheaWebRelationshipEnum } from '../schemas';
+import type {
+  Recommendation,
+  TheaWebGenderEnum,
+  TheaWebOccasionEnum,
+  TheaWebRelationshipEnum,
+} from '../schemas';
 import type { TheaWebUpdateRecipientRequest } from '../schemas/endpoints/theaWebUpdateRecipient';
 import type { ProfileDraft } from '../../components/landing/results/types';
 
@@ -53,19 +58,61 @@ const DRAFT_TO_GENDER: Record<NonNullable<ProfileDraft['gender']>, TheaWebGender
   other: 'NON_BINARY',
 };
 
+/**
+ * Wire occasion enum → display string used by `OCCASION_OPTIONS` in
+ * `src/components/landing/results/constants.ts`. The drawer's <Select>
+ * matches `draft.occasion` against the option `value` strings, so the
+ * draft must speak the display vocabulary — not the schema enum.
+ *
+ * Mirrors `OCCASION_BY_DISPLAY` in `quizAnswersToRequest.ts` (display →
+ * enum); both maps should stay in sync. Worth deduping in a follow-up.
+ *
+ * Bug context: until 2026-04-28 the FE wire adapter hardcoded
+ * 'JUST_BECAUSE' for every quiz, which masked this display-mismatch bug
+ * — the dropdown couldn't match 'JUST_BECAUSE' against any option value
+ * either, but the broken state was uniform so no one noticed. After the
+ * occasion-fix shipped, the bug surfaced because the dropdown still
+ * couldn't find 'MOTHERS_DAY'/'BIRTHDAY'/etc. in its list of display
+ * strings → fell back to first option ("Birthday").
+ */
+const WIRE_TO_OCCASION_DISPLAY: Partial<Record<TheaWebOccasionEnum, string>> = {
+  BIRTHDAY: 'Birthday',
+  ANNIVERSARY: 'Anniversary',
+  MOTHERS_DAY: "Mother's Day",
+  FATHERS_DAY: "Father's Day",
+  GRADUATION: 'Graduation',
+  HOUSEWARMING: 'Housewarming',
+  NEW_BABY: 'New Baby',
+  WEDDING: 'Wedding',
+  THANK_YOU: 'Thank You',
+  JUST_BECAUSE: 'Just Because',
+  OTHER: 'Other',
+  // CHRISTMAS / HANUKKAH / VALENTINES_DAY exist on the schema enum but
+  // aren't in the quiz's BASE_OCCASION_OPTIONS or the drawer's
+  // OCCASION_OPTIONS, so falling through to undefined is correct — the
+  // user couldn't have selected them through the quiz UI.
+};
+
 const DEFAULT_PRICE_MIN = 25;
 const DEFAULT_PRICE_MAX = 200;
 
 /** Build the initial draft the drawer opens with from the recommendation doc. */
 export function recommendationToProfileDraft(doc: Recommendation): ProfileDraft {
   const { recipientSnapshot: snap, input } = doc;
+  // `input.occasion` is a wire enum like 'MOTHERS_DAY'. The drawer's
+  // dropdown speaks display strings ('Mother's Day'). Translate so the
+  // dropdown can match. `input.occasionLabel` is the free-text override
+  // for OTHER picks (e.g. user types "Pet adoption") — surface that
+  // verbatim when set.
+  const occasionDisplay =
+    input.occasionLabel ?? WIRE_TO_OCCASION_DISPLAY[input.occasion] ?? input.occasion;
   return {
     emoji: snap.emoji ?? '✨',
     name: snap.name,
     gender: snap.gender ? GENDER_TO_DRAFT[snap.gender] : undefined,
     relationship: REL_TO_DISPLAY[snap.relationship],
     age: snap.age,
-    occasion: input.occasionLabel ?? input.occasion,
+    occasion: occasionDisplay,
     priceMin: DEFAULT_PRICE_MIN,
     priceMax: DEFAULT_PRICE_MAX,
     interests: [...input.interests],

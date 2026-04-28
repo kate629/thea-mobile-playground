@@ -47,11 +47,39 @@ describe('recommendationToProfileDraft', () => {
     });
   });
 
-  it('falls back to the schema occasion when no label is set', () => {
-    const draft = recommendationToProfileDraft(
+  it('translates wire occasion enum to display string when no label is set (drawer-dropdown match)', () => {
+    // The drawer's <Select> uses display strings for option values
+    // ('Mother's Day', 'Birthday', etc.). The recommendation doc stores
+    // the wire enum ('MOTHERS_DAY', 'BIRTHDAY'). Adapter translates so
+    // the dropdown finds a matching option instead of falling back to
+    // its first option (Birthday) — which had been masking the bug
+    // pre-PR #78 because every quiz silently sent JUST_BECAUSE.
+    const draftBirthday = recommendationToProfileDraft(
       baseDoc({ input: { occasion: 'BIRTHDAY', interests: [], freeform: '' } }),
     );
-    expect(draft.occasion).toBe('BIRTHDAY');
+    expect(draftBirthday.occasion).toBe('Birthday');
+
+    const draftMothers = recommendationToProfileDraft(
+      baseDoc({ input: { occasion: 'MOTHERS_DAY', interests: [], freeform: '' } }),
+    );
+    expect(draftMothers.occasion).toBe("Mother's Day");
+
+    const draftFathers = recommendationToProfileDraft(
+      baseDoc({ input: { occasion: 'FATHERS_DAY', interests: [], freeform: '' } }),
+    );
+    expect(draftFathers.occasion).toBe("Father's Day");
+
+    const draftJustBecause = recommendationToProfileDraft(
+      baseDoc({ input: { occasion: 'JUST_BECAUSE', interests: [], freeform: '' } }),
+    );
+    expect(draftJustBecause.occasion).toBe('Just Because');
+  });
+
+  it('passes occasionLabel through verbatim when set (free-text OTHER override)', () => {
+    const draft = recommendationToProfileDraft(
+      baseDoc({ input: { occasion: 'OTHER', occasionLabel: 'Pet adoption', interests: [], freeform: '' } }),
+    );
+    expect(draft.occasion).toBe('Pet adoption');
   });
 
   it('uses ✨ as the emoji fallback when the snapshot has none', () => {
