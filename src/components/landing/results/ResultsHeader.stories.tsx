@@ -69,6 +69,27 @@ export const ActivePurchased = {
   ),
 };
 
+/**
+ * Mobile-only layout — pinned to the small viewport so Happo baselines the
+ * `MobileTopRow` (logo + sign-in row above the profile pill) explicitly.
+ * Closes QA #25. The Default story already snapshots at both viewports
+ * via Happo's chrome-large/chrome-small targets, but documenting mobile
+ * here makes the intent obvious to anyone reading the storybook.
+ */
+export const Mobile = {
+  parameters: { happo: { targets: ['chrome-small'] } },
+  render: () => (
+    <div style={{ background: '#fff', minHeight: 240 }}>
+      <ResultsHeader
+        {...baseArgs}
+        activeTab="recommended"
+        likedCount={0}
+        purchasedCount={0}
+      />
+    </div>
+  ),
+};
+
 export const Live = {
   parameters: { happo: false },
   render: () => {

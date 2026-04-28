@@ -141,6 +141,36 @@ const RightSlot = styled.div`
   }
 `;
 
+/**
+ * Mobile-only top row: logo on the left, account/sign-in slot on the right.
+ * On md+ the logo lives inside `PillRow.Wordmark` and `rightActions` lives in
+ * `RightSlot`, so this row hides at 768px+. Mirrors the old givethea.com
+ * `md:hidden` pattern. Closes QA #25.
+ */
+const MobileTopRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 0;
+  @media (min-width: 768px) {
+    display: none;
+  }
+`;
+
+const MobileWordmark = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: ${({ theme }) => theme.font.serif};
+  font-style: italic;
+  letter-spacing: 0.05em;
+  color: ${({ theme }) => theme.color.clay};
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+`;
+
 const TabsRow = styled.div`
   background: ${({ theme }) => theme.color.creamLight};
   padding: 0 16px;
@@ -220,6 +250,12 @@ export const ResultsHeader: React.FC<ResultsHeaderProps> = ({
 
   return (
     <Sticky>
+      <MobileTopRow>
+        <MobileWordmark type="button" onClick={onLogoClick} aria-label="Home">
+          thea
+        </MobileWordmark>
+        {rightActions}
+      </MobileTopRow>
       <PillRow>
         <Wordmark type="button" onClick={onLogoClick} aria-label="Home">
           thea

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Alert, Spinner } from 'react-bootstrap';
 
 import { ResultsPage } from '../../components/landing/results/ResultsPage';
+import { AlertDialog } from '../../components/ui/AlertDialog';
 import { ResultsDiscoverTab } from '../../components/landing/results/ResultsDiscoverTab';
 import { ResultsCarouselAnimated } from '../../components/landing/results/ResultsCarouselAnimated';
 import { SkeletonResultsCarousel } from '../../components/landing/results/ResultsCarousel';
@@ -18,6 +19,7 @@ import { recordActivity } from '../callables';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
 import { useGiftActivities } from '../hooks/useGiftActivities';
+import { useLeaveWarning } from '../hooks/useLeaveWarning';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
 import {
   carouselsToSections,
@@ -52,6 +54,11 @@ const RecommendationResultsPage: React.FC = () => {
   const { liked, dismissed, purchased, hydrated } = useGiftActivities(recipientId);
 
   const [activeTab, setActiveTab] = useState<ResultsTabKey>('recommended');
+  // Logo-click confirmation: navigating away loses the in-flight quiz
+  // results (the rec doc is preserved server-side, but reaching it again
+  // requires re-quizzing for anon users). Mirror the OLD givethea.com
+  // pattern: AlertDialog with "Stay" / "Leave" before navigating home.
+  const leaveWarning = useLeaveWarning('/');
   const exitingIds = useExitAnimationQueue(liked, hydrated, EXIT_ANIMATION_MS);
 
   // Optimistic heart fill: between click and the BE listener pushing the
@@ -288,6 +295,7 @@ const RecommendationResultsPage: React.FC = () => {
   return (
     <ResultsPage
       {...headerProps}
+      onLogoClick={leaveWarning.requestLeave}
       // TODO: open a profile drawer that wires to updateRecipient.
       onProfilePillClick={() => {}}
       rightActions={<HeaderAccountMenu />}
@@ -295,6 +303,16 @@ const RecommendationResultsPage: React.FC = () => {
       onTabChange={setActiveTab}
       likedCount={liked.size}
       purchasedCount={purchased.size}
+      drawers={
+        <AlertDialog
+          open={leaveWarning.open}
+          onClose={leaveWarning.cancelLeave}
+          title="Leave your gift results?"
+          description="You'll need to retake the quiz to see these recommendations again."
+          primaryAction={{ label: 'Leave', onClick: leaveWarning.confirmLeave, variant: 'primary' }}
+          secondaryAction={{ label: 'Stay', onClick: leaveWarning.cancelLeave, variant: 'ghost' }}
+        />
+      }
     >
       {activeTab === 'recommended' && discoverBody}
       {activeTab === 'liked' && (
