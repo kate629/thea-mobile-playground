@@ -71,13 +71,18 @@ export function productToCardItem(p: RecommendationProduct): ResultsProductCardI
   // doesn't yet take separate desktop/mobile srcsets, so we pick the first usable.
   const imageUrl =
     p.images_cdn_mobile?.[0] ?? p.images_cdn?.[0] ?? p.images?.[0] ?? '';
+  // Prefer the precomputed Sovrn-wrapped URL (bug #30) so the buy-click
+  // earns affiliate revenue without a backend round-trip. Falls back to
+  // the plain merchant URL if a product was written before the wrap was
+  // computed — degrades gracefully, never blocks the click.
+  const productUrl = p.affiliateUrl ?? p.url;
   return {
     id: p.id,
     imageUrl,
     title: p.title,
     brand: p.brand,
     price: p.price,
-    productUrl: p.url,
+    productUrl,
   };
 }
 

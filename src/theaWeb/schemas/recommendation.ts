@@ -21,6 +21,11 @@ export interface RecommendationProduct {
   interests?: string[];
   description?: string;
   url?: string;
+  // Sovrn affiliate redirect URL (bug #30). Populated by the on_product_written
+  // trigger + weekly safety-net backfill in thea-serverless. Optional — products
+  // wrapped before the trigger deployed may still be missing this field, in
+  // which case the buy-click falls back to plain `url`.
+  affiliateUrl?: string;
   carousel_tags?: string[];
 }
 

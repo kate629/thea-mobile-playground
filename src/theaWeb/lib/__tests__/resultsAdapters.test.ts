@@ -108,6 +108,17 @@ describe('productToCardItem', () => {
     const c = productToCardItem(base);
     expect(c).toMatchObject({ id: 'p1', title: 'Title', price: 25, brand: 'Brand', productUrl: 'https://example.com' });
   });
+
+  test('prefers affiliateUrl over plain url when present (bug #30)', () => {
+    const wrapped = 'https://redirect.viglink.com?key=k&u=https%3A%2F%2Fexample.com&cuid=p1';
+    const c = productToCardItem({ ...base, affiliateUrl: wrapped });
+    expect(c.productUrl).toBe(wrapped);
+  });
+
+  test('falls back to plain url when affiliateUrl is absent (bug #30)', () => {
+    const c = productToCardItem(base);  // no affiliateUrl
+    expect(c.productUrl).toBe('https://example.com');
+  });
 });
 
 describe('carouselsToSections', () => {
