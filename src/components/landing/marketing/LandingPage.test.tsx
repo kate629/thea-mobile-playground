@@ -30,6 +30,10 @@ jest.mock('./BrowseMyFriendsSection', () => ({
   __esModule: true,
   BrowseMyFriendsSection: () => null,
 }));
+jest.mock('../../../theaWeb/auth/HeaderAccountMenu', () => ({
+  __esModule: true,
+  HeaderAccountMenu: () => null,
+}));
 jest.mock('../../../firebaseConfig', () => ({
   __esModule: true,
   auth: { currentUser: null, onAuthStateChanged: () => () => {} },
@@ -87,12 +91,13 @@ describe('LandingPage — sticky CTA Sign-in slot gating (bug #59)', () => {
     expect(within(desktop).queryByRole('button', { name: 'Sign in', hidden: true })).toBeInTheDocument();
   });
 
-  it('hides Sign-in slot in both sticky surfaces when signed-in (bug #59)', () => {
+  it('does NOT render the StickyPrimaryCta at all when signed-in (sheet bug #66 supersedes #59 here)', () => {
+    // Signed-in users get the sticky SearchPill chrome instead of the
+    // "Find a gift" sticky CTA — the CTA was redundant since the
+    // SearchPill is itself the search action.
     renderPage({ authOverride: 'signed-in', onSignInClick: () => undefined });
-    const mobile = screen.getByTestId('sticky-primary-cta-mobile');
-    const desktop = screen.getByTestId('sticky-primary-cta-desktop');
-    expect(within(mobile).queryByRole('button', { name: 'Sign in', hidden: true })).not.toBeInTheDocument();
-    expect(within(desktop).queryByRole('button', { name: 'Sign in', hidden: true })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sticky-primary-cta-mobile')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sticky-primary-cta-desktop')).not.toBeInTheDocument();
   });
 
   it('hides Sign-in slot during the auth-bootstrap window (ready=false)', () => {
@@ -108,5 +113,32 @@ describe('LandingPage — sticky CTA Sign-in slot gating (bug #59)', () => {
     renderPage({ authOverride: 'signed-out' });
     const mobile = screen.getByTestId('sticky-primary-cta-mobile');
     expect(within(mobile).queryByRole('button', { name: 'Sign in', hidden: true })).not.toBeInTheDocument();
+  });
+});
+
+describe('LandingPage — signed-in sticky search chrome (bug #66)', () => {
+  it('renders the sticky chrome wrapper when signed-in', () => {
+    renderPage({ authOverride: 'signed-in' });
+    expect(screen.getByTestId('signed-in-stuck-search-bar')).toBeInTheDocument();
+  });
+
+  it('does NOT render the sticky chrome wrapper when signed-out', () => {
+    renderPage({ authOverride: 'signed-out' });
+    expect(screen.queryByTestId('signed-in-stuck-search-bar')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the sticky chrome wrapper during the auth-bootstrap window', () => {
+    // While `ready` is false the marketing hero (signed-out branch) renders;
+    // the sticky search chrome only mounts once the user is confirmed signed-in.
+    renderPage({ authOverride: 'loading' });
+    expect(screen.queryByTestId('signed-in-stuck-search-bar')).not.toBeInTheDocument();
+  });
+
+  it('renders the StickyPrimaryCta for signed-out users (chrome split)', () => {
+    // Signed-out users still get the original "Find a gift" sticky CTA —
+    // they have no SearchPill to make sticky.
+    renderPage({ authOverride: 'signed-out', onSignInClick: () => undefined });
+    expect(screen.getByTestId('sticky-primary-cta-mobile')).toBeInTheDocument();
+    expect(screen.queryByTestId('signed-in-stuck-search-bar')).not.toBeInTheDocument();
   });
 });

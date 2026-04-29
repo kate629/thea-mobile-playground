@@ -213,4 +213,29 @@ describe('SearchPill', () => {
       );
     });
   });
+
+  describe('compact prop (sheet bug #66)', () => {
+    it('marks the wrap with data-search-pill-compact when compact is true', () => {
+      renderPill({ compact: true });
+      // CSS that hides segment-value text on mobile keys off this attribute
+      // via parent-selector. JSX sets it; CSS does the rest.
+      const wrap = document.querySelector('[data-search-pill-compact="true"]');
+      expect(wrap).toBeInTheDocument();
+    });
+
+    it('does NOT mark the wrap when compact is false (default)', () => {
+      renderPill();
+      const wrap = document.querySelector('[data-search-pill-compact="true"]');
+      expect(wrap).not.toBeInTheDocument();
+    });
+
+    it('still renders the WHO / WHAT / LIKES segment buttons in compact mode', () => {
+      renderPill({ compact: true });
+      // Labels (and the buttons themselves) stay mounted; only the VALUE
+      // text is hidden via CSS on mobile. JSX-side both render.
+      expect(screen.getByRole('button', { name: /who/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /what/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /likes/i })).toBeInTheDocument();
+    });
+  });
 });

@@ -28,6 +28,14 @@ export interface SearchPillProps {
   initialOpenSegment?: SearchPillSegment | null;
   /** When true, skips the outside-click handler — useful in stories that pin a dropdown open. */
   disableOutsideClick?: boolean;
+  /**
+   * Compact mode: hides the segment value text on mobile (only the
+   * uppercase WHO / WHAT / LIKES label remains). Naturally narrower so
+   * the sparkle button fits on small screens. Used by the stuck sticky
+   * search bar on the signed-in homepage (sheet bug #66). Desktop is
+   * unaffected — full-width pill with values stays.
+   */
+  compact?: boolean;
   className?: string;
 }
 
@@ -110,6 +118,16 @@ const SegmentValue = styled.span<{ $placeholder: boolean }>`
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+
+  /* Compact mode (sheet bug #66): when the SearchPill is rendered inside
+     the stuck sticky bar, hide the value text on mobile so only the
+     uppercase WHO / WHAT / LIKES label remains and the sparkle button
+     fits on screen. Desktop keeps values visible — there's room. */
+  [data-search-pill-compact='true'] & {
+    @media (max-width: 767.98px) {
+      display: none;
+    }
+  }
 `;
 
 const ClearButton = styled.button`
@@ -242,6 +260,7 @@ export const SearchPill: React.FC<SearchPillProps> = ({
   onSubmit,
   initialOpenSegment = null,
   disableOutsideClick = false,
+  compact = false,
   className,
 }) => {
   const state = useSearchPillState();
@@ -291,7 +310,11 @@ export const SearchPill: React.FC<SearchPillProps> = ({
   }, [state, onSubmit]);
 
   return (
-    <Wrap ref={wrapRef} className={className}>
+    <Wrap
+      ref={wrapRef}
+      className={className}
+      data-search-pill-compact={compact ? 'true' : undefined}
+    >
       <Pill>
         <SegmentButton
           type="button"
