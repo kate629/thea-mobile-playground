@@ -11,10 +11,26 @@ const isSentinel = (state: unknown): state is SentinelState =>
   typeof state === 'object' && state !== null && (state as SentinelState)[SENTINEL_KEY] === true;
 
 export interface BackButtonGuard {
-  /** Disarms the guard and actually navigates back one step.
-   *  Wire to the leave-warning AlertDialog's primary "Leave" action so
-   *  confirming the warning lets the original back-nav proceed. */
-  release: () => void;
+  /** Disarms the guard and pops the history stack.
+   *
+   *  Default (`extraDepth = 0`): pops ONE entry — just the sentinel. Lands
+   *  the user back on /quiz (or wherever the guard was armed). Use this for
+   *  the simple "user pressed back, confirmed, let the original back proceed"
+   *  case where the entry-point is one back-press away (which is the natural
+   *  semantics of a single browser back).
+   *
+   *  With `extraDepth > 0`: pops `1 + extraDepth` entries. Use this when you
+   *  want browser-native scroll restoration to fire on a deeper destination
+   *  — e.g., the quiz was reached via `navigate('/quiz')` from
+   *  `/occasion/mothers_day`, so popping the sentinel + the /quiz entry
+   *  (extraDepth=1) lands the user back on the occasion page with their
+   *  scroll position restored by the browser's popstate handling.
+   *
+   *  Each pop emits a popstate event; the guard's handler stays disarmed
+   *  for exactly the count of entries it just popped, so intermediate
+   *  popstates don't accidentally re-arm the sentinel.
+   */
+  release: (extraDepth?: number) => void;
 }
 
 /**
@@ -49,7 +65,10 @@ export function useBackButtonGuard(
   enabled: boolean,
   onTrigger: () => void,
 ): BackButtonGuard {
-  const disarmedRef = useRef(false);
+  /** Number of incoming popstate events the handler should let through
+   *  silently before re-arming. Multi-step releases set this to N so the
+   *  browser's N popstates from a `history.go(-N)` all pass through. */
+  const disarmedCountRef = useRef(0);
   const onTriggerRef = useRef(onTrigger);
   // Keep the ref pointing at the latest callback so the popstate handler
   // (registered once) always calls the most-recent closure.
@@ -63,10 +82,11 @@ export function useBackButtonGuard(
     window.history.pushState({ [SENTINEL_KEY]: true } as SentinelState, '');
 
     const handlePopState = (e: PopStateEvent) => {
-      if (disarmedRef.current) {
+      if (disarmedCountRef.current > 0) {
         // Caller consumed the guard via release() — let this popstate
-        // through so the actual back-nav can proceed.
-        disarmedRef.current = false;
+        // through so the actual back-nav can proceed. Decrement so a
+        // multi-step release lets exactly N popstates through.
+        disarmedCountRef.current -= 1;
         return;
       }
       // Re-push so the URL stays put and the next back press still hits us.
@@ -87,16 +107,17 @@ export function useBackButtonGuard(
       // (After a confirmed-leave the top is whatever the router pushed,
       // not our sentinel — this branch then no-ops, which is fine.)
       if (isSentinel(window.history.state)) {
-        disarmedRef.current = true;
+        disarmedCountRef.current = 1;
         window.history.back();
       }
     };
   }, [enabled]);
 
-  const release = useCallback(() => {
+  const release = useCallback((extraDepth: number = 0) => {
     if (typeof window === 'undefined') return;
-    disarmedRef.current = true;
-    window.history.back();
+    const depth = 1 + Math.max(0, extraDepth);
+    disarmedCountRef.current = depth;
+    window.history.go(-depth);
   }, []);
 
   return { release };

@@ -103,3 +103,42 @@ describe('OccasionPage — sticky CTA Sign-in slot gating (bug #59)', () => {
     expect(within(mobile).queryByRole('button', { name: 'Sign in', hidden: true })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * `midCarouselSlot` is the hook OccasionRoute uses to render the
+ * Mother's-Day quiz banner between the 2nd and 3rd carousels. The slot
+ * itself is occasion-agnostic — only the route wires it up for MD.
+ */
+describe('OccasionPage — midCarouselSlot', () => {
+  const fakeSection = (slug: string) => ({
+    title: `Section ${slug}`,
+    slug,
+    products: [],
+  });
+
+  it('renders the slot when there are 2+ sections', () => {
+    renderPage({
+      authOverride: 'signed-out',
+      sections: [fakeSection('a'), fakeSection('b'), fakeSection('c')],
+      midCarouselSlot: <div data-testid="mid-slot">slot</div>,
+    });
+    expect(screen.getByTestId('mid-slot')).toBeInTheDocument();
+  });
+
+  it('renders nothing extra when midCarouselSlot is omitted', () => {
+    renderPage({
+      authOverride: 'signed-out',
+      sections: [fakeSection('a'), fakeSection('b'), fakeSection('c')],
+    });
+    expect(screen.queryByTestId('mid-slot')).not.toBeInTheDocument();
+  });
+
+  it('does not render the slot when there are fewer than 2 sections', () => {
+    renderPage({
+      authOverride: 'signed-out',
+      sections: [fakeSection('a')],
+      midCarouselSlot: <div data-testid="mid-slot">slot</div>,
+    });
+    expect(screen.queryByTestId('mid-slot')).not.toBeInTheDocument();
+  });
+});

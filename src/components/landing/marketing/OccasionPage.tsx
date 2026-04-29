@@ -39,6 +39,9 @@ export interface OccasionPageProps {
    *  signed-in state too (the storybook fakeAuth otherwise leaves the
    *  header reading currentUser=null). Production callers omit this. */
   headerActions?: React.ReactNode;
+  /** Optional ReactNode rendered between the 2nd and 3rd carousel sections.
+   *  Used by Mother's Day to inject a quiz CTA banner mid-page. */
+  midCarouselSlot?: React.ReactNode;
 }
 
 const Page = styled.div`
@@ -93,6 +96,7 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
   authOverride,
   authInstance: authInstanceProp,
   headerActions,
+  midCarouselSlot,
 }) => {
   /* Occasion pages have no hero CTA — observe the page H1 as the sentinel.
      Once the title is scrolled off the top, the sticky CTA appears so the
@@ -108,14 +112,16 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
         <PageTitle ref={titleRef}>{title}</PageTitle>
         <Sections>
           {sections.map((section, idx) => (
-            <CarouselSection
-              key={section.slug}
-              title={section.title}
-              shortTitle={section.shortTitle}
-              products={section.products}
-              isFirstCarousel={idx === 0}
-              onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
-            />
+            <React.Fragment key={section.slug}>
+              <CarouselSection
+                title={section.title}
+                shortTitle={section.shortTitle}
+                products={section.products}
+                isFirstCarousel={idx === 0}
+                onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
+              />
+              {idx === 1 && midCarouselSlot}
+            </React.Fragment>
           ))}
         </Sections>
         <Disclaimer>

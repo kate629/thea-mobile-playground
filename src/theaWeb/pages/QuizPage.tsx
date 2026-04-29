@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alert } from 'react-bootstrap';
 import { QuizCardAnimated } from '../../components/landing/quiz/QuizCardAnimated';
 import { SiteHeader } from '../../components/landing/SiteHeader';
@@ -28,15 +29,55 @@ import type { QuizAnswers } from '../../components/landing/quiz/useQuizFlow';
 // the homepage SearchPill, post bug #74) share the same gate. See the
 // hook for the full why.
 
+interface QuizLocationState {
+  /** Path to return to when the user confirms "Leave" on the warning modal.
+   *  Set by entrypoints (homepage hero CTA, occasion guide sticky/banner CTAs)
+   *  via `navigate('/quiz', { state: { from: location.pathname } })`. Falls
+   *  back to '/' for direct/bookmarked visits where no entrypoint passed it. */
+  from?: string;
+}
+
 const QuizPage: React.FC = () => {
+  const location = useLocation();
   const { state, submit } = useSubmitGiftFlow();
   const { requestSignIn } = useAuthGate();
-  const leaveWarning = useLeaveWarning('/');
+  const cameFromInApp = Boolean((location.state as QuizLocationState | null)?.from);
+  const leaveDestination = (location.state as QuizLocationState | null)?.from ?? '/';
 
-  // Browser back-button (bug #12): pop the same warning. If the user
-  // confirms "Leave," `confirmLeave` calls `navigate('/')` and the hook's
-  // unmount cleanup pops the sentinel if it's still on top of the stack.
-  useBackButtonGuard(true, leaveWarning.requestLeave);
+  // useLeaveWarning's destination is the FALLBACK only — it's used when the
+  // user came from outside the app (no `from` state) and we can't pop the
+  // history stack. The hook's modal state machine (open/cancel/isSignedIn) is
+  // still used; its `confirmLeave` is bypassed by the back-button-guard
+  // release path below for in-app entries.
+  const leaveWarning = useLeaveWarning(leaveDestination);
+
+  const { release } = useBackButtonGuard(true, leaveWarning.requestLeave);
+  // Destructure stable refs (the hook returns a fresh object literal each
+  // render; the inner functions are useCallback'd and stable). This keeps
+  // `handleConfirmLeave` properly memoized.
+  const { cancelLeave: leaveWarningCancel, confirmLeave: leaveWarningConfirm } = leaveWarning;
+
+  /* Confirmed-leave handler.
+   *
+   * If the user came from inside the app (entry-point set `state.from`), we
+   * pop the history stack via `release(1)` — that pops the sentinel + the
+   * /quiz entry, landing on the entry-point with the browser's native
+   * scroll restoration (which only fires on popstate-driven nav, not on
+   * `navigate(to)` pushes).
+   *
+   * If the user landed on /quiz directly (typed URL, bookmark, external
+   * link), there's no in-app entry to pop back to — fall back to
+   * `leaveWarning.confirmLeave()` which navigates to '/'. We don't blindly
+   * pop because the previous browser entry could be a different site.
+   */
+  const handleConfirmLeave = useCallback(() => {
+    if (cameFromInApp) {
+      leaveWarningCancel();
+      release(1);
+    } else {
+      leaveWarningConfirm();
+    }
+  }, [cameFromInApp, release, leaveWarningCancel, leaveWarningConfirm]);
 
   // Set after `submit()` resolves; cleared only by unmount or by the
   // navigation-ready effect inside the hook (which navigates and unmounts
@@ -88,7 +129,7 @@ const QuizPage: React.FC = () => {
         onClose={leaveWarning.cancelLeave}
         title="Leave the quiz?"
         description="If you leave now, your answers won't be saved."
-        primaryAction={{ label: 'Leave', onClick: leaveWarning.confirmLeave, variant: 'primary' }}
+        primaryAction={{ label: 'Leave', onClick: handleConfirmLeave, variant: 'primary' }}
         secondaryAction={{ label: 'Stay', onClick: leaveWarning.cancelLeave, variant: 'ghost' }}
       />
     </>

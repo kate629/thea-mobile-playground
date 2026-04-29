@@ -60,7 +60,7 @@ function LandingRoute() {
 
   return (
     <LandingPage
-      onCtaClick={() => navigate("/quiz")}
+      onCtaClick={() => navigate("/quiz", { state: { from: "/" } })}
       onSignInClick={() => requestSignIn({ mode: "signin" })}
       onSearchSubmit={handleSearchSubmit}
     />

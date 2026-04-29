@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
-import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { OccasionPage } from './OccasionPage';
+import { MothersDayQuizBanner } from './MothersDayQuizBanner';
 import { useAuthGate } from '../../../theaWeb/auth/AuthGateContext';
 import { CarouselSectionData, SAMPLE_BIRTHDAY_SECTIONS } from './sampleBirthdayCarousels';
 import { SAMPLE_MOTHERS_DAY_SECTIONS } from './sampleMothersDayCarousels';
@@ -76,9 +77,11 @@ const useLcpPreload = (config: OccasionConfig | undefined) => {
 
 export const OccasionRoute: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const config = id ? OCCASIONS[id.toLowerCase()] : undefined;
+  const slug = id?.toLowerCase();
+  const config = slug ? OCCASIONS[slug] : undefined;
   const { requestSignIn } = useAuthGate();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useLcpPreload(config);
 
@@ -93,9 +96,20 @@ export const OccasionRoute: React.FC = () => {
     [requestSignIn],
   );
 
-  const handleCtaClick = useCallback(() => navigate('/quiz'), [navigate]);
+  /* Pass the current path as `from` so the quiz's leave-warning modal returns
+   *  the user here on confirm-leave instead of the homepage default. */
+  const handleCtaClick = useCallback(
+    () => navigate('/quiz', { state: { from: location.pathname } }),
+    [navigate, location.pathname],
+  );
 
   if (!config) return <Navigate to="/" replace />;
+
+  /* Mother's Day-only mid-page CTA banner. Inserted between carousels 2 and 3.
+     Mirrors the banner pattern from preview.givethea.com — copy is gendered
+     ("She's one of a kind.") so we don't reuse it across occasions. */
+  const midCarouselSlot =
+    slug === 'mothers_day' ? <MothersDayQuizBanner onCtaClick={handleCtaClick} /> : undefined;
 
   return (
     <OccasionPage
@@ -104,6 +118,7 @@ export const OccasionRoute: React.FC = () => {
       onProductClick={handleProductClick}
       onSignInClick={handleSignInClick}
       onCtaClick={handleCtaClick}
+      midCarouselSlot={midCarouselSlot}
     />
   );
 };
