@@ -70,6 +70,18 @@ jobs:
           # SKIP_PREFLIGHT_CHECK avoids react-scripts dependency conflicts
           # in CI (matches local dev pattern).
           SKIP_PREFLIGHT_CHECK: 'true'
+          # Firebase config injected at build time via REACT_APP_* env vars
+          # (CRA's `process.env.REACT_APP_*` baking pattern). Without these,
+          # the build ships with empty config strings, and `initializeApp`
+          # crashes at runtime with `auth/invalid-api-key` — which is exactly
+          # what happened on the first auto-deploy after PR #89 landed.
+          # These six secrets must exist in repo Settings → Secrets:
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+          REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
 
       - name: Verify build output is non-empty
         # Guard against the silent-empty-build failure mode (handbook
