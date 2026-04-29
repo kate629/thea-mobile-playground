@@ -403,6 +403,11 @@ const RecommendationResultsPage: React.FC = () => {
       }
       fireActivity(item.id, 'SAVED');
     },
+    // `auth.currentUser?.isAnonymous` is intentionally omitted — touching this
+    // closure on auth changes would invalidate the optimistic-heart UI in flight.
+    // A proper fix (likely: read `auth` via ref) is tracked separately. The
+    // existing behavior matches what's been shipping since PR #82/#79.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [liked, fireActivity, requestSignIn],
   );
 
@@ -432,6 +437,8 @@ const RecommendationResultsPage: React.FC = () => {
       }
       fireActivity(item.id, 'PURCHASED');
     },
+    // Same exhaustive-deps tradeoff as `handleSaveClick` above — see note there.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fireActivity, requestSignIn],
   );
 

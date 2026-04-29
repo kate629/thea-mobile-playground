@@ -1,26 +1,9 @@
 import React from "react";
-import { Button, Container, Row, Col } from "react-bootstrap";
+import { Container, Row } from "react-bootstrap";
 
-import { useNavigate } from "react-router";
-import { useUserAuth } from "../context/UserAuthContext.js";
 import UserOnboardingForm from "./onboarding/UserOnboardingForm.tsx";
-import RoundImage from "./common/RoundImage.tsx";
 
 const Home = () => {
-  const { logOut, user } = useUserAuth();
-  //   const navigate = useNavigate();
-  //   const handleLogout = async () => {
-  //     try {
-  //       await logOut();
-  //       navigate("/");
-  //     } catch (error) {
-  //       console.log(error.message);
-  //     }
-  //   };
-
-  const photo = user?.photoURL;
-  const isValidPhotos = photo !== null && photo !== undefined;
-
   return (
     <Container className="mt-2">
       <Row className="justify-content-center">

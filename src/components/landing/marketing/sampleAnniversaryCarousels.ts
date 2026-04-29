@@ -1,4 +1,3 @@
-import { CarouselProduct } from './CarouselSection';
 import type { CarouselSectionData } from './sampleBirthdayCarousels';
 
 /**

@@ -11,8 +11,7 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
-  const { logIn, googleSignIn } = useUserAuth();
-  const { signUp } = useUserAuth();
+  const { googleSignIn, signUp } = useUserAuth();
   let navigate = useNavigate();
 
   const handleSubmit = async (e) => {

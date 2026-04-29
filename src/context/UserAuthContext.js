@@ -6,7 +6,6 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
-  User,
 } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 

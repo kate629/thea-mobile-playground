@@ -92,50 +92,6 @@ const RefreshLink = styled.button`
   &:hover { opacity: 0.8; }
 `;
 
-// Sticky floating Refresh button — visible at viewport bottom-right (desktop)
-// or bottom-center (mobile) so users can re-roll without scrolling to find
-// the end-of-session SummaryCard. Transitions to a loading state IN PLACE
-// during refresh: spinner + "Refreshing…" label + disabled clicks. The
-// in-place transition is what makes the loading feel smooth — no page-level
-// skeleton, no jump.
-const StickyRefreshSlot = styled.div`
-  position: sticky;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  z-index: 40;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  margin-top: -8px;
-  @media (min-width: 1024px) {
-    justify-content: flex-end;
-    bottom: 24px;
-    padding-right: 24px;
-  }
-`;
-
-const StickyRefreshButton = styled.button<{ $refreshing: boolean }>`
-  pointer-events: auto;
-  background: ${({ theme }) => theme.color.clay};
-  color: #fff;
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 15px;
-  height: 48px;
-  padding: 0 22px;
-  border-radius: 9999px;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 1)};
-  cursor: ${({ $refreshing }) => ($refreshing ? 'default' : 'pointer')};
-  transition: opacity 150ms ease, transform 150ms ease;
-  &:hover { opacity: ${({ $refreshing }) => ($refreshing ? 0.85 : 0.92)}; }
-  &:active { transform: ${({ $refreshing }) => ($refreshing ? 'none' : 'scale(0.98)')}; }
-  &:disabled { cursor: default; }
-`;
-
 const Spinner = styled.span`
   display: inline-block;
   width: 16px;

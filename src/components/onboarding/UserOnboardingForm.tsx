@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Form, Field } from "react-final-form";
 import { db } from "../../firebaseConfig";
-import { Container, Button, Row, Col } from "react-bootstrap";
+import { Container, Row, Col } from "react-bootstrap";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
@@ -43,7 +43,6 @@ const UserOnboardingForm: React.FC<Props> = ({ name }) => {
     const [user, setUser] = useState<User | null >(auth.currentUser);
     const [selectedLikes, setSelectedLikes] = useState<string[]>([]);
     const [isSubscribed, setIsSubscribed] = useState(false);
-    const userAuthPhoneNumber = user?.phoneNumber;
 
     const getDefaultDate = () => {
         const today = new Date();
