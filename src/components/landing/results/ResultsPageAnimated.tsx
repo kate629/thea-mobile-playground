@@ -15,6 +15,7 @@ import {
 import { ProfileDraft, ResultsProductCardItem } from './types';
 import { Button } from '../../ui/Button';
 import { getInterestPills, getPlaceholderText } from '../quiz/ageBasedContent';
+import { openExternal } from '../../../theaWeb/lib/openExternal';
 
 const initialDraft: ProfileDraft = {
   emoji: '🌷',
@@ -131,7 +132,7 @@ export const ResultsPageAnimated: React.FC = () => {
                 setPurchasedItems((prev) => (prev.find((x) => x.id === p.id) ? prev : [...prev, p]));
               }}
               onProductClick={(p) => {
-                if (p.productUrl) window.open(p.productUrl, '_blank');
+                if (p.productUrl) openExternal(p.productUrl);
               }}
             />
           ))}

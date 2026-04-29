@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import React, { lazy, Suspense, useCallback, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
 
@@ -12,6 +12,7 @@ import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
 import { useDeferredNavToResults } from "./theaWeb/hooks/useDeferredNavToResults";
 import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
 import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
+import { gaFirstRender } from "./theaWeb/lib/gaPixel";
 import { quizDisplayOccasionToEnum } from "./theaWeb/lib/loadingAmbientImages";
 import { theme } from "./theme";
 
@@ -98,6 +99,18 @@ function PageTrackingMount() {
   return null;
 }
 
+// Fires `page_first_render` exactly once per app load. Mounted as a sibling
+// to PageTrackingMount so it runs after the first route's first commit.
+// Pairs with bounce-attribution analysis: a Meta-reported LPV without a
+// matching gaFirstRender means the React app failed to mount (bug or
+// webview crash), distinct from "rendered but user bounced fast."
+function FirstRenderMount() {
+  React.useEffect(() => {
+    gaFirstRender();
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -106,6 +119,7 @@ function App() {
           <MergeStateProvider>
             <AuthGateProvider>
         <PageTrackingMount />
+        <FirstRenderMount />
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route

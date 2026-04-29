@@ -98,6 +98,25 @@ export function gaQuizStart(params: GaQuizStartParams): void {
 
 export type QuizFlowType = 'first_time' | 'new_recipient';
 
+/**
+ * Custom event — fired exactly once when the React tree first commits a
+ * frame to the DOM. Distinguishes "page literally never rendered" (no
+ * event) from "page rendered but user bounced" (event fires). Critical
+ * for bounce attribution: a Meta-reported "Landing Page View" without a
+ * matching `page_first_render` indicates the React app failed to mount,
+ * which happens in some IG/FB webviews.
+ */
+export function gaFirstRender(): void {
+  fireWhenIdle(() =>
+    emit('page_first_render', {
+      page_path:
+        typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : '',
+    }),
+  );
+}
+
 export interface GaQuizSearchSubmittedParams {
   occasion?: string;
   relationship?: string;

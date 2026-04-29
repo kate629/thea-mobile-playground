@@ -12,6 +12,7 @@ import { SAMPLE_HOUSEWARMING_SECTIONS } from './sampleHousewarmingCarousels';
 import { SAMPLE_NEW_BABY_SECTIONS } from './sampleNewBabyCarousels';
 import { SAMPLE_GRADUATION_SECTIONS } from './sampleGraduationCarousels';
 import { CarouselProduct } from './CarouselSection';
+import { openExternal } from '../../../theaWeb/lib/openExternal';
 
 interface OccasionConfig {
   title: string;
@@ -91,7 +92,7 @@ export const OccasionRoute: React.FC = () => {
   // affiliate URL.
   const handleProductClick = useCallback((product: CarouselProduct) => {
     if (product.productUrl) {
-      window.open(product.productUrl, '_blank', 'noopener,noreferrer');
+      openExternal(product.productUrl);
     }
   }, []);
 

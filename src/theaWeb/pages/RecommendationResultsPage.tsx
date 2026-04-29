@@ -21,6 +21,7 @@ import { getQuizPlaceholder } from '../../components/landing/quiz/useQuizFlow';
 
 import type { Recommendation } from '../schemas';
 import { recordActivity, updateRecipient } from '../callables';
+import { openExternal } from '../lib/openExternal';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
 import { useGiftActivities } from '../hooks/useGiftActivities';
@@ -473,7 +474,7 @@ const RecommendationResultsPage: React.FC = () => {
         currency: 'USD',
       });
       if (item.productUrl) {
-        window.open(item.productUrl, '_blank', 'noopener,noreferrer');
+        openExternal(item.productUrl);
       }
     },
     [carouselTitleById],
