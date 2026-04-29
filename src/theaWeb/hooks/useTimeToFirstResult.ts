@@ -95,7 +95,7 @@ export function useTimeToFirstResult({
         ),
         ...(occasion !== undefined ? { occasion } : {}),
         ...(relationship !== undefined ? { relationship } : {}),
-        ...(sessionId !== undefined ? { session_id: sessionId } : {}),
+        ...(sessionId !== undefined ? { carousel_session_id: sessionId } : {}),
       });
     };
 

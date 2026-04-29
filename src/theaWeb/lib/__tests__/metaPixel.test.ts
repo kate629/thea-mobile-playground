@@ -57,13 +57,13 @@ describe('metaPixel', () => {
       metaQuizSearchSubmitted({
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
-        age_bucket: '50s',
+        age_range: '50s',
         interest_count: 3,
       });
       expect(fbq).toHaveBeenCalledWith('trackCustom', 'QuizSearchSubmitted', {
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
-        age_bucket: '50s',
+        age_range: '50s',
         interest_count: 3,
       });
     });
@@ -85,7 +85,7 @@ describe('metaPixel', () => {
       metaQuizResultsViewed({
         occasion: 'JUST_BECAUSE',
         relationship: 'PARTNER',
-        age_bucket: '30s',
+        age_range: '30s',
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,
@@ -93,7 +93,7 @@ describe('metaPixel', () => {
       expect(fbq).toHaveBeenCalledWith('trackCustom', 'QuizResultsViewed', {
         occasion: 'JUST_BECAUSE',
         relationship: 'PARTNER',
-        age_bucket: '30s',
+        age_range: '30s',
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,

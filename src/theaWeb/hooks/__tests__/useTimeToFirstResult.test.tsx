@@ -85,7 +85,7 @@ describe('useTimeToFirstResult', () => {
     expect(params.time_to_first_result_ms).toBe(4900); // 5000 - 100
     expect(params.submit_callable_ms).toBe(1000); // 1100 - 100
     expect(params.occasion).toBe('mothers_day');
-    expect(params.session_id).toBe('sess_t1');
+    expect(params.carousel_session_id).toBe('sess_t1');
   });
 
   test('does not fire when submit marks are missing (deep link scenario)', () => {

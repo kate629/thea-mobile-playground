@@ -123,7 +123,7 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
         const metaParams = {
           occasion: payload.input.occasion,
           relationship: payload.recipient.relationship,
-          age_bucket: ageBucket(payload.recipient.age ?? undefined),
+          age_range: ageBucket(payload.recipient.age ?? undefined),
           interest_count: payload.input.interests?.length ?? 0,
           gender: payload.recipient.gender,
           has_freeform: Boolean(payload.input.freeform?.trim()),
@@ -131,7 +131,7 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
         metaQuizSearchSubmitted(metaParams);
         gaQuizSearchSubmitted({
           ...metaParams,
-          session_id: data.carouselSessionId,
+          carousel_session_id: data.carouselSessionId,
           flow_type: flowType,
           entry_point: options?.entry_point,
         });

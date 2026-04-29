@@ -129,22 +129,22 @@ describe('gaPixel', () => {
       gaQuizSearchSubmitted({
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
-        age_bucket: '50s',
+        age_range: '50s',
         interest_count: 3,
         gender: 'female',
         has_freeform: true,
-        session_id: 'sess_abc',
+        carousel_session_id: 'sess_abc',
         flow_type: 'first_time',
         entry_point: 'homepage_hero',
       });
       expect(gtag).toHaveBeenCalledWith('event', 'quiz_search_submitted', {
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
-        age_bucket: '50s',
+        age_range: '50s',
         interest_count: 3,
         gender: 'female',
         has_freeform: true,
-        session_id: 'sess_abc',
+        carousel_session_id: 'sess_abc',
         flow_type: 'first_time',
         entry_point: 'homepage_hero',
       });
@@ -162,20 +162,20 @@ describe('gaPixel', () => {
       gaQuizResultsViewed({
         occasion: 'JUST_BECAUSE',
         relationship: 'PARTNER',
-        age_bucket: '30s',
+        age_range: '30s',
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,
-        session_id: 'sess_xyz',
+        carousel_session_id: 'sess_xyz',
       });
       expect(gtag).toHaveBeenCalledWith('event', 'quiz_results_viewed', {
         occasion: 'JUST_BECAUSE',
         relationship: 'PARTNER',
-        age_bucket: '30s',
+        age_range: '30s',
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,
-        session_id: 'sess_xyz',
+        carousel_session_id: 'sess_xyz',
       });
     });
   });
@@ -332,9 +332,9 @@ describe('gaPixel', () => {
       relationship: 'MOM',
       occasion: 'mothers_day',
       gender: 'female',
-      age_bucket: '50s',
+      age_range: '50s',
       regenerate_count: 1,
-      session_id: 'sess_abc',
+      carousel_session_id: 'sess_abc',
     };
 
     test('product_saved fires with full cohort + product params', () => {
@@ -368,7 +368,7 @@ describe('gaPixel', () => {
         relationship: 'MOM',
         occasion: 'mothers_day',
         prior_carousel_count: 6,
-        session_id: 'sess_xyz',
+        carousel_session_id: 'sess_xyz',
       });
       expect(gtag).toHaveBeenCalledWith(
         'event',
@@ -393,7 +393,7 @@ describe('gaPixel', () => {
   });
 
   describe('gaQuizResultsProductClick', () => {
-    test('fires v6-shaped event with session_id + cohort', () => {
+    test('fires v6-shaped event with carousel_session_id + cohort', () => {
       gaQuizResultsProductClick({
         product_id: 'p1',
         product_name: 'X',
@@ -404,14 +404,14 @@ describe('gaPixel', () => {
         card_position: 0,
         relationship: 'MOM',
         occasion: 'mothers_day',
-        session_id: 'sess_qrp',
+        carousel_session_id: 'sess_qrp',
       });
       expect(gtag).toHaveBeenCalledWith(
         'event',
         'quiz_results_product_click',
         expect.objectContaining({
           product_id: 'p1',
-          session_id: 'sess_qrp',
+          carousel_session_id: 'sess_qrp',
         }),
       );
     });
@@ -426,7 +426,7 @@ describe('gaPixel', () => {
         nav_to_lcp_ms: 773,
         occasion: 'mothers_day',
         relationship: 'MOM',
-        session_id: 'sess_lcp',
+        carousel_session_id: 'sess_lcp',
       });
       expect(gtag).toHaveBeenCalledWith(
         'event',

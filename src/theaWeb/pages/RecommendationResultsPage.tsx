@@ -188,7 +188,7 @@ const RecommendationResultsPage: React.FC = () => {
         : {}),
       ...(doc.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
       ...(doc.carouselSessionId !== undefined
-        ? { session_id: doc.carouselSessionId }
+        ? { carousel_session_id: doc.carouselSessionId }
         : {}),
     });
     // Capture pre-regenerate state. expectedRecommendationId is null until
@@ -270,19 +270,19 @@ const RecommendationResultsPage: React.FC = () => {
     const resultsParams = {
       occasion: doc?.input?.occasion,
       relationship: doc?.recipientSnapshot?.relationship,
-      age_bucket: ageBucket(doc?.recipientSnapshot?.age ?? undefined),
+      age_range: ageBucket(doc?.recipientSnapshot?.age ?? undefined),
       interest_count: doc?.input?.interests?.length ?? 0,
       carousel_count: sections.length,
       product_count: productCount,
     };
     metaQuizResultsViewed(resultsParams);
-    // GA4 carries session_id additionally so the dashboard can join this
-    // event to the same `session_id` carried by quiz_search_submitted +
+    // GA4 carries carousel_session_id additionally so the dashboard can join this
+    // event to the same `carousel_session_id` carried by quiz_search_submitted +
     // every product_saved/dismissed event for cross-event funnel analysis.
     gaQuizResultsViewed({
       ...resultsParams,
       ...(doc?.carouselSessionId !== undefined
-        ? { session_id: doc.carouselSessionId }
+        ? { carousel_session_id: doc.carouselSessionId }
         : {}),
     });
     setPixelResultsFired(true);
@@ -381,7 +381,7 @@ const RecommendationResultsPage: React.FC = () => {
           : {}),
         ...(doc.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
         ...(doc.carouselSessionId !== undefined
-          ? { session_id: doc.carouselSessionId }
+          ? { carousel_session_id: doc.carouselSessionId }
           : {}),
       });
       setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
@@ -507,12 +507,12 @@ const RecommendationResultsPage: React.FC = () => {
       ...(doc?.recipientSnapshot?.age != null
         ? (() => {
             const ab = ageBucket(doc.recipientSnapshot.age);
-            return ab !== undefined ? { age_bucket: ab } : {};
+            return ab !== undefined ? { age_range: ab } : {};
           })()
         : {}),
       regenerate_count: regenerateCountRef.current,
       ...(doc?.carouselSessionId !== undefined
-        ? { session_id: doc.carouselSessionId }
+        ? { carousel_session_id: doc.carouselSessionId }
         : {}),
     }),
     [carouselTitleById, cardPositionById, doc],
@@ -617,7 +617,7 @@ const RecommendationResultsPage: React.FC = () => {
           : {}),
         ...(doc?.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
         ...(doc?.carouselSessionId !== undefined
-          ? { session_id: doc.carouselSessionId }
+          ? { carousel_session_id: doc.carouselSessionId }
           : {}),
       });
       if (item.productUrl) {

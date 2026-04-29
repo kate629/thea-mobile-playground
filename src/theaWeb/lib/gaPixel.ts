@@ -120,14 +120,14 @@ export function gaFirstRender(): void {
 export interface GaQuizSearchSubmittedParams {
   occasion?: string;
   relationship?: string;
-  age_bucket?: string;
+  age_range?: string;
   interest_count?: number;
   /** Whether the freeform "tell us more" field was filled in. */
   has_freeform?: boolean;
   /** From recipient.gender — `'female' | 'male' | 'other' | undefined`. */
   gender?: string;
   /** Carousel session id (joins to Firestore for the rollup table). */
-  session_id?: string;
+  carousel_session_id?: string;
   /** Anon user OR signed-in user adding a NEW recipient. */
   flow_type?: QuizFlowType;
   entry_point?: QuizEntryPoint;
@@ -141,12 +141,12 @@ export function gaQuizSearchSubmitted(params: GaQuizSearchSubmittedParams): void
 export interface GaQuizResultsViewedParams {
   occasion?: string;
   relationship?: string;
-  age_bucket?: string;
+  age_range?: string;
   interest_count?: number;
   carousel_count: number;
   product_count: number;
   /** Carousel session id (joins to Firestore). */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /** Custom event — fired once when the results page first lands a COMPLETED session. */
@@ -168,7 +168,7 @@ export interface GaCarouselVisibleParams {
   /** On guide pages — the slug. On results pages — undefined. */
   occasion?: string;
   /** On results pages — the carouselSession id. On guide pages — undefined. */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /** Fired once per session per carousel when ≥50% of the carousel is in view. */
@@ -313,12 +313,12 @@ export interface GaProductReactionParams {
   relationship?: string;
   occasion?: string;
   gender?: string;
-  age_bucket?: string;
+  age_range?: string;
   /** Number of times the user has regenerated picks in this session. 0 if
    *  they're acting on the original results, 1+ after a refresh. */
   regenerate_count: number;
   /** Carousel session id (joins to Firestore for the rollup). */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /** Fired when the user hearts a product on the results page. */
@@ -342,7 +342,7 @@ export interface GaRegenerateRecommendationsParams {
    *  picks-set changed" analyses). */
   prior_carousel_count: number;
   /** Carousel session id of the recommendation that's being regenerated. */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /**
@@ -373,7 +373,7 @@ export interface GaQuizResultsProductClickParams {
   occasion?: string;
   /** Carousel session id (joins to Firestore + ties click back to the
    *  specific recommendation cohort the dashboard analyses). */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /**
@@ -403,7 +403,7 @@ export interface GaTimeToFirstResultParams {
   occasion?: string;
   relationship?: string;
   /** Carousel session id (joins to Firestore for the rollup). */
-  session_id?: string;
+  carousel_session_id?: string;
 }
 
 /**

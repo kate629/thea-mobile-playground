@@ -39,7 +39,7 @@ export function metaPageView(): void {
 export interface QuizSearchSubmittedParams {
   occasion?: string;
   relationship?: string;
-  age_bucket?: string;
+  age_range?: string;
   interest_count?: number;
   /** Whether the freeform "tell us more" field was filled in. */
   has_freeform?: boolean;
@@ -58,7 +58,7 @@ export function metaQuizSearchSubmitted(params: QuizSearchSubmittedParams): void
 export interface QuizResultsViewedParams {
   occasion?: string;
   relationship?: string;
-  age_bucket?: string;
+  age_range?: string;
   interest_count?: number;
   carousel_count: number;
   product_count: number;
