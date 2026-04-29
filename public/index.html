@@ -24,7 +24,16 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="No one looks back and wishes they had celebrated less — Thea Mother's Day Gifts" />
-    <meta property="og:url" content="https://givethea.com/" />
+    <!-- Deliberately NO og:url tag. Facebook caches link previews by the
+         canonical URL declared in og:url; with a hardcoded canonical, every
+         UTM-tagged variant (?utm_campaign=md_v1, ?utm_content=v2, etc.) hits
+         the same cache entry, making cache-busting impossible without
+         Sharing Debugger access. Without og:url, FB uses the request URL
+         as canonical, so each unique URL variant gets a fresh scrape. The
+         small trade-off is that social signals (likes, shares) for the same
+         page accumulate per URL variant rather than consolidating to one
+         canonical — irrelevant at our traffic. Re-introduce og:url once we
+         have stable Sharing Debugger access for cache management. -->
 
     <!-- Twitter / X equivalent (also picked up by some other unfurlers like Slack). -->
     <meta name="twitter:card" content="summary_large_image" />
