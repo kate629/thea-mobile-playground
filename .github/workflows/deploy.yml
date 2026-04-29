@@ -1,0 +1,90 @@
+name: Deploy to Firebase Hosting (live)
+
+# Auto-deploys master to the live channel of the `thea-643b1-23686` site so
+# the public preview URL always reflects master HEAD. Replaces the manual
+# `firebase deploy --only hosting` workflow that was prone to clobbering by
+# any developer running it from a feature branch.
+#
+# Setup (one-time, before this workflow can run):
+#   1. Generate a service account JSON for Firebase Hosting deploys:
+#        firebase init hosting:github
+#      (This auto-creates the service account, grants it
+#       roles/firebasehosting.admin, and adds the JSON as a repo secret
+#       named FIREBASE_SERVICE_ACCOUNT_THEA_643B1.)
+#   2. OR, if you already have a service account, paste its JSON into
+#      Repo settings → Secrets → Actions → New repository secret named
+#      `FIREBASE_SERVICE_ACCOUNT_THEA_643B1`.
+#
+# Once setup is done, every push to master will:
+#   - Install deps with `npm ci`
+#   - Run tests (CI=true)
+#   - Run `CI=true npm run build` (warnings-as-errors per project standard)
+#   - Deploy `build/` to channel `live` of site `thea-643b1-23686`
+#
+# Manual feature-branch deploys (`firebase deploy --only hosting` from a
+# laptop) should NO LONGER be used. They will silently overwrite whatever
+# this workflow last shipped. Use per-PR preview channels instead:
+#   firebase hosting:channel:deploy <name> --expires 7d
+
+on:
+  push:
+    branches: [master]
+  # Allow manual re-runs from the Actions UI when needed (e.g., after a
+  # rollback the previous master HEAD needs to be re-deployed without a
+  # fresh commit).
+  workflow_dispatch:
+
+# Only one deploy at a time. If a deploy is in-flight and another master
+# push lands, the in-flight deploy continues and the new push queues —
+# this prevents two deploys racing each other to the same site.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Fail fast if no service account is configured (rather than running
+    # a 5-minute build only to fail on the deploy step).
+    if: ${{ vars.SKIP_DEPLOY != 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --watchAll=false
+        env:
+          CI: true
+
+      - name: Build
+        run: npm run build
+        env:
+          CI: true
+          # SKIP_PREFLIGHT_CHECK avoids react-scripts dependency conflicts
+          # in CI (matches local dev pattern).
+          SKIP_PREFLIGHT_CHECK: 'true'
+
+      - name: Verify build output is non-empty
+        # Guard against the silent-empty-build failure mode (handbook
+        # gotcha: react-scripts can exit 0 without CI=true and leave an
+        # empty build/ that deploys as a 404).
+        run: |
+          test -f build/index.html
+          test "$(wc -c < build/index.html)" -gt 1000
+          ls build/static/js/main.*.js > /dev/null
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_THEA_643B1 }}
+          channelId: live
+          projectId: thea-643b1
+          target: thea-643b1-23686
