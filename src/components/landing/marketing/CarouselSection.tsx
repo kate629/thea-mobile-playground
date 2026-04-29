@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { OccasionProductCard, OccasionProductCardProps } from '../../ui/OccasionProductCard';
+import { useCarouselImpression } from '../../../theaWeb/hooks/useCarouselImpression';
+import {
+  gaCarouselScroll,
+  gaCarouselVisible,
+  gaProductClick,
+} from '../../../theaWeb/lib/gaPixel';
+import { metaViewContent } from '../../../theaWeb/lib/metaPixel';
 
 export interface CarouselProduct
   extends Pick<
@@ -24,6 +31,17 @@ export interface CarouselSectionProps {
   canScrollRight?: boolean;
   onScrollLeft?: () => void;
   onScrollRight?: () => void;
+  /**
+   * Position of this carousel within the page (0-indexed). When provided
+   * alongside `totalCarousels`, drives the `carousel_visible` /
+   * `carousel_scroll` analytics events; otherwise impression tracking is
+   * skipped (e.g., Storybook stories).
+   */
+  carouselIndex?: number;
+  totalCarousels?: number;
+  /** Set on guide pages — the URL slug. Drives the `occasion` GA4 param +
+   *  enables guide-page `product_click` + Meta `ViewContent` analytics. */
+  occasion?: string;
 }
 
 const Section = styled.section`
@@ -120,6 +138,9 @@ const ChevronSvg = styled.svg`
   stroke-linejoin: round;
 `;
 
+const SCROLL_THRESHOLDS: Array<25 | 50 | 75 | 100> = [25, 50, 75, 100];
+const SCROLL_THROTTLE_MS = 200;
+
 export const CarouselSection: React.FC<CarouselSectionProps> = ({
   title,
   shortTitle,
@@ -130,43 +151,129 @@ export const CarouselSection: React.FC<CarouselSectionProps> = ({
   canScrollRight = false,
   onScrollLeft,
   onScrollRight,
-}) => (
-  <Section>
-    <TitleRow>
-      <Title>
-        <TitleShort>{shortTitle ?? title}</TitleShort>
-        <TitleLong>{title}</TitleLong>
-      </Title>
-      <Divider />
-    </TitleRow>
-    <ScrollArea>
-      <Scroller>
-        {products.map((p, i) => (
-          <Slide key={p.id}>
-            <OccasionProductCard
-              imageUrl={p.imageUrl}
-              imageUrlCdn={p.imageUrlCdn}
-              imageUrlCdnMobile={p.imageUrlCdnMobile}
-              title={p.title}
-              brand={p.brand}
-              price={p.price}
-              productUrl={p.productUrl}
-              onClick={() => onProductClick?.(p, i)}
-              priority={isFirstCarousel && i === 0}
-            />
-          </Slide>
-        ))}
-      </Scroller>
-      {canScrollLeft && (
-        <ChevronButton $side="left" onClick={onScrollLeft} aria-label="Scroll left">
-          <ChevronSvg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></ChevronSvg>
-        </ChevronButton>
-      )}
-      {canScrollRight && (
-        <ChevronButton $side="right" onClick={onScrollRight} aria-label="Scroll right">
-          <ChevronSvg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></ChevronSvg>
-        </ChevronButton>
-      )}
-    </ScrollArea>
-  </Section>
-);
+  carouselIndex,
+  totalCarousels,
+  occasion,
+}) => {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const trackingEnabled =
+    occasion !== undefined && carouselIndex !== undefined && totalCarousels !== undefined;
+  const totalCards = products.length;
+
+  // carousel_visible — fire once when ≥50% of the section is in view. Skip
+  // when tracking isn't fully wired (Storybook, results page reuse, etc).
+  const fireVisible = useCallback(() => {
+    if (!trackingEnabled) return;
+    gaCarouselVisible({
+      carousel_name: title,
+      carousel_index: carouselIndex!,
+      total_carousels: totalCarousels!,
+      total_cards: totalCards,
+      occasion,
+    });
+  }, [trackingEnabled, title, carouselIndex, totalCarousels, totalCards, occasion]);
+  useCarouselImpression(sectionRef, fireVisible, trackingEnabled);
+
+  // carousel_scroll — passive listener, 200ms throttle, dedupe per-threshold
+  // via a ref-Set so we never re-fire 50% after the user scrolls past it,
+  // back, and forward again.
+  const firedThresholdsRef = useRef<Set<number>>(new Set());
+  const lastScrollTickRef = useRef<number>(0);
+  useEffect(() => {
+    if (!trackingEnabled) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const handle = () => {
+      const now = Date.now();
+      if (now - lastScrollTickRef.current < SCROLL_THROTTLE_MS) return;
+      lastScrollTickRef.current = now;
+      const scrollWidth = el.scrollWidth - el.clientWidth;
+      if (scrollWidth <= 0) return;
+      const percent = Math.min(100, (el.scrollLeft / scrollWidth) * 100);
+      for (const threshold of SCROLL_THRESHOLDS) {
+        if (percent < threshold) continue;
+        if (firedThresholdsRef.current.has(threshold)) continue;
+        firedThresholdsRef.current.add(threshold);
+        gaCarouselScroll({
+          carousel_name: title,
+          carousel_index: carouselIndex!,
+          total_carousels: totalCarousels!,
+          total_cards: totalCards,
+          occasion,
+          cards_visible: Math.min(totalCards, Math.max(1, Math.ceil((threshold / 100) * totalCards))),
+          percent_seen: threshold,
+        });
+      }
+    };
+    el.addEventListener('scroll', handle, { passive: true });
+    return () => el.removeEventListener('scroll', handle);
+  }, [trackingEnabled, title, carouselIndex, totalCarousels, totalCards, occasion]);
+
+  const handleProductClick = useCallback(
+    (p: CarouselProduct, i: number) => {
+      if (occasion !== undefined) {
+        gaProductClick({
+          product_id: p.id,
+          product_name: p.title,
+          ...(p.brand !== undefined ? { brand: p.brand } : {}),
+          ...(p.price !== undefined ? { price: p.price } : {}),
+          destination_url: p.productUrl ?? '',
+          occasion,
+          carousel_name: title,
+          card_position: i,
+        });
+        metaViewContent({
+          content_name: p.title,
+          content_ids: [p.id],
+          content_category: title,
+          ...(p.price !== undefined ? { value: p.price } : {}),
+          currency: 'USD',
+        });
+      }
+      onProductClick?.(p, i);
+    },
+    [occasion, title, onProductClick],
+  );
+
+  return (
+    <Section ref={sectionRef}>
+      <TitleRow>
+        <Title>
+          <TitleShort>{shortTitle ?? title}</TitleShort>
+          <TitleLong>{title}</TitleLong>
+        </Title>
+        <Divider />
+      </TitleRow>
+      <ScrollArea>
+        <Scroller ref={scrollerRef}>
+          {products.map((p, i) => (
+            <Slide key={p.id}>
+              <OccasionProductCard
+                imageUrl={p.imageUrl}
+                imageUrlCdn={p.imageUrlCdn}
+                imageUrlCdnMobile={p.imageUrlCdnMobile}
+                title={p.title}
+                brand={p.brand}
+                price={p.price}
+                productUrl={p.productUrl}
+                onClick={() => handleProductClick(p, i)}
+                priority={isFirstCarousel && i === 0}
+              />
+            </Slide>
+          ))}
+        </Scroller>
+        {canScrollLeft && (
+          <ChevronButton $side="left" onClick={onScrollLeft} aria-label="Scroll left">
+            <ChevronSvg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></ChevronSvg>
+          </ChevronButton>
+        )}
+        {canScrollRight && (
+          <ChevronButton $side="right" onClick={onScrollRight} aria-label="Scroll right">
+            <ChevronSvg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></ChevronSvg>
+          </ChevronButton>
+        )}
+      </ScrollArea>
+    </Section>
+  );
+};

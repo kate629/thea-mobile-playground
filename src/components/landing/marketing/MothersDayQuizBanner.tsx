@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import styled from 'styled-components';
+import { useCarouselImpression } from '../../../theaWeb/hooks/useCarouselImpression';
+import {
+  gaSelectPromotion,
+  gaViewPromotion,
+  type GaPromotionParams,
+} from '../../../theaWeb/lib/gaPixel';
+import { metaPromoClick } from '../../../theaWeb/lib/metaPixel';
 
 export interface MothersDayQuizBannerProps {
   /** Same handler the OccasionPage sticky CTA fires — navigates to /quiz. */
   onCtaClick?: () => void;
 }
+
+// Stable promotion identity for the dashboard. If the creative changes
+// (copy / imagery / CTA), bump `creative_name` so before/after engagement
+// numbers don't blend.
+const PROMOTION_PARAMS: GaPromotionParams = {
+  promotion_id: 'md_quiz_cta',
+  promotion_name: "Mother's Day quiz CTA",
+  creative_name: 'mothers_day_banner_v1',
+  location_id: 'occasion_mothers_day_mid_carousel',
+};
 
 const Card = styled.div`
   border-radius: 16px;
@@ -55,12 +72,26 @@ const CtaButton = styled.button`
 
 export const MothersDayQuizBanner: React.FC<MothersDayQuizBannerProps> = ({
   onCtaClick,
-}) => (
-  <Card>
-    <Heading>She&rsquo;s one of a kind.</Heading>
-    <Subhead>Find a gift just for her.</Subhead>
-    <CtaButton type="button" onClick={onCtaClick}>
-      Take the gift quiz &rarr;
-    </CtaButton>
-  </Card>
-);
+}) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  // Fire view_promotion exactly once when the banner is ≥50% in view. Same
+  // shared IntersectionObserver as the carousels — see useCarouselImpression.
+  const fireView = useCallback(() => gaViewPromotion(PROMOTION_PARAMS), []);
+  useCarouselImpression(cardRef, fireView);
+
+  const handleClick = useCallback(() => {
+    gaSelectPromotion(PROMOTION_PARAMS);
+    metaPromoClick(PROMOTION_PARAMS);
+    onCtaClick?.();
+  }, [onCtaClick]);
+
+  return (
+    <Card ref={cardRef}>
+      <Heading>She&rsquo;s one of a kind.</Heading>
+      <Subhead>Find a gift just for her.</Subhead>
+      <CtaButton type="button" onClick={handleClick}>
+        Take the gift quiz &rarr;
+      </CtaButton>
+    </Card>
+  );
+};

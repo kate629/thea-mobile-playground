@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Alert } from 'react-bootstrap';
 import { QuizCardAnimated } from '../../components/landing/quiz/QuizCardAnimated';
@@ -12,6 +12,7 @@ import {
   type PendingNavigation,
 } from '../hooks/useDeferredNavToResults';
 import { useAuthGate } from '../auth/AuthGateContext';
+import { gaQuizStart, type QuizEntryPoint } from '../lib/gaPixel';
 import { quizDisplayOccasionToEnum } from '../lib/loadingAmbientImages';
 import type { QuizAnswers } from '../../components/landing/quiz/useQuizFlow';
 
@@ -35,14 +36,43 @@ interface QuizLocationState {
    *  via `navigate('/quiz', { state: { from: location.pathname } })`. Falls
    *  back to '/' for direct/bookmarked visits where no entrypoint passed it. */
   from?: string;
+  /** Surface that initiated quiz entry — drives the `quiz_start` event's
+   *  entry_point param. Set by the same entrypoints that set `from`. */
+  entry_point?: QuizEntryPoint;
+}
+
+/**
+ * Derive an entry_point when the caller didn't pass one explicitly. Mostly a
+ * fallback for any direct-URL hits to /quiz; all in-app entry points should
+ * set state.entry_point at the navigate() call site.
+ */
+function deriveEntryPoint(state: QuizLocationState | null): QuizEntryPoint {
+  if (state?.entry_point) return state.entry_point;
+  if (!state?.from) return 'direct';
+  if (state.from.startsWith('/occasion/')) return 'sticky_occasion';
+  if (state.from === '/') return 'homepage_hero';
+  return 'direct';
 }
 
 const QuizPage: React.FC = () => {
   const location = useLocation();
   const { state, submit } = useSubmitGiftFlow();
   const { requestSignIn } = useAuthGate();
-  const cameFromInApp = Boolean((location.state as QuizLocationState | null)?.from);
-  const leaveDestination = (location.state as QuizLocationState | null)?.from ?? '/';
+  const locationState = location.state as QuizLocationState | null;
+  const cameFromInApp = Boolean(locationState?.from);
+  const leaveDestination = locationState?.from ?? '/';
+  const entryPoint = deriveEntryPoint(locationState);
+
+  // Fire quiz_start exactly once on mount. Re-renders + StrictMode's
+  // mount → unmount → mount in dev shouldn't double-fire.
+  const quizStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (quizStartFiredRef.current) return;
+    quizStartFiredRef.current = true;
+    // Occasion is unknown at this point (the user hasn't picked it yet); the
+    // /quiz route mount is just "user entered the funnel."
+    gaQuizStart({ entry_point: entryPoint });
+  }, [entryPoint]);
 
   // useLeaveWarning's destination is the FALLBACK only — it's used when the
   // user came from outside the app (no `from` state) and we can't pop the
@@ -93,7 +123,10 @@ const QuizPage: React.FC = () => {
         // ambient-ring sample lookup. `quizAnswersToRequest` runs the same
         // conversion for the actual BE call inside `submit()`.
         const occasion = quizDisplayOccasionToEnum(answers.occasion);
-        const result = await submit(answers);
+        // Thread entry_point through to quiz_search_submitted so the funnel
+        // start (quiz_start) and completion (quiz_search_submitted) carry
+        // the same surface attribution.
+        const result = await submit(answers, { entry_point: entryPoint });
         setPendingNav({
           recipientId: result.recipientId,
           recommendationId: result.recommendationId,
@@ -107,7 +140,7 @@ const QuizPage: React.FC = () => {
         // Error surfaced via `state.status === 'error'` below.
       }
     },
-    [submit],
+    [submit, entryPoint],
   );
 
   const handleSignInClick = useCallback(

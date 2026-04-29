@@ -33,7 +33,9 @@ function LandingRoute() {
     async (answers) => {
       try {
         const occasion = quizDisplayOccasionToEnum(answers.occasion);
-        const result = await submit(answers);
+        // SearchPill bypasses /quiz, so useSubmitGiftFlow fires `quiz_start`
+        // (with entry_point='search_pill') for us when we pass that flag.
+        const result = await submit(answers, { entry_point: "search_pill" });
         setPendingNav({
           recipientId: result.recipientId,
           recommendationId: result.recommendationId,
@@ -60,7 +62,11 @@ function LandingRoute() {
 
   return (
     <LandingPage
-      onCtaClick={() => navigate("/quiz", { state: { from: "/" } })}
+      // entry_point is provided by LandingPage's hero/sticky sub-components
+      // so the dashboard can split funnel completion rates per surface.
+      onCtaClick={(entry_point) =>
+        navigate("/quiz", { state: { from: "/", entry_point } })
+      }
       onSignInClick={() => requestSignIn({ mode: "signin" })}
       onSearchSubmit={handleSearchSubmit}
     />

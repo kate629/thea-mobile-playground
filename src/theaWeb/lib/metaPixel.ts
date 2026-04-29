@@ -7,12 +7,15 @@
  *     callers don't sprinkle the same `typeof` check at every fire site.
  *   - Give each event a typed param interface so we don't quietly drift the
  *     vocabulary across surfaces.
+ *   - Defer every fire to `requestIdleCallback` so analytics never blocks
+ *     paint, INP, or LCP (analytics handoff §16 perf budget rule #1).
  *   - Keep params PII-free (no name, email, uid, recipientId). Funnel
  *     anonymized params only — Kate may tweak the shape before paid spend.
  *
  * Pixel ID 2511117595971258 (set in public/index.html).
  */
 import { isBot } from './botDetect';
+import { fireWhenIdle } from './idleCallback';
 
 declare global {
   interface Window {
@@ -26,8 +29,10 @@ function canFire(): boolean {
 
 /** Standard PageView. Fired by `usePageTracking` on every route change. */
 export function metaPageView(): void {
-  if (!canFire()) return;
-  window.fbq?.('track', 'PageView');
+  fireWhenIdle(() => {
+    if (!canFire()) return;
+    window.fbq?.('track', 'PageView');
+  });
 }
 
 /** Anonymized funnel params — kept PII-free deliberately. */
@@ -36,12 +41,18 @@ export interface QuizSearchSubmittedParams {
   relationship?: string;
   age_bucket?: string;
   interest_count?: number;
+  /** Whether the freeform "tell us more" field was filled in. */
+  has_freeform?: boolean;
+  /** From recipient.gender. */
+  gender?: string;
 }
 
 /** Custom event — fired when the quiz submit callable resolves successfully. */
 export function metaQuizSearchSubmitted(params: QuizSearchSubmittedParams): void {
-  if (!canFire()) return;
-  window.fbq?.('trackCustom', 'QuizSearchSubmitted', params);
+  fireWhenIdle(() => {
+    if (!canFire()) return;
+    window.fbq?.('trackCustom', 'QuizSearchSubmitted', params);
+  });
 }
 
 export interface QuizResultsViewedParams {
@@ -55,8 +66,10 @@ export interface QuizResultsViewedParams {
 
 /** Custom event — fired once when the results page first lands a COMPLETED session. */
 export function metaQuizResultsViewed(params: QuizResultsViewedParams): void {
-  if (!canFire()) return;
-  window.fbq?.('trackCustom', 'QuizResultsViewed', params);
+  fireWhenIdle(() => {
+    if (!canFire()) return;
+    window.fbq?.('trackCustom', 'QuizResultsViewed', params);
+  });
 }
 
 export interface ViewContentParams {
@@ -69,8 +82,29 @@ export interface ViewContentParams {
 
 /** Standard ViewContent. Fired when a user clicks a product card to open the affiliate URL. */
 export function metaViewContent(params: ViewContentParams): void {
-  if (!canFire()) return;
-  window.fbq?.('track', 'ViewContent', params);
+  fireWhenIdle(() => {
+    if (!canFire()) return;
+    window.fbq?.('track', 'ViewContent', params);
+  });
+}
+
+export interface PromoClickParams {
+  promotion_id: string;
+  promotion_name: string;
+  creative_name: string;
+  location_id: string;
+}
+
+/**
+ * Custom event — Meta mirror of GA4 `select_promotion`. Fired when a banner
+ * CTA is clicked. Useful for Meta audience modeling on quiz-engaged users
+ * coming from a specific creative.
+ */
+export function metaPromoClick(params: PromoClickParams): void {
+  fireWhenIdle(() => {
+    if (!canFire()) return;
+    window.fbq?.('trackCustom', 'PromoClick', params);
+  });
 }
 
 /**

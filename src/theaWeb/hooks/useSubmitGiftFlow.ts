@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
-import { useEnsureAuth } from '../firebase/FirebaseContext';
+import { useAuth, useEnsureAuth } from '../firebase/FirebaseContext';
 import { getCarouselFeed, getFastCarouselFeed } from '../../firebaseFunctions';
 import { submitGiftFlow } from '../callables';
-import { gaQuizSearchSubmitted } from '../lib/gaPixel';
+import { gaQuizSearchSubmitted, gaQuizStart, type QuizEntryPoint } from '../lib/gaPixel';
 import { ageBucket, metaQuizSearchSubmitted } from '../lib/metaPixel';
 import { quizAnswersToRequest } from '../lib/quizAnswersToRequest';
 import { relationshipToAgentValue } from '../lib/relationshipToAgentValue';
@@ -15,9 +15,26 @@ export type SubmitGiftFlowState =
   | { status: 'ready'; result: TheaWebSubmitGiftFlowResponse }
   | { status: 'error'; error: Error };
 
+export interface SubmitOptions {
+  /**
+   * Where the user originated this submission. Passed through to GA4 as
+   * `entry_point` on both `quiz_start` (when applicable) and
+   * `quiz_search_submitted` so the dashboard can split funnel completion
+   * rates per surface (homepage hero / sticky / search-pill / banner).
+   *
+   * SearchPill on the signed-in homepage bypasses /quiz entirely, so the
+   * caller is responsible for firing `quiz_start` here. /quiz route entries
+   * fire `quiz_start` on QuizPage mount and pass the same value through.
+   */
+  entry_point?: QuizEntryPoint;
+}
+
 interface UseSubmitGiftFlow {
   state: SubmitGiftFlowState;
-  submit: (answers: QuizAnswers) => Promise<TheaWebSubmitGiftFlowResponse>;
+  submit: (
+    answers: QuizAnswers,
+    options?: SubmitOptions,
+  ) => Promise<TheaWebSubmitGiftFlowResponse>;
   reset: () => void;
 }
 
@@ -55,41 +72,67 @@ function kickOffPipeline(
 // recommendation doc or carousel session — the results page owns both.
 export function useSubmitGiftFlow(): UseSubmitGiftFlow {
   const ensureAuth = useEnsureAuth();
+  const auth = useAuth();
   const [state, setState] = useState<SubmitGiftFlowState>({ status: 'idle' });
   // Guards against callers double-firing during the in-flight window.
   const inFlightRef = useRef(false);
 
-  const submit = useCallback(async (answers: QuizAnswers) => {
-    if (inFlightRef.current) {
-      throw new Error('Submission already in flight');
-    }
-    inFlightRef.current = true;
-    setState({ status: 'submitting' });
-    try {
-      await ensureAuth();
-      const payload = quizAnswersToRequest(answers);
-      const { data } = await submitGiftFlow(payload);
-      kickOffPipeline(payload, data.carouselSessionId);
-      // Fire Meta + GA4 pixels after the callable resolves successfully —
-      // anonymized funnel params only (no name / uid / recipientId).
-      const funnelParams = {
-        occasion: payload.input.occasion,
-        relationship: payload.recipient.relationship,
-        age_bucket: ageBucket(payload.recipient.age ?? undefined),
-        interest_count: payload.input.interests?.length ?? 0,
-      };
-      metaQuizSearchSubmitted(funnelParams);
-      gaQuizSearchSubmitted(funnelParams);
-      setState({ status: 'ready', result: data });
-      return data;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setState({ status: 'error', error });
-      throw error;
-    } finally {
-      inFlightRef.current = false;
-    }
-  }, [ensureAuth]);
+  const submit = useCallback(
+    async (answers: QuizAnswers, options?: SubmitOptions) => {
+      if (inFlightRef.current) {
+        throw new Error('Submission already in flight');
+      }
+      inFlightRef.current = true;
+      setState({ status: 'submitting' });
+      try {
+        await ensureAuth();
+        const payload = quizAnswersToRequest(answers);
+        const { data } = await submitGiftFlow(payload);
+        kickOffPipeline(payload, data.carouselSessionId);
+
+        // Anon users are submitting their first set; signed-in users are
+        // adding a NEW recipient under their UID. Read auth state AFTER
+        // ensureAuth so the value reflects the user we just authenticated.
+        const isAnon = auth.currentUser?.isAnonymous !== false;
+        const flowType = isAnon ? 'first_time' : 'new_recipient';
+
+        // SearchPill on the signed-in homepage bypasses /quiz, so QuizPage
+        // never mounts to fire quiz_start. Fire it here in that case so
+        // the funnel still has a `quiz_start → quiz_search_submitted` pair.
+        if (options?.entry_point === 'search_pill') {
+          gaQuizStart({ entry_point: 'search_pill', occasion: payload.input.occasion });
+        }
+
+        // Fire Meta + GA4 pixels after the callable resolves successfully.
+        // GA4 carries the full v6 param shape; Meta keeps a slimmer
+        // anonymized funnel set.
+        const metaParams = {
+          occasion: payload.input.occasion,
+          relationship: payload.recipient.relationship,
+          age_bucket: ageBucket(payload.recipient.age ?? undefined),
+          interest_count: payload.input.interests?.length ?? 0,
+          gender: payload.recipient.gender,
+          has_freeform: Boolean(payload.input.freeform?.trim()),
+        };
+        metaQuizSearchSubmitted(metaParams);
+        gaQuizSearchSubmitted({
+          ...metaParams,
+          session_id: data.carouselSessionId,
+          flow_type: flowType,
+          entry_point: options?.entry_point,
+        });
+        setState({ status: 'ready', result: data });
+        return data;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        setState({ status: 'error', error });
+        throw error;
+      } finally {
+        inFlightRef.current = false;
+      }
+    },
+    [ensureAuth, auth],
+  );
 
   const reset = useCallback(() => {
     setState({ status: 'idle' });

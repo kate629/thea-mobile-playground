@@ -1,14 +1,29 @@
 import {
+  gaCarouselScroll,
+  gaCarouselVisible,
+  gaOccasionCardClick,
   gaPageView,
+  gaProductClick,
   gaQuizResultsViewed,
   gaQuizSearchSubmitted,
+  gaQuizStart,
   gaSelectItem,
+  gaSelectPromotion,
+  gaViewPromotion,
 } from '../gaPixel';
 
 const mockIsBot = jest.fn<boolean, []>();
 
 jest.mock('../botDetect', () => ({
   isBot: () => mockIsBot(),
+}));
+
+// Fire idle callbacks synchronously in tests so assertions can be sync. The
+// production behavior (deferred via requestIdleCallback) is exercised by
+// idleCallback.test.ts; here we only care that the right gtag calls happen
+// with the right shape.
+jest.mock('../idleCallback', () => ({
+  fireWhenIdle: (fn: () => void) => fn(),
 }));
 
 describe('gaPixel', () => {
@@ -31,7 +46,7 @@ describe('gaPixel', () => {
   });
 
   describe('gaPageView', () => {
-    test('fires gtag("event", "page_view") with page_location + page_path', () => {
+    test('fires gtag("event", "page_view") with page_location + page_path + page_type', () => {
       Object.defineProperty(window, 'location', {
         value: {
           ...ORIGINAL_LOCATION,
@@ -41,45 +56,93 @@ describe('gaPixel', () => {
         },
         writable: true,
       });
-      gaPageView();
+      gaPageView({ page_type: 'quiz' });
       expect(gtag).toHaveBeenCalledTimes(1);
       expect(gtag).toHaveBeenCalledWith('event', 'page_view', {
         page_location: 'https://example.com/quiz?step=2',
         page_path: '/quiz?step=2',
+        page_type: 'quiz',
       });
+    });
+
+    test('includes occasion + guide_visit_number on guide pages', () => {
+      gaPageView({
+        page_type: 'guide',
+        occasion: 'mothers_day',
+        guide_visit_number: 2,
+      });
+      const params = gtag.mock.calls[0][2] as Record<string, unknown>;
+      expect(params.page_type).toBe('guide');
+      expect(params.occasion).toBe('mothers_day');
+      expect(params.guide_visit_number).toBe(2);
+    });
+
+    test('omits occasion / guide_visit_number when undefined', () => {
+      gaPageView({ page_type: 'home' });
+      const params = gtag.mock.calls[0][2] as Record<string, unknown>;
+      expect(params).not.toHaveProperty('occasion');
+      expect(params).not.toHaveProperty('guide_visit_number');
     });
 
     test('no-op when gtag is undefined', () => {
       delete (window as unknown as { gtag?: unknown }).gtag;
-      expect(() => gaPageView()).not.toThrow();
+      expect(() => gaPageView({ page_type: 'home' })).not.toThrow();
     });
 
     test('no-op when isBot() returns true', () => {
       mockIsBot.mockReturnValue(true);
-      gaPageView();
+      gaPageView({ page_type: 'home' });
+      expect(gtag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('gaQuizStart', () => {
+    test('fires custom event with entry_point', () => {
+      gaQuizStart({ entry_point: 'homepage_hero' });
+      expect(gtag).toHaveBeenCalledWith('event', 'quiz_start', {
+        entry_point: 'homepage_hero',
+      });
+    });
+
+    test('includes occasion when entry_point is guide-derived', () => {
+      gaQuizStart({ entry_point: 'sticky_occasion', occasion: 'mothers_day' });
+      expect(gtag).toHaveBeenCalledWith('event', 'quiz_start', {
+        entry_point: 'sticky_occasion',
+        occasion: 'mothers_day',
+      });
+    });
+
+    test('no-op when bot', () => {
+      mockIsBot.mockReturnValue(true);
+      gaQuizStart({ entry_point: 'direct' });
       expect(gtag).not.toHaveBeenCalled();
     });
   });
 
   describe('gaQuizSearchSubmitted', () => {
-    test('fires custom event with anonymized funnel params', () => {
+    test('fires custom event with full param shape', () => {
       gaQuizSearchSubmitted({
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
         age_bucket: '50s',
         interest_count: 3,
+        gender: 'female',
+        has_freeform: true,
+        session_id: 'sess_abc',
+        flow_type: 'first_time',
+        entry_point: 'homepage_hero',
       });
       expect(gtag).toHaveBeenCalledWith('event', 'quiz_search_submitted', {
         occasion: 'BIRTHDAY',
         relationship: 'MOM',
         age_bucket: '50s',
         interest_count: 3,
+        gender: 'female',
+        has_freeform: true,
+        session_id: 'sess_abc',
+        flow_type: 'first_time',
+        entry_point: 'homepage_hero',
       });
-    });
-
-    test('no-op when gtag is undefined', () => {
-      delete (window as unknown as { gtag?: unknown }).gtag;
-      expect(() => gaQuizSearchSubmitted({})).not.toThrow();
     });
 
     test('no-op when bot', () => {
@@ -98,6 +161,7 @@ describe('gaPixel', () => {
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,
+        session_id: 'sess_xyz',
       });
       expect(gtag).toHaveBeenCalledWith('event', 'quiz_results_viewed', {
         occasion: 'JUST_BECAUSE',
@@ -106,14 +170,89 @@ describe('gaPixel', () => {
         interest_count: 2,
         carousel_count: 4,
         product_count: 32,
+        session_id: 'sess_xyz',
       });
     });
+  });
 
-    test('no-op when gtag is undefined', () => {
-      delete (window as unknown as { gtag?: unknown }).gtag;
-      expect(() =>
-        gaQuizResultsViewed({ carousel_count: 0, product_count: 0 }),
-      ).not.toThrow();
+  describe('gaCarouselVisible', () => {
+    test('fires with index/total and carousel name', () => {
+      gaCarouselVisible({
+        carousel_name: 'tiny fan club',
+        carousel_index: 2,
+        total_carousels: 8,
+        total_cards: 12,
+        occasion: 'mothers_day',
+      });
+      expect(gtag).toHaveBeenCalledWith('event', 'carousel_visible', {
+        carousel_name: 'tiny fan club',
+        carousel_index: 2,
+        total_carousels: 8,
+        total_cards: 12,
+        occasion: 'mothers_day',
+      });
+    });
+  });
+
+  describe('gaCarouselScroll', () => {
+    test('fires with cards_visible + percent_seen threshold', () => {
+      gaCarouselScroll({
+        carousel_name: 'sentimental grandma',
+        carousel_index: 0,
+        total_carousels: 8,
+        total_cards: 10,
+        cards_visible: 5,
+        percent_seen: 50,
+        occasion: 'mothers_day',
+      });
+      expect(gtag).toHaveBeenCalledWith('event', 'carousel_scroll', {
+        carousel_name: 'sentimental grandma',
+        carousel_index: 0,
+        total_carousels: 8,
+        total_cards: 10,
+        cards_visible: 5,
+        percent_seen: 50,
+        occasion: 'mothers_day',
+      });
+    });
+  });
+
+  describe('gaSelectPromotion + gaViewPromotion', () => {
+    const params = {
+      promotion_id: 'md_quiz_cta',
+      promotion_name: "Mother's Day quiz CTA",
+      creative_name: 'mothers_day_banner_v1',
+      location_id: 'occasion_mothers_day_mid_carousel',
+    };
+
+    test('view fires the standard view_promotion event', () => {
+      gaViewPromotion(params);
+      expect(gtag).toHaveBeenCalledWith('event', 'view_promotion', params);
+    });
+
+    test('select fires the standard select_promotion event', () => {
+      gaSelectPromotion(params);
+      expect(gtag).toHaveBeenCalledWith('event', 'select_promotion', params);
+    });
+  });
+
+  describe('gaProductClick', () => {
+    test('fires guide-shape product_click', () => {
+      gaProductClick({
+        product_id: 'p1',
+        product_name: "Mother's Day Mug",
+        brand: 'Sample Brand',
+        price: 24,
+        destination_url: 'https://example.com/mug?ref=sovrn',
+        occasion: 'mothers_day',
+        carousel_name: 'tiny fan club',
+        card_position: 0,
+      });
+      expect(gtag).toHaveBeenCalledWith('event', 'product_click', expect.objectContaining({
+        product_id: 'p1',
+        carousel_name: 'tiny fan club',
+        card_position: 0,
+      }));
     });
   });
 
@@ -150,7 +289,6 @@ describe('gaPixel', () => {
     });
 
     test('does not include PII keys', () => {
-      // Soft guard — never include name/email/uid/recipientId in pixel params.
       gaSelectItem({
         item_id: 'a',
         item_name: 'X',
@@ -166,6 +304,15 @@ describe('gaPixel', () => {
       mockIsBot.mockReturnValue(true);
       gaSelectItem({ item_id: 'a', item_name: 'X' });
       expect(gtag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('gaOccasionCardClick', () => {
+    test('fires with occasion slug', () => {
+      gaOccasionCardClick({ occasion: 'birthday' });
+      expect(gtag).toHaveBeenCalledWith('event', 'occasion_card_click', {
+        occasion: 'birthday',
+      });
     });
   });
 });

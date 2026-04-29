@@ -8,6 +8,11 @@ jest.mock('../../lib/botDetect', () => ({
   isBot: () => mockIsBot(),
 }));
 
+// Fire idle callbacks synchronously so the page-view assertions can run sync.
+jest.mock('../../lib/idleCallback', () => ({
+  fireWhenIdle: (fn: () => void) => fn(),
+}));
+
 function PageTrackingMount() {
   usePageTracking();
   return null;

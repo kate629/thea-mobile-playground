@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { OccasionTile } from '../../ui/OccasionTile';
+import { gaOccasionCardClick } from '../../../theaWeb/lib/gaPixel';
 
 export interface OccasionGridTile {
   event: string;
@@ -66,16 +67,20 @@ export const OccasionGrid: React.FC<OccasionGridProps> = ({
     </HeadingWrap>
     <GridWrap>
       <Grid>
-        {tiles.map((t) => (
-          <OccasionTile
-            key={t.event}
-            href={`/occasion/${t.event.toLowerCase()}`}
-            title={t.title}
-            imageUrl={t.imageUrl}
-            cdnUrl={t.cdnUrl}
-            cdnMobileUrl={t.cdnMobileUrl}
-          />
-        ))}
+        {tiles.map((t) => {
+          const slug = t.event.toLowerCase();
+          return (
+            <OccasionTile
+              key={t.event}
+              href={`/occasion/${slug}`}
+              title={t.title}
+              imageUrl={t.imageUrl}
+              cdnUrl={t.cdnUrl}
+              cdnMobileUrl={t.cdnMobileUrl}
+              onClick={() => gaOccasionCardClick({ occasion: slug })}
+            />
+          );
+        })}
       </Grid>
     </GridWrap>
   </>

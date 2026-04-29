@@ -1,6 +1,7 @@
 import {
   ageBucket,
   metaPageView,
+  metaPromoClick,
   metaQuizResultsViewed,
   metaQuizSearchSubmitted,
   metaViewContent,
@@ -10,6 +11,12 @@ const mockIsBot = jest.fn<boolean, []>();
 
 jest.mock('../botDetect', () => ({
   isBot: () => mockIsBot(),
+}));
+
+// Fire idle callbacks synchronously in tests; deferred behavior is exercised
+// by idleCallback.test.ts.
+jest.mock('../idleCallback', () => ({
+  fireWhenIdle: (fn: () => void) => fn(),
 }));
 
 describe('metaPixel', () => {
@@ -137,6 +144,34 @@ describe('metaPixel', () => {
     test('no-op when bot', () => {
       mockIsBot.mockReturnValue(true);
       metaViewContent({ content_name: 'X', content_ids: ['a'] });
+      expect(fbq).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('metaPromoClick', () => {
+    test('fires trackCustom("PromoClick", params)', () => {
+      metaPromoClick({
+        promotion_id: 'md_quiz_cta',
+        promotion_name: "Mother's Day quiz CTA",
+        creative_name: 'mothers_day_banner_v1',
+        location_id: 'occasion_mothers_day_mid_carousel',
+      });
+      expect(fbq).toHaveBeenCalledWith('trackCustom', 'PromoClick', {
+        promotion_id: 'md_quiz_cta',
+        promotion_name: "Mother's Day quiz CTA",
+        creative_name: 'mothers_day_banner_v1',
+        location_id: 'occasion_mothers_day_mid_carousel',
+      });
+    });
+
+    test('no-op when bot', () => {
+      mockIsBot.mockReturnValue(true);
+      metaPromoClick({
+        promotion_id: 'a',
+        promotion_name: 'b',
+        creative_name: 'c',
+        location_id: 'd',
+      });
       expect(fbq).not.toHaveBeenCalled();
     });
   });

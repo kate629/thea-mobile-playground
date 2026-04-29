@@ -9,6 +9,9 @@ export interface OccasionTileProps {
   cdnUrl?: string;
   /** Firebase Storage WebP mobile variant (~600px wide; images_cdn_mobile[0]). */
   cdnMobileUrl?: string;
+  /** Pre-navigation hook — fires synchronously, before the browser leaves the
+   *  page. Used by OccasionGrid for the `occasion_card_click` analytics event. */
+  onClick?: () => void;
 }
 
 const Root = styled.a`
@@ -59,8 +62,9 @@ export const OccasionTile: React.FC<OccasionTileProps> = ({
   href,
   cdnUrl,
   cdnMobileUrl,
+  onClick,
 }) => (
-  <Root href={href}>
+  <Root href={href} onClick={onClick}>
     <ImageFrame>
       <picture>
         {cdnMobileUrl && (

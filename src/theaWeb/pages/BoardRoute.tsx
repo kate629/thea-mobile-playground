@@ -70,7 +70,8 @@ const BoardRoute: React.FC = () => {
   }, [recipientId, db, ensureAuth]);
 
   if (state.kind === 'redirect') return <Navigate to={state.to} replace />;
-  if (state.kind === 'no-recommendations') return <Navigate to="/quiz" replace />;
+  if (state.kind === 'no-recommendations')
+    return <Navigate to="/quiz" replace state={{ entry_point: 'board_redirect' }} />;
   if (state.kind === 'error') {
     // Surface enough that "blank page" never happens again — fall back home
     // with the error in console for debugging.

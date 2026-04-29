@@ -16,6 +16,7 @@ import { StickyPrimaryCta, StickyPrimaryCtaMobileSpacer } from './StickyPrimaryC
 import { SearchPill } from './SearchPill';
 import { Button } from '../../ui/Button';
 import type { QuizAnswers } from '../quiz/useQuizFlow';
+import type { QuizEntryPoint } from '../../../theaWeb/lib/gaPixel';
 
 export interface LandingPageProps {
   /** Pass a frozen HeroHeader for deterministic Happo snapshots. Defaults to
@@ -26,7 +27,13 @@ export interface LandingPageProps {
   occasionsHeading?: string;
   occasionTiles?: OccasionGridTile[];
   onSignInClick?: () => void;
-  onCtaClick?: () => void;
+  /**
+   * Both the in-page hero CTA and the sticky scroll-CTA route through this
+   * single prop; the hero passes `'homepage_hero'` and the sticky passes
+   * `'sticky_homepage'` so the parent can thread the surface into the
+   * `quiz_start` analytics event (§11.1 entry-point vocabulary).
+   */
+  onCtaClick?: (entry_point: QuizEntryPoint) => void;
   /**
    * Wired by `LandingRoute` in App.js to `useSubmitGiftFlow`. When the user
    * fills the SearchPill and taps sparkles, this fires with `QuizAnswers`,
@@ -306,7 +313,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       ) : (
         <>
           <SiteHeader onSignInClick={onSignInClick} />
-          {heroSlot ?? <HeroHeaderAnimated onCtaClick={onCtaClick} />}
+          {heroSlot ?? (
+            <HeroHeaderAnimated onCtaClick={() => onCtaClick?.('homepage_hero')} />
+          )}
           <HeroSentinel ref={heroSentinelRef} aria-hidden="true" />
         </>
       )}
@@ -321,7 +330,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <StickyPrimaryCtaMobileSpacer />
           <StickyPrimaryCta
             triggerRef={heroSentinelRef}
-            onCtaClick={onCtaClick}
+            onCtaClick={() => onCtaClick?.('sticky_homepage')}
             signInSlot={
               // Hide the secondary "Sign in" CTA once the user is
               // authenticated (sheet bug #59). We wait for `ready` so the

@@ -3,6 +3,7 @@ import { useParams, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { OccasionPage } from './OccasionPage';
 import { MothersDayQuizBanner } from './MothersDayQuizBanner';
 import { useAuthGate } from '../../../theaWeb/auth/AuthGateContext';
+import type { QuizEntryPoint } from '../../../theaWeb/lib/gaPixel';
 import { CarouselSectionData, SAMPLE_BIRTHDAY_SECTIONS } from './sampleBirthdayCarousels';
 import { SAMPLE_MOTHERS_DAY_SECTIONS } from './sampleMothersDayCarousels';
 import { SAMPLE_FATHERS_DAY_SECTIONS } from './sampleFathersDayCarousels';
@@ -85,6 +86,9 @@ export const OccasionRoute: React.FC = () => {
 
   useLcpPreload(config);
 
+  // CarouselSection now fires gaProductClick + Meta ViewContent internally
+  // when the `occasion` prop is set; this handler is left to just open the
+  // affiliate URL.
   const handleProductClick = useCallback((product: CarouselProduct) => {
     if (product.productUrl) {
       window.open(product.productUrl, '_blank', 'noopener,noreferrer');
@@ -97,10 +101,21 @@ export const OccasionRoute: React.FC = () => {
   );
 
   /* Pass the current path as `from` so the quiz's leave-warning modal returns
-   *  the user here on confirm-leave instead of the homepage default. */
+   *  the user here on confirm-leave instead of the homepage default. The
+   *  entry_point distinguishes the two CTA surfaces on this page (sticky vs
+   *  the MD banner) so the dashboard can compare per-surface drop-off. */
   const handleCtaClick = useCallback(
-    () => navigate('/quiz', { state: { from: location.pathname } }),
+    (entryPoint: QuizEntryPoint) =>
+      navigate('/quiz', { state: { from: location.pathname, entry_point: entryPoint } }),
     [navigate, location.pathname],
+  );
+  const handleStickyCtaClick = useCallback(
+    () => handleCtaClick('sticky_occasion'),
+    [handleCtaClick],
+  );
+  const handleBannerCtaClick = useCallback(
+    () => handleCtaClick('banner_mothers_day'),
+    [handleCtaClick],
   );
 
   if (!config) return <Navigate to="/" replace />;
@@ -109,7 +124,9 @@ export const OccasionRoute: React.FC = () => {
      Mirrors the banner pattern from preview.givethea.com — copy is gendered
      ("She's one of a kind.") so we don't reuse it across occasions. */
   const midCarouselSlot =
-    slug === 'mothers_day' ? <MothersDayQuizBanner onCtaClick={handleCtaClick} /> : undefined;
+    slug === 'mothers_day' ? (
+      <MothersDayQuizBanner onCtaClick={handleBannerCtaClick} />
+    ) : undefined;
 
   return (
     <OccasionPage
@@ -117,8 +134,9 @@ export const OccasionRoute: React.FC = () => {
       sections={config.sections}
       onProductClick={handleProductClick}
       onSignInClick={handleSignInClick}
-      onCtaClick={handleCtaClick}
+      onCtaClick={handleStickyCtaClick}
       midCarouselSlot={midCarouselSlot}
+      occasion={slug}
     />
   );
 };

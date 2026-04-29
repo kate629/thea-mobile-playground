@@ -42,6 +42,10 @@ export interface OccasionPageProps {
   /** Optional ReactNode rendered between the 2nd and 3rd carousel sections.
    *  Used by Mother's Day to inject a quiz CTA banner mid-page. */
   midCarouselSlot?: React.ReactNode;
+  /** URL slug for this guide (e.g. `mothers_day`). Threads through to each
+   *  CarouselSection so impression / scroll / product-click events carry
+   *  the `occasion` GA4 param. */
+  occasion?: string;
 }
 
 const Page = styled.div`
@@ -97,6 +101,7 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
   authInstance: authInstanceProp,
   headerActions,
   midCarouselSlot,
+  occasion,
 }) => {
   /* Occasion pages have no hero CTA — observe the page H1 as the sentinel.
      Once the title is scrolled off the top, the sticky CTA appears so the
@@ -118,6 +123,9 @@ export const OccasionPage: React.FC<OccasionPageProps> = ({
                 shortTitle={section.shortTitle}
                 products={section.products}
                 isFirstCarousel={idx === 0}
+                carouselIndex={idx}
+                totalCarousels={sections.length}
+                occasion={occasion}
                 onProductClick={(p, i) => onProductClick?.(p, section.slug, i)}
               />
               {idx === 1 && midCarouselSlot}
