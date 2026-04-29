@@ -1,36 +1,63 @@
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
+import { QuizLoadingAnimated } from "./components/landing/quiz/QuizLoadingAnimated";
 import { UserAuthContextProvider } from "./context/UserAuthContext.js";
 import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
 import { MergeStateProvider } from "./theaWeb/auth/MergeStateContext";
 import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
+import { useDeferredNavToResults } from "./theaWeb/hooks/useDeferredNavToResults";
 import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
 import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
+import { quizDisplayOccasionToEnum } from "./theaWeb/lib/loadingAmbientImages";
 import { theme } from "./theme";
 
 function LandingRoute() {
   const navigate = useNavigate();
   const { requestSignIn } = useAuthGate();
   const { submit } = useSubmitGiftFlow();
-  // SearchPill submit on the signed-in homepage. Same pattern as QuizPage:
-  // submitGiftFlow returns { recipientId, recommendationId }; navigate routes
-  // the user to the results page where the carousel doc streams in.
+  // Bug #74 — defer navigation from the homepage SearchPill to the results
+  // page until the carousel agent has finished its curation phase + first
+  // 3 images are preloaded. Without this gate the user lands on results
+  // mid-stream and sees the streaming product set get replaced by the
+  // curated set ~1-2s later (visible flicker). Same root cause as bugs
+  // #50/#57 (quiz path) and #43 (refresh path); shared hook keeps the gate
+  // identical across all entry points.
+  const [pendingNav, setPendingNav] = useState(null);
+  const { liveImages } = useDeferredNavToResults(pendingNav);
+
   const handleSearchSubmit = useCallback(
     async (answers) => {
       try {
-        const { recipientId, recommendationId } = await submit(answers);
-        navigate(`/quiz/results/${recipientId}/${recommendationId}`);
+        const occasion = quizDisplayOccasionToEnum(answers.occasion);
+        const result = await submit(answers);
+        setPendingNav({
+          recipientId: result.recipientId,
+          recommendationId: result.recommendationId,
+          carouselSessionId: result.carouselSessionId,
+          occasion,
+        });
       } catch {
         // Surface to the user via results-page error handling on next pass;
         // the SearchPill itself doesn't have a banner slot.
       }
     },
-    [submit, navigate],
+    [submit],
   );
+
+  if (pendingNav) {
+    return (
+      <QuizLoadingAnimated
+        interests={undefined}
+        relationship={undefined}
+        images={liveImages}
+      />
+    );
+  }
+
   return (
     <LandingPage
       onCtaClick={() => navigate("/quiz")}
