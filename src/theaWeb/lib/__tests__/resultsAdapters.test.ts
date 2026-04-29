@@ -1,5 +1,6 @@
 import {
   carouselsToSections,
+  isSessionReadyToDisplay,
   mergeHeaderWithDraft,
   productToCardItem,
   recipientHeaderProps,
@@ -255,5 +256,59 @@ describe('mergeHeaderWithDraft (bug #51 followup)', () => {
       emoji: '🔥',
     });
     expect(out.interestsLabel).toBe(base.interestsLabel);
+  });
+});
+
+// Bug #43: refresh-snapshot pattern keeps showing the OLD session's carousels
+// until the new session reaches a final state (COMPLETED or FAILED). We don't
+// count partial PROCESSING because the agent writes carouselOrder BEFORE
+// populating each carousel's products — early-clearing the snapshot caused
+// the "loaded some cards, then those got replenished" flicker Kate saw on
+// the first attempt.
+describe('isSessionReadyToDisplay (bug #43)', () => {
+  it('returns false for null', () => {
+    expect(isSessionReadyToDisplay(null)).toBe(false);
+  });
+
+  it('returns false for undefined', () => {
+    expect(isSessionReadyToDisplay(undefined)).toBe(false);
+  });
+
+  it('returns true for COMPLETED', () => {
+    const session: CarouselSession = {
+      status: 'COMPLETED',
+      carouselOrder: ['cooking'],
+      carousels: { cooking: { displayName: 'Kitchen', products: [] } },
+    };
+    expect(isSessionReadyToDisplay(session)).toBe(true);
+  });
+
+  it('returns true for FAILED (terminal — page handles error UI)', () => {
+    const session: CarouselSession = {
+      status: 'FAILED',
+      carouselOrder: [],
+      carousels: {},
+    };
+    expect(isSessionReadyToDisplay(session)).toBe(true);
+  });
+
+  it('returns false for PROCESSING even with carousels queued', () => {
+    // Critical: agent writes carouselOrder before populating products. We
+    // must NOT swap mid-stream or the user sees half-loaded carousels.
+    const session: CarouselSession = {
+      status: 'PROCESSING',
+      carouselOrder: ['cooking'],
+      carousels: { cooking: { displayName: 'Kitchen', products: [] } },
+    };
+    expect(isSessionReadyToDisplay(session)).toBe(false);
+  });
+
+  it('returns false for fresh PROCESSING with empty carouselOrder', () => {
+    const session: CarouselSession = {
+      status: 'PROCESSING',
+      carouselOrder: [],
+      carousels: {},
+    };
+    expect(isSessionReadyToDisplay(session)).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ import type {
 import { getInterestPills } from '../../components/landing/quiz/ageBasedContent';
 import { getQuizPlaceholder } from '../../components/landing/quiz/useQuizFlow';
 
+import type { Recommendation } from '../schemas';
 import { recordActivity, updateRecipient } from '../callables';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
@@ -30,8 +31,10 @@ import { useRedirectOnSignOut } from '../hooks/useRedirectOnSignOut';
 import { useRegenerate } from '../hooks/useRegenerate';
 import {
   carouselsToSections,
+  isSessionReadyToDisplay,
   mergeHeaderWithDraft,
   recipientHeaderProps,
+  type ResultsCarouselSection,
 } from '../lib/resultsAdapters';
 import {
   recommendationToProfileDraft,
@@ -107,23 +110,88 @@ const RecommendationResultsPage: React.FC = () => {
   useBackButtonGuard(!leaveWarning.isSignedIn, leaveWarning.requestLeave);
   const exitingIds = useExitAnimationQueue(liked, hydrated, EXIT_ANIMATION_MS);
 
-  const isRefreshing = regenerateState.status === 'regenerating';
+  // Carousel sections come from the session — declared early so the
+  // refresh-snapshot pattern below can capture the current sections at
+  // refresh-start time. The pixel-fire useEffect further down also reads
+  // these (live).
+  const sections = useMemo(
+    () => (session && doc ? carouselsToSections(session, doc.input, doc.recipientSnapshot) : []),
+    [session, doc],
+  );
 
-  // When the regenerate round-trip resolves, swap the URL so the page
-  // remounts on the freshly minted recommendationId. Until that resolves we
-  // KEEP the current page mounted (carousels visible, dimmed via the
-  // `refreshing` prop) so the user never sees a skeleton flash (bug #43).
+  // Refresh-snapshot pattern (bug #43). The flicker on "Refresh my picks"
+  // came from the URL transition between the OLD recommendationId and the
+  // NEW one: regenerate() returns IDs the moment the BE call completes, but
+  // the carousel pipeline is still streaming products into the new session
+  // for ~5-15s after that. During that window the page would render the new
+  // (empty) session as skeletons before the new content arrived.
+  //
+  // Fix: snapshot {doc, sections} at the moment the user clicks Refresh,
+  // and keep using the snapshot for rendering through the URL change AND
+  // through the new session's PROCESSING window. Clear the snapshot once
+  // the new session is ready (has carousels or completed). The user sees
+  // continuous content with the "Refreshing…" overlay throughout.
+  // The clear-effect must wait until we're looking at the NEW session, not
+  // the OLD one. Without `expectedRecommendationId`, the effect fires the
+  // moment the snapshot is set — because the LIVE session at that instant
+  // is still the OLD COMPLETED one, satisfying isSessionReadyToDisplay.
+  // We populate this field after regenerate resolves; the clear-effect
+  // checks `doc.recommendationId === expectedRecommendationId` before
+  // looking at session status.
+  const [refreshSnapshot, setRefreshSnapshot] = useState<{
+    doc: Recommendation;
+    sections: ResultsCarouselSection[];
+    expectedRecommendationId: string | null;
+  } | null>(null);
+
+  const isRefreshing = regenerateState.status === 'regenerating' || !!refreshSnapshot;
+
   const handleRefresh = useCallback(() => {
     if (!recipientId || !doc) return;
     if (regenerateState.status === 'regenerating') return;
+    // Capture pre-regenerate state. expectedRecommendationId is null until
+    // regenerate resolves with the new id — see the clear-effect below.
+    setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
     regenerate({ recipientId, recommendation: doc })
       .then((res) => {
+        // Stamp the expected new id so the clear-effect knows when the
+        // page has actually loaded the new doc, not the old one.
+        setRefreshSnapshot((prev) =>
+          prev ? { ...prev, expectedRecommendationId: res.recommendationId } : null,
+        );
         navigate(`/quiz/results/${res.recipientId}/${res.recommendationId}`);
       })
       .catch(() => {
-        // state.status === 'error' surfaces inline below.
+        // Drop the snapshot on error so the user sees the inline error UI
+        // (regenerateState.status === 'error') against the current page
+        // rather than against frozen old content.
+        setRefreshSnapshot(null);
       });
-  }, [recipientId, doc, regenerateState.status, regenerate, navigate]);
+  }, [recipientId, doc, sections, regenerateState.status, regenerate, navigate]);
+
+  // Clear the snapshot once we're actually viewing the NEW session AND the
+  // pipeline has reached a terminal state. Both gates are required —
+  // without the recommendationId check the effect fires immediately because
+  // the OLD session is still COMPLETED at the moment of click.
+  useEffect(() => {
+    if (!refreshSnapshot) return;
+    if (!refreshSnapshot.expectedRecommendationId) return;
+    if (doc?.recommendationId !== refreshSnapshot.expectedRecommendationId) return;
+    if (isSessionReadyToDisplay(session)) {
+      setRefreshSnapshot(null);
+    }
+  }, [refreshSnapshot, doc?.recommendationId, session]);
+
+  // Safety net: if the agent hangs and the new session never reaches a
+  // terminal state, clear the snapshot after 30s so the user isn't locked
+  // into a dimmed-old-content view forever. Whatever the new session has
+  // at that point gets shown — usually skeletons + the regenerate-error
+  // alert if the BE actually failed (bug #43).
+  useEffect(() => {
+    if (!refreshSnapshot) return;
+    const timer = setTimeout(() => setRefreshSnapshot(null), 30_000);
+    return () => clearTimeout(timer);
+  }, [refreshSnapshot]);
 
   // Optimistic heart fill: between click and the BE listener pushing the
   // SAVED state (~500ms round-trip), the heart would otherwise stay empty
@@ -146,14 +214,6 @@ const RecommendationResultsPage: React.FC = () => {
       return changed ? next : prev;
     });
   }, [liked]);
-
-  // Carousel sections come from the session — reuse the adapter so the
-  // mapping (image preference order, product → card item) lives in one place
-  // and is independently unit-tested.
-  const sections = useMemo(
-    () => (session && doc ? carouselsToSections(session, doc.input, doc.recipientSnapshot) : []),
-    [session, doc],
-  );
 
   // Fire Meta pixel `QuizResultsViewed` exactly once per recommendation when
   // the session lands in COMPLETED with at least one carousel. Guarded by a
@@ -240,23 +300,27 @@ const RecommendationResultsPage: React.FC = () => {
   );
 
   // "Update picks" path — fires only when an algo-triggering field changed
-  // (drawer's `isDirty` gates the button). Builds an override payload and
-  // hands it to `useRegenerate`; on success we navigate to the new rec URL
-  // so the page remounts on fresh results, mirroring `handleRefresh`.
+  // (drawer's `isDirty` gates the button). Same flicker-prevention snapshot
+  // as `handleRefresh` (bug #43): without it, the URL transition + new
+  // session loading would render blank cards then half-streamed carousels.
   const handleUpdatePicks = useCallback(
     (next: typeof initialDraft) => {
       if (!recipientId || !doc) return;
       if (regenerateState.status === 'regenerating') return;
+      setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
       const requestOverride = profileDraftToRegenerateRequest(next, recipientId, doc);
       regenerate({ recipientId, recommendation: doc, requestOverride })
         .then((res) => {
+          setRefreshSnapshot((prev) =>
+            prev ? { ...prev, expectedRecommendationId: res.recommendationId } : null,
+          );
           navigate(`/quiz/results/${res.recipientId}/${res.recommendationId}`);
         })
         .catch(() => {
-          // state.status === 'error' surfaces inline below.
+          setRefreshSnapshot(null);
         });
     },
-    [recipientId, doc, regenerateState.status, regenerate, navigate],
+    [recipientId, doc, sections, regenerateState.status, regenerate, navigate],
   );
 
   // Auto-save path — only fires on drawer close when the user changed
@@ -310,7 +374,10 @@ const RecommendationResultsPage: React.FC = () => {
   const priceMin = drawer.draft.priceMin ?? 0;
   const priceMax = drawer.draft.priceMax ?? Number.POSITIVE_INFINITY;
   const filteredSections = useMemo(() => {
-    return sections
+    // Use the refresh snapshot's sections during a refresh so the price
+    // filter operates on what the user is actually looking at (bug #43).
+    const source = refreshSnapshot ? refreshSnapshot.sections : sections;
+    return source
       .map((s) => ({
         ...s,
         products: s.products.filter((p) => {
@@ -319,7 +386,7 @@ const RecommendationResultsPage: React.FC = () => {
         }),
       }))
       .filter((s) => s.products.length > 0);
-  }, [sections, priceMin, priceMax]);
+  }, [refreshSnapshot, sections, priceMin, priceMax]);
 
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
@@ -457,7 +524,14 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  if (!doc) {
+  // While a refresh is in flight (or the new session is still warming up
+  // post-URL-change), keep rendering the snapshot of the old doc + sections
+  // so the user sees continuous content instead of a flash of skeletons.
+  // Bug #43.
+  const displayDoc = refreshSnapshot?.doc ?? doc;
+  const displaySections = refreshSnapshot ? refreshSnapshot.sections : sections;
+
+  if (!displayDoc) {
     // BE listener resolved with no doc at this path. Either the recommendation
     // doesn't exist, or the user is on a different uid than the one that
     // created it (e.g. signed out, or session was lost before the
@@ -478,12 +552,16 @@ const RecommendationResultsPage: React.FC = () => {
   // both while the drawer is open (live preview) and after close
   // (recipient-only edits auto-save via `updateRecipient` but the snapshot
   // stays stale until the next regenerate). Bug #51 followup.
-  const headerProps = mergeHeaderWithDraft(recipientHeaderProps(doc), {
+  const headerProps = mergeHeaderWithDraft(recipientHeaderProps(displayDoc), {
     name: drawer.draft.name,
     emoji: drawer.draft.emoji,
   });
-  const status = session?.status ?? doc.status;
-  const errorMessage = session?.errorMessage ?? doc.errorMessage;
+  // While a refresh snapshot is active, treat status as COMPLETED so the
+  // page renders the carousels-with-content branch (using snapshot sections)
+  // instead of the PROCESSING-skeletons branch (which would key off the new,
+  // empty session). Bug #43.
+  const status = refreshSnapshot ? 'COMPLETED' : (session?.status ?? doc?.status);
+  const errorMessage = session?.errorMessage ?? doc?.errorMessage;
 
   const discoverBody = (
     <>
@@ -506,11 +584,11 @@ const RecommendationResultsPage: React.FC = () => {
           We couldn't refresh your picks: {regenerateState.error.message}
         </Alert>
       )}
-      {status === 'COMPLETED' && sections.length === 0 ? (
+      {status === 'COMPLETED' && displaySections.length === 0 ? (
         <ProcessingHint>
           No recommendations were generated for this submission.
         </ProcessingHint>
-      ) : status === 'PROCESSING' && sections.length === 0 ? (
+      ) : status === 'PROCESSING' && displaySections.length === 0 ? (
         <ResultsDiscoverTab
           summary={{ saves: liked.size, dismissed: dismissed.size }}
           // While loading, hide the "more you react" summary banner — there
@@ -528,7 +606,7 @@ const RecommendationResultsPage: React.FC = () => {
           summary={{ saves: liked.size, dismissed: dismissed.size }}
           // Only render the summary banner once we actually have products
           // for the user to react to (bug #35).
-          showSummary={status === 'COMPLETED' && sections.length > 0}
+          showSummary={status === 'COMPLETED' && displaySections.length > 0}
           onRefresh={handleRefresh}
           refreshing={isRefreshing}
         >
@@ -591,7 +669,7 @@ const RecommendationResultsPage: React.FC = () => {
       <ProfileDrawer
         open={drawer.open}
         onClose={drawer.closeDrawer}
-        isMe={doc.recipientSnapshot.isMe}
+        isMe={displayDoc.recipientSnapshot.isMe}
         draft={drawer.draft}
         savedHints={drawer.savedHints}
         interestPills={interestPills}

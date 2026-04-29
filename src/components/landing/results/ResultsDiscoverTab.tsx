@@ -147,6 +147,36 @@ const Spinner = styled.span`
   @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
+// Refreshing pill: visible above the carousels so the user has clear
+// feedback that a refresh is in progress even when scrolled away from the
+// bottom CTA. Bug #43 — without this, the dimmed-old-content + invisible
+// "Refreshing…" button read as "broken" rather than "in progress".
+const RefreshingPill = styled.div`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: center;
+  background: ${({ theme }) => theme.color.clay};
+  color: #fff;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+`;
+
+const PillSpinner = styled.span`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+`;
+
 const SummaryCard = styled.div`
   background: ${({ theme }) => theme.color.cream};
   width: 100%;
@@ -246,6 +276,17 @@ export const ResultsDiscoverTab: React.FC<ResultsDiscoverTabProps> = ({
 }) => (
   <Wrap>
     {topSlot}
+
+    {/* Visible refresh indicator above the carousels (bug #43). Without
+        this, the dimmed-old-content + scrolled-away-from-bottom CTA read
+        as "broken." Pill renders only while refreshing so it doesn't
+        compete with the empty/sparse messages. */}
+    {refreshing && (
+      <RefreshingPill role="status" aria-live="polite">
+        <PillSpinner aria-hidden="true" />
+        Refreshing your picks…
+      </RefreshingPill>
+    )}
 
     {empty && !refreshing && (
       <EmptyCard>

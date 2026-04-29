@@ -89,6 +89,28 @@ export function mergeHeaderWithDraft(
   };
 }
 
+/**
+ * True when a carousel session has reached a final state (pipeline finished
+ * or failed). Used by the results page's refresh-snapshot pattern (bug #43):
+ * during a refresh the page keeps rendering the OLD sections and only swaps
+ * to the new session at a final state.
+ *
+ * Critical: we deliberately do NOT count "session has carouselOrder entries"
+ * as ready. The agent writes carouselOrder BEFORE populating each carousel's
+ * products, and a partially-streaming session would show as half-loaded
+ * carousels — exactly the flicker bug #43 set out to fix. Wait for the full
+ * pipeline (`COMPLETED`) or a hard failure (`FAILED`); the page-level 30s
+ * timeout covers any agent that hangs.
+ *
+ * `null`/`undefined` count as not-ready (still loading).
+ */
+export function isSessionReadyToDisplay(
+  session: CarouselSession | null | undefined,
+): boolean {
+  if (!session) return false;
+  return session.status === 'COMPLETED' || session.status === 'FAILED';
+}
+
 export function productToCardItem(p: RecommendationProduct): ResultsProductCardItem {
   // Prefer mobile CDN webp, then desktop CDN, then raw scrape URL. ResultsProductCard
   // doesn't yet take separate desktop/mobile srcsets, so we pick the first usable.
