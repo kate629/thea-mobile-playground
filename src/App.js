@@ -33,6 +33,18 @@ function LandingRoute() {
   const handleSearchSubmit = useCallback(
     async (answers) => {
       try {
+        // Mark T0 for time-to-first-result (spec §14). Cleared first so
+        // prior submissions / regenerates can't bleed into the next
+        // computation.
+        try {
+          if (typeof performance !== "undefined") {
+            performance.clearMarks("thea-submit-click");
+            performance.clearMarks("thea-submit-callable-resolve");
+            performance.mark("thea-submit-click");
+          }
+        } catch {
+          /* ignore */
+        }
         const occasion = quizDisplayOccasionToEnum(answers.occasion);
         // SearchPill bypasses /quiz, so useSubmitGiftFlow fires `quiz_start`
         // (with entry_point='search_pill') for us when we pass that flag.

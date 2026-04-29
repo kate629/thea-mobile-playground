@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Alert, Spinner } from 'react-bootstrap';
@@ -45,8 +45,17 @@ import {
 import { useAuthGate } from '../auth/AuthGateContext';
 import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { useAuth } from '../firebase/FirebaseContext';
-import { gaQuizResultsViewed, gaSelectItem } from '../lib/gaPixel';
+import {
+  gaProductDismissed,
+  gaProductSaved,
+  gaQuizResultsProductClick,
+  gaQuizResultsViewed,
+  gaRegenerateRecommendations,
+  gaSelectItem,
+  type GaProductReactionParams,
+} from '../lib/gaPixel';
 import { ageBucket, metaQuizResultsViewed, metaViewContent } from '../lib/metaPixel';
+import { useTimeToFirstResult } from '../hooks/useTimeToFirstResult';
 
 const ProcessingHint = styled.p`
   text-align: center;
@@ -92,6 +101,23 @@ const RecommendationResultsPage: React.FC = () => {
   const { liked, dismissed, purchased, hydrated } = useGiftActivities(recipientId);
   const navigate = useNavigate();
   const { state: regenerateState, regenerate, reset: resetRegenerate } = useRegenerate();
+
+  // Per-session counter — increments each time the user enters a regenerate
+  // state. Threaded onto every product_saved / product_dismissed event so the
+  // dashboard can answer "do users save more on a regenerated set than on
+  // their original picks?" 0 means acting on the original results; 1+ means
+  // acting on a refreshed/updated set.
+  const regenerateCountRef = useRef(0);
+  const prevRegenerateStatusRef = useRef<string | undefined>(regenerateState.status);
+  useEffect(() => {
+    if (
+      prevRegenerateStatusRef.current !== 'regenerating' &&
+      regenerateState.status === 'regenerating'
+    ) {
+      regenerateCountRef.current += 1;
+    }
+    prevRegenerateStatusRef.current = regenerateState.status;
+  }, [regenerateState.status]);
 
   const [activeTab, setActiveTab] = useState<ResultsTabKey>('recommended');
   // Logo-click confirmation: navigating away loses the in-flight quiz
@@ -150,6 +176,21 @@ const RecommendationResultsPage: React.FC = () => {
   const handleRefresh = useCallback(() => {
     if (!recipientId || !doc) return;
     if (regenerateState.status === 'regenerating') return;
+    // Fire `regenerate_recommendations` BEFORE invoking regenerate so the
+    // dashboard can denominator the cohort even when the regenerate call
+    // fails or the user navigates away mid-pipeline. The counter ref
+    // increments via the useEffect that watches regenerateState.status.
+    gaRegenerateRecommendations({
+      path: 'refresh_my_picks_button',
+      prior_carousel_count: sections.length,
+      ...(doc.recipientSnapshot?.relationship !== undefined
+        ? { relationship: doc.recipientSnapshot.relationship }
+        : {}),
+      ...(doc.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
+      ...(doc.carouselSessionId !== undefined
+        ? { session_id: doc.carouselSessionId }
+        : {}),
+    });
     // Capture pre-regenerate state. expectedRecommendationId is null until
     // regenerate resolves with the new id — see the clear-effect below.
     setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
@@ -235,9 +276,30 @@ const RecommendationResultsPage: React.FC = () => {
       product_count: productCount,
     };
     metaQuizResultsViewed(resultsParams);
-    gaQuizResultsViewed(resultsParams);
+    // GA4 carries session_id additionally so the dashboard can join this
+    // event to the same `session_id` carried by quiz_search_submitted +
+    // every product_saved/dismissed event for cross-event funnel analysis.
+    gaQuizResultsViewed({
+      ...resultsParams,
+      ...(doc?.carouselSessionId !== undefined
+        ? { session_id: doc.carouselSessionId }
+        : {}),
+    });
     setPixelResultsFired(true);
   }, [pixelResultsFired, session?.status, doc, sections]);
+
+  // LCP-anchored time-to-first-result analytics (spec §14). The hook installs
+  // a PerformanceObserver for the LCP entry and fires `time_to_first_result_ms`
+  // exactly once per recommendation, with sub-timings for submit-callable,
+  // agent-phase, and nav-to-LCP. Only fires when the submit pipeline laid
+  // down its `thea-submit-click` + `thea-submit-callable-resolve` marks (i.e.,
+  // the user came in via a real submission, not a deep link).
+  useTimeToFirstResult({
+    isReady: session?.status === 'COMPLETED' && sections.length > 0,
+    occasion: doc?.input?.occasion,
+    relationship: doc?.recipientSnapshot?.relationship,
+    sessionId: doc?.carouselSessionId,
+  });
 
   // Flat lookup of every card item by id so the Saved + Purchased grids can
   // hydrate from the BE Sets without re-walking the carousels each render.
@@ -308,6 +370,20 @@ const RecommendationResultsPage: React.FC = () => {
     (next: typeof initialDraft) => {
       if (!recipientId || !doc) return;
       if (regenerateState.status === 'regenerating') return;
+      // Fire `regenerate_recommendations` (path=update_picks_from_drawer) on
+      // intent — same pattern as handleRefresh. The dashboard splits these
+      // two paths to compare drawer-edit vs in-place-refresh engagement.
+      gaRegenerateRecommendations({
+        path: 'update_picks_from_drawer',
+        prior_carousel_count: sections.length,
+        ...(doc.recipientSnapshot?.relationship !== undefined
+          ? { relationship: doc.recipientSnapshot.relationship }
+          : {}),
+        ...(doc.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
+        ...(doc.carouselSessionId !== undefined
+          ? { session_id: doc.carouselSessionId }
+          : {}),
+      });
       setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
       const requestOverride = profileDraftToRegenerateRequest(next, recipientId, doc);
       regenerate({ recipientId, recommendation: doc, requestOverride })
@@ -389,11 +465,70 @@ const RecommendationResultsPage: React.FC = () => {
       .filter((s) => s.products.length > 0);
   }, [refreshSnapshot, sections, priceMin, priceMax]);
 
+  // Map product id → carousel title + zero-based card position. Used by the
+  // pixel fire sites (save / dismiss / click) so each event carries the
+  // dashboard-segment fields without re-walking sections on every fire.
+  // Declared here (above handleSaveClick) so the cohort builder is in scope
+  // before the save/dismiss handlers reference it in their deps array.
+  const carouselTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const section of sections) {
+      for (const item of section.products) map.set(item.id, section.title);
+    }
+    return map;
+  }, [sections]);
+  const cardPositionById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const section of sections) {
+      section.products.forEach((item, i) => map.set(item.id, i));
+    }
+    return map;
+  }, [sections]);
+
+  // Build the cohort-rich param shape every product_saved / product_dismissed
+  // / quiz_results_product_click event needs. Hoisted so each fire site
+  // doesn't repeat the same field plumbing — the dashboard wants the recipient
+  // + occasion + regenerate_count fields on every reaction so it can pivot.
+  const buildProductReactionParams = useCallback(
+    (item: ResultsProductCardItem): GaProductReactionParams => ({
+      product_id: item.id,
+      product_name: item.title,
+      ...(item.brand !== undefined ? { brand: item.brand } : {}),
+      ...(item.price !== undefined ? { price: item.price } : {}),
+      carousel_name: carouselTitleById.get(item.id) || 'quiz_results',
+      card_position: cardPositionById.get(item.id) ?? 0,
+      ...(doc?.recipientSnapshot?.relationship !== undefined
+        ? { relationship: doc.recipientSnapshot.relationship }
+        : {}),
+      ...(doc?.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
+      ...(doc?.recipientSnapshot?.gender !== undefined
+        ? { gender: doc.recipientSnapshot.gender }
+        : {}),
+      ...(doc?.recipientSnapshot?.age != null
+        ? (() => {
+            const ab = ageBucket(doc.recipientSnapshot.age);
+            return ab !== undefined ? { age_bucket: ab } : {};
+          })()
+        : {}),
+      regenerate_count: regenerateCountRef.current,
+      ...(doc?.carouselSessionId !== undefined
+        ? { session_id: doc.carouselSessionId }
+        : {}),
+    }),
+    [carouselTitleById, cardPositionById, doc],
+  );
+
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
       // No UNSAVED state on the BE — un-save is a follow-up endpoint. Until
       // then, a second click on an already-liked product is a no-op.
       if (liked.has(item.id)) return;
+
+      // Fire `product_saved` on INTENT (i.e. at click time), not after the
+      // optional sign-in modal resolves. Anon users who bail out of the auth
+      // gate should still be counted in the save-intent dashboard cell — the
+      // BE just won't have the activity row. Matches the old v6 behavior.
+      gaProductSaved(buildProductReactionParams(item));
 
       if (auth.currentUser?.isAnonymous !== false) {
         requestSignIn({
@@ -409,14 +544,17 @@ const RecommendationResultsPage: React.FC = () => {
     // A proper fix (likely: read `auth` via ref) is tracked separately. The
     // existing behavior matches what's been shipping since PR #82/#79.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [liked, fireActivity, requestSignIn],
+    [liked, fireActivity, requestSignIn, buildProductReactionParams],
   );
 
   const handleDismissFinalize = useCallback(
     (item: ResultsProductCardItem) => {
+      // Anon users CAN dismiss (BE only requires auth.uid which the anon
+      // session provides). Fire unconditionally — matches BE behavior.
+      gaProductDismissed(buildProductReactionParams(item));
       fireActivity(item.id, 'DISMISSED');
     },
-    [fireActivity],
+    [fireActivity, buildProductReactionParams],
   );
 
   const handleMarkPurchased = useCallback(
@@ -443,17 +581,6 @@ const RecommendationResultsPage: React.FC = () => {
     [fireActivity, requestSignIn],
   );
 
-  // Map product id → carousel title so ViewContent can carry content_category
-  // (helpful for Meta's audience modeling) without re-walking sections on each
-  // click.
-  const carouselTitleById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const section of sections) {
-      for (const item of section.products) map.set(item.id, section.title);
-    }
-    return map;
-  }, [sections]);
-
   const handleProductClick = useCallback(
     (item: ResultsProductCardItem) => {
       // Fire pixels BEFORE opening the new tab so a popup-blocker / mobile
@@ -473,11 +600,31 @@ const RecommendationResultsPage: React.FC = () => {
         price: item.price,
         currency: 'USD',
       });
+      // V6-shape companion to gaSelectItem — keeps the v6 dashboard's SQL
+      // queries against `quiz_results_product_click` working without dropping
+      // GA4's standard select_item (used by Enhanced Ecommerce reports).
+      // See spec §11.11 (decision 12.1: fire BOTH).
+      gaQuizResultsProductClick({
+        product_id: item.id,
+        product_name: item.title,
+        ...(item.brand !== undefined ? { brand: item.brand } : {}),
+        ...(item.price !== undefined ? { price: item.price } : {}),
+        destination_url: item.productUrl ?? '',
+        carousel_name: category,
+        card_position: cardPositionById.get(item.id) ?? 0,
+        ...(doc?.recipientSnapshot?.relationship !== undefined
+          ? { relationship: doc.recipientSnapshot.relationship }
+          : {}),
+        ...(doc?.input?.occasion !== undefined ? { occasion: doc.input.occasion } : {}),
+        ...(doc?.carouselSessionId !== undefined
+          ? { session_id: doc.carouselSessionId }
+          : {}),
+      });
       if (item.productUrl) {
         openExternal(item.productUrl);
       }
     },
-    [carouselTitleById],
+    [carouselTitleById, cardPositionById, doc],
   );
 
   const isLiked = useCallback((id: string) => liked.has(id), [liked]);

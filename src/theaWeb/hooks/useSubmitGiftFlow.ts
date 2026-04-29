@@ -88,6 +88,20 @@ export function useSubmitGiftFlow(): UseSubmitGiftFlow {
         await ensureAuth();
         const payload = quizAnswersToRequest(answers);
         const { data } = await submitGiftFlow(payload);
+        // Mark the moment the BE submit callable resolves. Paired with the
+        // `thea-submit-click` mark (placed by App.js / QuizPage at the
+        // start of the submission), this lets the results page compute
+        // `submit_callable_ms` for the time-to-first-result event (§14).
+        // Wrapped in try/catch — performance.mark is technically optional
+        // and analytics must never fail submit.
+        try {
+          if (typeof performance !== 'undefined') {
+            performance.clearMarks('thea-submit-callable-resolve');
+            performance.mark('thea-submit-callable-resolve');
+          }
+        } catch {
+          // ignore
+        }
         kickOffPipeline(payload, data.carouselSessionId);
 
         // Anon users are submitting their first set; signed-in users are

@@ -119,6 +119,17 @@ const QuizPage: React.FC = () => {
   const handleSubmit = useCallback(
     async (answers: QuizAnswers) => {
       try {
+        // Mark T0 for time-to-first-result (spec §14). Cleared first so
+        // prior submissions can't bleed into the next computation.
+        try {
+          if (typeof performance !== 'undefined') {
+            performance.clearMarks('thea-submit-click');
+            performance.clearMarks('thea-submit-callable-resolve');
+            performance.mark('thea-submit-click');
+          }
+        } catch {
+          /* ignore */
+        }
         // Convert the user's occasion pick to its wire enum for the
         // ambient-ring sample lookup. `quizAnswersToRequest` runs the same
         // conversion for the actual BE call inside `submit()`.

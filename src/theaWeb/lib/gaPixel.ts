@@ -290,3 +290,133 @@ export function gaOccasionCardClick(params: GaOccasionCardClickParams): void {
   if (!canFire()) return;
   window.gtag?.('event', 'occasion_card_click', { ...params });
 }
+
+// --- Save / dismiss / regenerate (Tier 1b) ---------------------------------
+
+/**
+ * Common shape for `product_saved` and `product_dismissed`. The full quiz-input
+ * cohort fields are duplicated on every event so the dashboard can group save
+ * rate by occasion / relationship / age / gender without joining against the
+ * carouselSession doc. The `regenerate_count` lets us answer "are users more
+ * likely to save after refreshing their picks?"
+ */
+export interface GaProductReactionParams {
+  product_id: string;
+  product_name: string;
+  brand?: string;
+  price?: number;
+  /** Carousel section title the product was in. */
+  carousel_name: string;
+  /** Zero-based card position within the carousel. */
+  card_position: number;
+  /** Recipient + occasion cohort fields (from the recommendation doc). */
+  relationship?: string;
+  occasion?: string;
+  gender?: string;
+  age_bucket?: string;
+  /** Number of times the user has regenerated picks in this session. 0 if
+   *  they're acting on the original results, 1+ after a refresh. */
+  regenerate_count: number;
+  /** Carousel session id (joins to Firestore for the rollup). */
+  session_id?: string;
+}
+
+/** Fired when the user hearts a product on the results page. */
+export function gaProductSaved(params: GaProductReactionParams): void {
+  fireWhenIdle(() => emit('product_saved', { ...params }));
+}
+
+/** Fired when the user dismisses a product on the results page. */
+export function gaProductDismissed(params: GaProductReactionParams): void {
+  fireWhenIdle(() => emit('product_dismissed', { ...params }));
+}
+
+/** Source of a regenerate request — drawer "Update picks" vs sticky "Refresh my picks". */
+export type RegeneratePath = 'update_picks_from_drawer' | 'refresh_my_picks_button';
+
+export interface GaRegenerateRecommendationsParams {
+  path: RegeneratePath;
+  relationship?: string;
+  occasion?: string;
+  /** Number of carousels in the prior result (denominator for "how much
+   *  picks-set changed" analyses). */
+  prior_carousel_count: number;
+  /** Carousel session id of the recommendation that's being regenerated. */
+  session_id?: string;
+}
+
+/**
+ * Fired when the user clicks "Update picks" or "Refresh my picks." Just the
+ * click event — `_completed` and `_failed` companion events are deferred to
+ * Tier 2 (they need funnel-completion analysis we don't have a dashboard for
+ * yet). Click-only is enough to denominate the "did this user enter a
+ * regenerated state" cohort for save/dismiss-rate comparisons.
+ */
+export function gaRegenerateRecommendations(
+  params: GaRegenerateRecommendationsParams,
+): void {
+  fireWhenIdle(() => emit('regenerate_recommendations', { ...params }));
+}
+
+// --- Results-page product click (v6 dashboard parity) ----------------------
+
+export interface GaQuizResultsProductClickParams {
+  product_id: string;
+  product_name: string;
+  brand?: string;
+  price?: number;
+  destination_url: string;
+  carousel_name: string;
+  card_position: number;
+  /** Recipient + occasion fields from the recommendation. */
+  relationship?: string;
+  occasion?: string;
+  /** Carousel session id (joins to Firestore + ties click back to the
+   *  specific recommendation cohort the dashboard analyses). */
+  session_id?: string;
+}
+
+/**
+ * Fired alongside the existing `select_item` (kept for GA4 Enhanced Ecommerce)
+ * when a user clicks a product on the results page. The v6 dashboard's SQL
+ * queries by event name `quiz_results_product_click`; this event is the
+ * dashboard-parity companion. See spec §11.11 (decision 12.1).
+ */
+export function gaQuizResultsProductClick(
+  params: GaQuizResultsProductClickParams,
+): void {
+  fireWhenIdle(() => emit('quiz_results_product_click', { ...params }));
+}
+
+// --- Time to first result (LCP-anchored, per §14) --------------------------
+
+export interface GaTimeToFirstResultParams {
+  /** T(LCP on results) − T(submit click). The headline metric Kate cares about. */
+  time_to_first_result_ms: number;
+  /** Sub-timing: T(submitGiftFlow callable resolves) − T(submit click). */
+  submit_callable_ms: number;
+  /** Sub-timing: T(carouselSession === COMPLETED) − T(submit-callable resolve). */
+  agent_phase_ms: number;
+  /** Sub-timing: T(LCP on results page) − T(navigate to results). */
+  nav_to_lcp_ms: number;
+  /** Cohort fields. */
+  occasion?: string;
+  relationship?: string;
+  /** Carousel session id (joins to Firestore for the rollup). */
+  session_id?: string;
+}
+
+/**
+ * Fired exactly once per recommendation — when the results page captures its
+ * Largest Contentful Paint entry. The four sub-timings split the total felt
+ * latency into BE submit, agent, and FE-render-to-paint phases so optimization
+ * effort can target the biggest contributor. See spec §14.
+ *
+ * NOTE: this event is anchored to the BROWSER's LCP entry, not the FE's
+ * "ready to render" decision. `quiz_results_viewed` already fires on the
+ * latter; the two events together let the dashboard distinguish "we thought
+ * the page was ready" from "the user actually saw content."
+ */
+export function gaTimeToFirstResult(params: GaTimeToFirstResultParams): void {
+  fireWhenIdle(() => emit('time_to_first_result_ms', { ...params }));
+}

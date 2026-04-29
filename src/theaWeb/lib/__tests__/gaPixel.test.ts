@@ -4,11 +4,16 @@ import {
   gaOccasionCardClick,
   gaPageView,
   gaProductClick,
+  gaProductDismissed,
+  gaProductSaved,
+  gaQuizResultsProductClick,
   gaQuizResultsViewed,
   gaQuizSearchSubmitted,
   gaQuizStart,
+  gaRegenerateRecommendations,
   gaSelectItem,
   gaSelectPromotion,
+  gaTimeToFirstResult,
   gaViewPromotion,
 } from '../gaPixel';
 
@@ -313,6 +318,126 @@ describe('gaPixel', () => {
       expect(gtag).toHaveBeenCalledWith('event', 'occasion_card_click', {
         occasion: 'birthday',
       });
+    });
+  });
+
+  describe('gaProductSaved + gaProductDismissed', () => {
+    const params = {
+      product_id: 'prod_123',
+      product_name: 'Hand-painted ceramic mug',
+      brand: 'Sample Brand',
+      price: 42,
+      carousel_name: 'tiny fan club',
+      card_position: 2,
+      relationship: 'MOM',
+      occasion: 'mothers_day',
+      gender: 'female',
+      age_bucket: '50s',
+      regenerate_count: 1,
+      session_id: 'sess_abc',
+    };
+
+    test('product_saved fires with full cohort + product params', () => {
+      gaProductSaved(params);
+      expect(gtag).toHaveBeenCalledWith('event', 'product_saved', expect.objectContaining({
+        product_id: 'prod_123',
+        regenerate_count: 1,
+        relationship: 'MOM',
+      }));
+    });
+
+    test('product_dismissed fires with the same shape', () => {
+      gaProductDismissed(params);
+      expect(gtag).toHaveBeenCalledWith('event', 'product_dismissed', expect.objectContaining({
+        product_id: 'prod_123',
+        regenerate_count: 1,
+      }));
+    });
+
+    test('regenerate_count=0 is preserved (not stripped as falsy)', () => {
+      gaProductSaved({ ...params, regenerate_count: 0 });
+      const call = gtag.mock.calls.find((c) => c[1] === 'product_saved');
+      expect((call?.[2] as Record<string, unknown>).regenerate_count).toBe(0);
+    });
+  });
+
+  describe('gaRegenerateRecommendations', () => {
+    test('fires update_picks_from_drawer path with cohort + prior count', () => {
+      gaRegenerateRecommendations({
+        path: 'update_picks_from_drawer',
+        relationship: 'MOM',
+        occasion: 'mothers_day',
+        prior_carousel_count: 6,
+        session_id: 'sess_xyz',
+      });
+      expect(gtag).toHaveBeenCalledWith(
+        'event',
+        'regenerate_recommendations',
+        expect.objectContaining({
+          path: 'update_picks_from_drawer',
+          prior_carousel_count: 6,
+        }),
+      );
+    });
+
+    test('fires refresh_my_picks_button path', () => {
+      gaRegenerateRecommendations({
+        path: 'refresh_my_picks_button',
+        prior_carousel_count: 8,
+      });
+      const args = gtag.mock.calls.find(
+        (c) => c[1] === 'regenerate_recommendations',
+      )?.[2] as Record<string, unknown>;
+      expect(args.path).toBe('refresh_my_picks_button');
+    });
+  });
+
+  describe('gaQuizResultsProductClick', () => {
+    test('fires v6-shaped event with session_id + cohort', () => {
+      gaQuizResultsProductClick({
+        product_id: 'p1',
+        product_name: 'X',
+        brand: 'B',
+        price: 30,
+        destination_url: 'https://example.com',
+        carousel_name: 'tiny fan club',
+        card_position: 0,
+        relationship: 'MOM',
+        occasion: 'mothers_day',
+        session_id: 'sess_qrp',
+      });
+      expect(gtag).toHaveBeenCalledWith(
+        'event',
+        'quiz_results_product_click',
+        expect.objectContaining({
+          product_id: 'p1',
+          session_id: 'sess_qrp',
+        }),
+      );
+    });
+  });
+
+  describe('gaTimeToFirstResult', () => {
+    test('fires LCP-anchored timing with all four sub-timings', () => {
+      gaTimeToFirstResult({
+        time_to_first_result_ms: 4823,
+        submit_callable_ms: 1240,
+        agent_phase_ms: 2810,
+        nav_to_lcp_ms: 773,
+        occasion: 'mothers_day',
+        relationship: 'MOM',
+        session_id: 'sess_lcp',
+      });
+      expect(gtag).toHaveBeenCalledWith(
+        'event',
+        'time_to_first_result_ms',
+        expect.objectContaining({
+          time_to_first_result_ms: 4823,
+          submit_callable_ms: 1240,
+          agent_phase_ms: 2810,
+          nav_to_lcp_ms: 773,
+        }),
+      );
     });
   });
 });
