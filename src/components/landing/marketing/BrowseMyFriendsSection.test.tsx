@@ -70,7 +70,7 @@ const SAMPLE_PEOPLE: DashboardPerson[] = [
 ];
 
 const instantLoader: FriendPreviewLoader = {
-  subscribe: (_personId, cb) => {
+  subscribe: (_personId, _currentRecommendationId, cb) => {
     cb([]);
     return () => {};
   },

@@ -36,7 +36,7 @@ export const SAMPLE_PREVIEW_IMAGES: Record<string, string[]> = {
 
 /** Loader that immediately resolves with the fixture images. Used in Live containers. */
 export const instantMockPreviewLoader: FriendPreviewLoader = {
-  subscribe: (personId, cb) => {
+  subscribe: (personId, _currentRecommendationId, cb) => {
     cb(SAMPLE_PREVIEW_IMAGES[personId] ?? []);
     return () => {};
   },
@@ -45,7 +45,7 @@ export const instantMockPreviewLoader: FriendPreviewLoader = {
 /** Loader that resolves after `delayMs`. Demonstrates the skeleton-to-collage transition. */
 export function makeDelayedMockPreviewLoader(delayMs: number): FriendPreviewLoader {
   return {
-    subscribe: (personId, cb) => {
+    subscribe: (personId, _currentRecommendationId, cb) => {
       const t = setTimeout(() => cb(SAMPLE_PREVIEW_IMAGES[personId] ?? []), delayMs);
       return () => clearTimeout(t);
     },

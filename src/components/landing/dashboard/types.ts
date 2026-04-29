@@ -17,6 +17,13 @@ export interface DashboardPerson {
   emoji: string;
   /** Optional readable relationship label (e.g. "Brother"). */
   relationship?: string;
+  /**
+   * The recipient's currently-active recommendation id (if any). Powers the
+   * Friend tile preview waterfall: top 4 images come from the linked
+   * carouselSession's products when present, falling back to SAVED/
+   * PURCHASED giftActivities, then the emoji (sheet bug #61).
+   */
+  currentRecommendationId?: string;
 }
 
 export const ME_TILE_ID = 'me';
@@ -34,8 +41,22 @@ export interface AuthAdapter {
 }
 
 export interface FriendPreviewLoader {
-  /** Returns an unsubscribe function. Calls cb whenever the preview list changes. */
-  subscribe: (personId: string, cb: (urls: string[]) => void) => () => void;
+  /**
+   * Returns an unsubscribe function. Calls cb whenever the preview list
+   * changes. The waterfall (carousel → SAVED → PURCHASED → empty) lives
+   * inside the Firestore loader; story/test loaders return a single static
+   * list.
+   *
+   * `currentRecommendationId` (when supplied) lets the Firestore loader
+   * read top-4 images from `carouselSessions/{uid}_{recommendationId}`.
+   * If undefined, the loader skips the carousel layer and falls through
+   * to gift-activity sources.
+   */
+  subscribe: (
+    personId: string,
+    currentRecommendationId: string | undefined,
+    cb: (urls: string[]) => void,
+  ) => () => void;
 }
 
 export type QuestPillSegmentKey = 'who' | 'what' | 'likes';

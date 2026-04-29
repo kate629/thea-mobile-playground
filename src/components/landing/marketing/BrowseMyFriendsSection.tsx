@@ -201,8 +201,6 @@ export const BrowseMyFriendsSection: React.FC<BrowseMyFriendsSectionProps> = ({
   const people: DashboardPerson[] = peopleOverride ?? liveFriends.friends;
   const friendsHydrated = peopleOverride ? true : liveFriends.hydrated;
 
-  const personIds = useMemo(() => people.map((p) => p.id), [people]);
-
   // useFriendPreviews requires a non-null loader. Provide a no-op when
   // there is no uid yet — the hook ignores it when `authState !== signed-in`.
   const noopLoader: FriendPreviewLoader = useMemo(
@@ -212,7 +210,7 @@ export const BrowseMyFriendsSection: React.FC<BrowseMyFriendsSectionProps> = ({
   const loader: FriendPreviewLoader =
     loaderOverride ?? liveLoader ?? noopLoader;
 
-  const { previews, resolved } = useFriendPreviews(authState, personIds, loader);
+  const { previews, resolved } = useFriendPreviews(authState, people, loader);
 
   // Don't render the section at all on the anon homepage. The signed-in
   // homepage is the only consumer; anon path renders the marketing hero.

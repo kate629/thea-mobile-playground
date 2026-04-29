@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  type Firestore,
-} from 'firebase/firestore';
+import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import { useDb } from '../../../theaWeb/firebase/FirebaseContext';
 import { giftActivityCollectionPath } from '../../../theaWeb/schemas/paths';
-import { AuthState, FriendPreviewLoader } from './types';
+import { AuthState, DashboardPerson, FriendPreviewLoader } from './types';
 
 export interface FriendPreviewsSlice {
   /** personId → top-N image URLs. */
@@ -22,64 +16,84 @@ export interface FriendPreviewsSlice {
  * is anything other than `signed-in` — verified by the unit test that
  * asserts the loader's `subscribe` is never called pre-auth.
  *
- * When auth state flips to `signed-in`, subscribes to every personId in
- * `personIds` exactly once. When `personIds` changes, removed ids are
- * unsubscribed, new ids are added.
+ * When auth state flips to `signed-in`, subscribes to every person in
+ * `people` exactly once. When `people` changes (id added, removed, or a
+ * person's `currentRecommendationId` flips), subscriptions are torn down
+ * and re-created so the waterfall re-evaluates against the new active
+ * recommendation.
  */
 export function useFriendPreviews(
   authState: AuthState,
-  personIds: string[],
+  people: DashboardPerson[],
   loader: FriendPreviewLoader,
 ): FriendPreviewsSlice {
   const [previews, setPreviews] = useState<Record<string, string[]>>({});
   const [resolved, setResolved] = useState<Record<string, boolean>>({});
-  const subsRef = useRef<Map<string, () => void>>(new Map());
+  // Per-person bookkeeping: the active unsubscribe + the recommendationId we
+  // subscribed against. When the recommendationId changes we tear down the
+  // old subscription so the waterfall re-evaluates with the new carousel.
+  const subsRef = useRef<
+    Map<string, { unsub: () => void; currentRecommendationId: string | undefined }>
+  >(new Map());
 
   // Joined into a string so the effect's dep is content-equal across
-  // renders that pass a fresh array reference with the same ids. Without
-  // this the effect re-runs every render, which combined with state writes
-  // produces an infinite render loop.
-  const personIdsKey = personIds.slice().sort().join(',');
+  // renders that pass a fresh array reference with the same contents.
+  // Includes recommendationId so a flip re-subscribes.
+  const peopleKey = people
+    .map((p) => `${p.id}::${p.currentRecommendationId ?? ''}`)
+    .sort()
+    .join(',');
 
   useEffect(() => {
     if (authState.status !== 'signed-in') {
-      // Tear down any active subscriptions; clear maps. The hook returns
-      // empty maps until auth flips back to signed-in. Functional updaters
+      // Tear down any active subscriptions; clear maps. Functional updaters
       // return the SAME reference when already empty so React bails out and
       // we don't trigger a re-render → effect → state-write loop.
-      subsRef.current.forEach((unsub) => unsub());
+      subsRef.current.forEach((entry) => entry.unsub());
       subsRef.current.clear();
       setPreviews((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       setResolved((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       return;
     }
 
-    const desired = new Set(personIds);
+    const desired = new Set(people.map((p) => p.id));
     // Unsubscribe ids that left the desired set.
-    subsRef.current.forEach((unsub, id) => {
+    subsRef.current.forEach((entry, id) => {
       if (!desired.has(id)) {
-        unsub();
+        entry.unsub();
         subsRef.current.delete(id);
       }
     });
 
-    // Subscribe to ids we don't yet track.
-    personIds.forEach((id) => {
-      if (subsRef.current.has(id)) return;
-      const unsub = loader.subscribe(id, (urls) => {
-        setPreviews((prev) => ({ ...prev, [id]: urls.slice(0, 4) }));
-        setResolved((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
+    // Subscribe (or re-subscribe on recommendationId change).
+    people.forEach((person) => {
+      const existing = subsRef.current.get(person.id);
+      if (
+        existing &&
+        existing.currentRecommendationId === person.currentRecommendationId
+      ) {
+        return; // already subscribed against the right recommendation
+      }
+      if (existing) {
+        existing.unsub();
+      }
+      const unsub = loader.subscribe(person.id, person.currentRecommendationId, (urls) => {
+        setPreviews((prev) => ({ ...prev, [person.id]: urls.slice(0, 4) }));
+        setResolved((prev) => (prev[person.id] ? prev : { ...prev, [person.id]: true }));
       });
-      subsRef.current.set(id, unsub);
+      subsRef.current.set(person.id, {
+        unsub,
+        currentRecommendationId: person.currentRecommendationId,
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authState.status, personIdsKey, loader]);
+  }, [authState.status, peopleKey, loader]);
 
   // Clean up on unmount.
   useEffect(() => {
     const subs = subsRef.current;
     return () => {
-      subs.forEach((unsub) => unsub());
+      subs.forEach((entry) => entry.unsub());
       subs.clear();
     };
   }, []);
@@ -88,49 +102,144 @@ export function useFriendPreviews(
 }
 
 /**
- * Build a `FriendPreviewLoader` that subscribes to a signed-in user's
- * `theaWebUser/{uid}/recipient/{recipientId}/giftActivity` subcollection
- * filtered to `state == 'SAVED'`, mapping each doc to its frozen
- * `productSnapshot.imageUrl`.
+ * Build a `FriendPreviewLoader` that runs the sheet bug #61 waterfall:
  *
- * The image URL is read off the giftActivity doc itself — no second
- * fetch into `product/{id}` is needed, because `theaWebRecordActivity`
- * freezes the productSnapshot at heart time. This keeps the homepage
- * grid to a single per-recipient subscription.
+ *   1. `carouselSessions/{uid}_{recommendationId}` — top 4 product images
+ *      from the recipient's currently-active recommendation. Skipped when
+ *      `currentRecommendationId` is undefined.
+ *   2. `theaWebUser/{uid}/recipient/{rid}/giftActivity` filtered to
+ *      `state == 'SAVED'` — top 4 frozen `productSnapshot.imageUrl`s.
+ *   3. Same path filtered to `state == 'PURCHASED'`.
+ *   4. Empty (caller renders the emoji fallback).
+ *
+ * All three sources are subscribed concurrently; the loader emits the
+ * highest-priority non-empty result on each fire. The first source that
+ * has 4 images wins — but if recommendation generation hasn't populated
+ * carousels yet (or the user has no SAVED items), the next layer fills in.
  */
 export function createFirestoreFriendPreviewLoader(
   uid: string,
   firestore: Firestore,
 ): FriendPreviewLoader {
   return {
-    subscribe: (recipientId, cb) => {
-      const ref = collection(
+    subscribe: (recipientId, currentRecommendationId, cb) => {
+      let recommendedImages: string[] = [];
+      let savedImages: string[] = [];
+      let purchasedImages: string[] = [];
+
+      const emit = () => {
+        if (recommendedImages.length > 0) {
+          cb(recommendedImages);
+        } else if (savedImages.length > 0) {
+          cb(savedImages);
+        } else if (purchasedImages.length > 0) {
+          cb(purchasedImages);
+        } else {
+          cb([]);
+        }
+      };
+
+      const unsubs: Array<() => void> = [];
+
+      // 1. Carousel session — only when there's an active recommendation.
+      if (currentRecommendationId) {
+        const sessionRef = doc(
+          firestore,
+          'carouselSessions',
+          `${uid}_${currentRecommendationId}`,
+        );
+        unsubs.push(
+          onSnapshot(
+            sessionRef,
+            (snap) => {
+              recommendedImages = snap.exists()
+                ? extractCarouselImages(snap.data() as CarouselSessionDoc)
+                : [];
+              emit();
+            },
+            () => {
+              recommendedImages = [];
+              emit();
+            },
+          ),
+        );
+      }
+
+      // 2/3. Gift activity — single listener, bucket by state in JS so we
+      // only open one subscription per recipient instead of two.
+      const activityCol = collection(
         firestore,
         ...giftActivityCollectionPath(uid, recipientId),
       );
-      const q = query(ref, where('state', '==', 'SAVED'));
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const urls: string[] = [];
-          snap.forEach((d) => {
-            const data = d.data() as {
-              productSnapshot?: { imageUrl?: string };
-            };
-            const url = data.productSnapshot?.imageUrl;
-            if (url) urls.push(url);
-          });
-          cb(urls);
-        },
-        () => {
-          // On permission errors, treat as empty (resolved with no images)
-          // so the tile renders the emoji fallback rather than spinning.
-          cb([]);
-        },
+      unsubs.push(
+        onSnapshot(
+          activityCol,
+          (snap) => {
+            const saved: string[] = [];
+            const purchased: string[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as {
+                state?: string;
+                productSnapshot?: { imageUrl?: string };
+              };
+              const url = data.productSnapshot?.imageUrl;
+              if (!url) return;
+              if (data.state === 'SAVED') saved.push(url);
+              else if (data.state === 'PURCHASED') purchased.push(url);
+            });
+            savedImages = saved;
+            purchasedImages = purchased;
+            emit();
+          },
+          () => {
+            // On permission errors, treat as empty so the waterfall falls
+            // through cleanly rather than spinning.
+            savedImages = [];
+            purchasedImages = [];
+            emit();
+          },
+        ),
       );
-      return unsub;
+
+      return () => unsubs.forEach((u) => u());
     },
   };
+}
+
+interface CarouselSessionProduct {
+  images?: string[];
+  images_cdn?: string[];
+  images_cdn_mobile?: string[];
+}
+
+interface CarouselSessionDoc {
+  carousels?: Record<string, { products?: CarouselSessionProduct[] }>;
+}
+
+/**
+ * Walk the carousel session's nested products and return up to 4 image
+ * URLs. Tries `images[0]` first (canonical), falls back to `images_cdn[0]`
+ * and `images_cdn_mobile[0]` per the recommendation schema — old sessions
+ * may have CDN-variant slots populated without the canonical `images`
+ * field, so reading only `images` would silently return empty for them
+ * (the original source of sheet bug #61's emoji-only tiles for old boards).
+ */
+function extractCarouselImages(session: CarouselSessionDoc): string[] {
+  const out: string[] = [];
+  const carousels = session.carousels ?? {};
+  for (const carousel of Object.values(carousels)) {
+    for (const product of carousel.products ?? []) {
+      const url =
+        product.images?.[0] ??
+        product.images_cdn?.[0] ??
+        product.images_cdn_mobile?.[0];
+      if (url) {
+        out.push(url);
+        if (out.length >= 4) return out;
+      }
+    }
+  }
+  return out;
 }
 
 /**

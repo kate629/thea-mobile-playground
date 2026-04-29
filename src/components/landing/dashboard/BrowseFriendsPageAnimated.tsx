@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { BrowseFriendsPage } from './BrowseFriendsPage';
 import { useAuthState } from './useAuthState';
@@ -104,8 +104,7 @@ export const BrowseFriendsPageAnimated: React.FC<BrowseFriendsPageAnimatedProps>
   const dashboard = useDashboard({ onSparkle });
   const [draft, setDraft] = useState<PillDraft>({ who: null, what: null, likes: null });
 
-  const personIds = useMemo(() => people.map((p) => p.id), [people]);
-  const { previews, resolved } = useFriendPreviews(authState, personIds, previewLoader);
+  const { previews, resolved } = useFriendPreviews(authState, people, previewLoader);
 
   const segments = buildSegments(draft);
   const canSearch = Boolean(draft.who && draft.what && draft.likes);

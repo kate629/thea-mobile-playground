@@ -69,6 +69,7 @@ export function useFriendsList(
           name: r.name,
           emoji: r.emoji ?? '🎁',
           relationship: r.relationship,
+          currentRecommendationId: r.currentRecommendationId,
         }));
         setFriends(next);
         setHydrated(true);
