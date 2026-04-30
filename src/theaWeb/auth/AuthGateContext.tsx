@@ -2,11 +2,13 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 
+import { consumeGoogleRedirectResult } from './accountAuth';
 import { SignInModal, type AuthMode } from './SignInModal';
 
 export type { AuthMode } from './SignInModal';
@@ -39,6 +41,20 @@ export const AuthGateProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>('signup');
   const onAuthedRef = useRef<SignInOptions['onAuthed']>(undefined);
+
+  // Mobile Google sign-in returns via full-page redirect, landing on a fresh
+  // app load with the modal closed. Firebase requires `getRedirectResult` to
+  // finalize the link/sign-in — without it, `linkWithRedirect` never commits
+  // and `currentUser` stays anonymous. Consume here at the root so the result
+  // lands regardless of which page the user returns to. This works in tandem
+  // with same-origin `authDomain` (configured in `.env`) so the credential
+  // the auth handler stored is in the same origin's IndexedDB and isn't
+  // partitioned away by the browser.
+  useEffect(() => {
+    consumeGoogleRedirectResult().catch((err) => {
+      console.error('[AuthGate] consumeGoogleRedirectResult failed:', err);
+    });
+  }, []);
 
   const requestSignIn = useCallback((options?: SignInOptions) => {
     setMode(options?.mode ?? 'signup');

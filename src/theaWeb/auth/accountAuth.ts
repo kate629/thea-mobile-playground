@@ -176,7 +176,16 @@ export async function signInWithEmail(
  * user via `signInWithCredential`, then merge.
  *
  * Returns null when a redirect is initiated (mobile) — the caller's flow
- * resumes via `consumeGoogleRedirectResult` after the browser returns.
+ * resumes via `consumeGoogleRedirectResult` (called at the AuthGate root
+ * useEffect on every page load, so the credential lands wherever the user
+ * returns to).
+ *
+ * IMPORTANT: redirect requires `authDomain` to be on the same origin as the
+ * app, otherwise modern browsers (Chrome M115+, Firefox 109+, Safari 16.1+)
+ * partition storage between the auth handler and the app and the credential
+ * never propagates. Configure `REACT_APP_FIREBASE_AUTH_DOMAIN` to your
+ * hosting domain (Firebase Hosting auto-serves `/__/auth/handler` on every
+ * hosting site).
  */
 export async function signInWithGoogle(
   authInstance: Auth = defaultAuth,
