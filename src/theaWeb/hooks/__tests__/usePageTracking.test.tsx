@@ -51,7 +51,14 @@ describe('usePageTracking', () => {
         <PageTrackingMount />
       </MemoryRouter>,
     );
-    expect(fbq).toHaveBeenCalledWith('track', 'PageView');
+    // 4th arg `{eventID}` is Meta's FE↔CAPI dedup key. Asserting just shape
+    // (any string), not equality, because the UUID is generated per fire.
+    expect(fbq).toHaveBeenCalledWith(
+      'track',
+      'PageView',
+      {},
+      expect.objectContaining({ eventID: expect.any(String) }),
+    );
     expect(fbq).toHaveBeenCalledTimes(1);
     expect(gtag).toHaveBeenCalledWith('event', 'page_view', expect.any(Object));
     expect(gtag).toHaveBeenCalledTimes(1);
@@ -75,7 +82,12 @@ describe('usePageTracking', () => {
     });
 
     expect(fbq).toHaveBeenCalledTimes(2);
-    expect(fbq).toHaveBeenLastCalledWith('track', 'PageView');
+    expect(fbq).toHaveBeenLastCalledWith(
+      'track',
+      'PageView',
+      {},
+      expect.objectContaining({ eventID: expect.any(String) }),
+    );
     expect(gtag).toHaveBeenCalledTimes(2);
     expect(gtag).toHaveBeenLastCalledWith('event', 'page_view', expect.any(Object));
   });

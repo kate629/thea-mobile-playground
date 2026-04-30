@@ -34,10 +34,17 @@ describe('metaPixel', () => {
   });
 
   describe('metaPageView', () => {
-    test('fires fbq("track", "PageView") for human visitors with fbq loaded', () => {
+    test('fires fbq("track", "PageView") with eventID for CAPI dedup', () => {
       metaPageView();
       expect(fbq).toHaveBeenCalledTimes(1);
-      expect(fbq).toHaveBeenCalledWith('track', 'PageView');
+      // 4th arg is the integration object holding `eventID` — Meta's
+      // documented dedup key for FE pixel ↔ CAPI server event matching.
+      expect(fbq).toHaveBeenCalledWith(
+        'track',
+        'PageView',
+        {},
+        expect.objectContaining({ eventID: expect.any(String) }),
+      );
     });
 
     test('no-op when fbq is undefined', () => {
@@ -109,7 +116,7 @@ describe('metaPixel', () => {
   });
 
   describe('metaViewContent', () => {
-    test('fires standard ViewContent with content_name + content_ids', () => {
+    test('fires standard ViewContent with content_name + content_ids + eventID', () => {
       metaViewContent({
         content_name: 'Hand-painted ceramic mug',
         content_ids: ['prod_123'],
@@ -117,13 +124,18 @@ describe('metaPixel', () => {
         value: 42,
         currency: 'USD',
       });
-      expect(fbq).toHaveBeenCalledWith('track', 'ViewContent', {
-        content_name: 'Hand-painted ceramic mug',
-        content_ids: ['prod_123'],
-        content_category: 'Cozy mornings',
-        value: 42,
-        currency: 'USD',
-      });
+      expect(fbq).toHaveBeenCalledWith(
+        'track',
+        'ViewContent',
+        {
+          content_name: 'Hand-painted ceramic mug',
+          content_ids: ['prod_123'],
+          content_category: 'Cozy mornings',
+          value: 42,
+          currency: 'USD',
+        },
+        expect.objectContaining({ eventID: expect.any(String) }),
+      );
     });
 
     test('does not include PII keys in default param shape', () => {
