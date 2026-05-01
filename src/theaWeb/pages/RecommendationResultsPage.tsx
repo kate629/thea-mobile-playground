@@ -815,10 +815,15 @@ const RecommendationResultsPage: React.FC = () => {
             items={savedItems}
             personName={headerProps.personName}
             onUnsave={(item) => handleSaveClick(item)}
+            onItemClick={handleProductClick}
           />
         )}
         {activeTab === 'purchased' && (
-          <ResultsPurchasedGrid items={purchasedItems} personName={headerProps.personName} />
+          <ResultsPurchasedGrid
+            items={purchasedItems}
+            personName={headerProps.personName}
+            onItemClick={handleProductClick}
+          />
         )}
       </ResultsPage>
       <ProfileDrawer
