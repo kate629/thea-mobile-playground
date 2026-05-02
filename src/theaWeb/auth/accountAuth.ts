@@ -12,12 +12,18 @@
  * The merge call is best-effort — failures are logged but do NOT block sign-in.
  * The user lands signed-in either way; in the worst case their anon-era saves
  * are orphaned (recoverable via re-save).
+ *
+ * Supported SSO providers: Google and Apple. Both share the same
+ * link-or-merge shape; provider-specific differences live only in which
+ * `firebase/auth` provider class instantiates the OAuth flow.
  */
 
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
+  OAuthProvider,
   type Auth,
+  type AuthCredential,
   type User,
   type UserCredential,
   createUserWithEmailAndPassword,
@@ -169,14 +175,58 @@ export async function signInWithEmail(
 }
 
 /**
- * Google sign-in. Popup on desktop, redirect on mobile. Anon users upgrade
- * via `linkWithPopup`/`linkWithRedirect` so the uid is preserved. When the
- * Google account already belongs to a different real user, we recover the
- * credential from the error, mint a merge token, sign in as the existing
+ * Recover an OAuthCredential from a `credential-already-in-use` error. Tries
+ * `OAuthProvider.credentialFromError` (works for Apple and any OAuth provider)
+ * first, then `GoogleAuthProvider.credentialFromError` as a typed fallback.
+ * Either yields a credential we can hand to `signInWithCredential`.
+ */
+function credentialFromError(err: unknown): AuthCredential | null {
+  type CredFromErrInput =
+    Parameters<typeof OAuthProvider.credentialFromError>[0];
+  return (
+    OAuthProvider.credentialFromError(err as CredFromErrInput) ??
+    GoogleAuthProvider.credentialFromError(err as CredFromErrInput)
+  );
+}
+
+/**
+ * Recover from `auth/credential-already-in-use` by minting a merge token while
+ * we're still anon, signing in via the recovered credential, then firing the
+ * best-effort merge. Centralised because both popup and redirect paths use the
+ * same recovery shape.
+ *
+ * The caller has already detected the in-use error and extracted the
+ * credential — we run the post-extract part of the dance.
+ */
+async function recoverFromCredentialInUse(
+  credential: AuthCredential,
+  authInstance: Auth,
+  onMergeStatus?: OnMergeStatus,
+): Promise<UserCredential> {
+  // Capture intent while still anon (the failed link kept the anon uid as
+  // currentUser), then signInWithCredential switches us.
+  const intent = await captureMergeIntent(authInstance);
+  // Flip merging BEFORE the auth-state change (sheet bug #58).
+  if (intent) onMergeStatus?.('merging');
+  try {
+    const result = await signInWithCredential(authInstance, credential);
+    await tryMerge(intent, onMergeStatus);
+    return result;
+  } catch (signInErr) {
+    if (intent) onMergeStatus?.('idle');
+    throw signInErr;
+  }
+}
+
+/**
+ * Generic OAuth-provider sign-in. Popup on desktop, redirect on mobile. Anon
+ * users upgrade via `linkWithPopup`/`linkWithRedirect` so the uid is preserved.
+ * When the OAuth account already belongs to a different real user, we recover
+ * the credential from the error, mint a merge token, sign in as the existing
  * user via `signInWithCredential`, then merge.
  *
  * Returns null when a redirect is initiated (mobile) — the caller's flow
- * resumes via `consumeGoogleRedirectResult` (called at the AuthGate root
+ * resumes via `consumeAuthRedirectResult` (called at the AuthGate root
  * useEffect on every page load, so the credential lands wherever the user
  * returns to).
  *
@@ -187,11 +237,11 @@ export async function signInWithEmail(
  * hosting domain (Firebase Hosting auto-serves `/__/auth/handler` on every
  * hosting site).
  */
-export async function signInWithGoogle(
-  authInstance: Auth = defaultAuth,
+async function signInWithOAuthProvider(
+  provider: GoogleAuthProvider | OAuthProvider,
+  authInstance: Auth,
   onMergeStatus?: OnMergeStatus,
 ): Promise<UserCredential | null> {
-  const provider = new GoogleAuthProvider();
   const mobile = isMobileUserAgent();
   const anonUser = authInstance.currentUser?.isAnonymous
     ? authInstance.currentUser
@@ -207,23 +257,9 @@ export async function signInWithGoogle(
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/credential-already-in-use') {
-        const credential = GoogleAuthProvider.credentialFromError(
-          err as Parameters<typeof GoogleAuthProvider.credentialFromError>[0],
-        );
+        const credential = credentialFromError(err);
         if (credential) {
-          // Capture intent while still anon (the failed link kept the anon
-          // uid as currentUser), then signInWithCredential switches us.
-          const intent = await captureMergeIntent(authInstance);
-          // Flip merging BEFORE the auth-state change (sheet bug #58).
-          if (intent) onMergeStatus?.('merging');
-          try {
-            const result = await signInWithCredential(authInstance, credential);
-            await tryMerge(intent, onMergeStatus);
-            return result;
-          } catch (signInErr) {
-            if (intent) onMergeStatus?.('idle');
-            throw signInErr;
-          }
+          return recoverFromCredentialInUse(credential, authInstance, onMergeStatus);
         }
         // No recoverable credential — fall through to a fresh sign-in below
         // so the user at least gets an authenticated session.
@@ -240,12 +276,39 @@ export async function signInWithGoogle(
   return signInWithPopup(authInstance, provider);
 }
 
+/** Google sign-in. Thin wrapper over `signInWithOAuthProvider`. */
+export async function signInWithGoogle(
+  authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
+): Promise<UserCredential | null> {
+  return signInWithOAuthProvider(new GoogleAuthProvider(), authInstance, onMergeStatus);
+}
+
 /**
- * Mobile-redirect counterpart: when Google returns from `linkWithRedirect`
- * with `auth/credential-already-in-use`, we recover the credential and sign
- * in as the existing user instead of stranding the user unsigned.
+ * Apple sign-in. Thin wrapper over `signInWithOAuthProvider`. Requests `email`
+ * and `name` scopes — note that Apple only returns `name` on the user's first
+ * authorization (revoke + re-authorize from the Apple ID settings to test).
+ * Apple never returns a photo URL, and the email may be a `@privaterelay.
+ * appleid.com` proxy when the user opts to hide their address.
  */
-export async function consumeGoogleRedirectResult(
+export async function signInWithApple(
+  authInstance: Auth = defaultAuth,
+  onMergeStatus?: OnMergeStatus,
+): Promise<UserCredential | null> {
+  const provider = new OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+  return signInWithOAuthProvider(provider, authInstance, onMergeStatus);
+}
+
+/**
+ * Mobile-redirect counterpart: when an OAuth provider returns from
+ * `linkWithRedirect` with `auth/credential-already-in-use`, recover the
+ * credential and sign in as the existing user instead of stranding the user
+ * unsigned. Provider-agnostic — handles both Google and Apple via
+ * `credentialFromError` (which tries both extractors).
+ */
+export async function consumeAuthRedirectResult(
   authInstance: Auth = defaultAuth,
   onMergeStatus?: OnMergeStatus,
 ): Promise<User | null> {
@@ -255,23 +318,14 @@ export async function consumeGoogleRedirectResult(
   } catch (err) {
     const code = (err as { code?: string })?.code;
     if (code === 'auth/credential-already-in-use') {
-      const credential = GoogleAuthProvider.credentialFromError(
-        err as Parameters<typeof GoogleAuthProvider.credentialFromError>[0],
-      );
+      const credential = credentialFromError(err);
       if (credential) {
-        // We're back from the redirect; the currentUser is still the anon
-        // uid (the link failed). Capture intent before we sign in.
-        const intent = await captureMergeIntent(authInstance);
-        // Flip merging BEFORE the auth-state change (sheet bug #58).
-        if (intent) onMergeStatus?.('merging');
-        try {
-          const signInResult = await signInWithCredential(authInstance, credential);
-          await tryMerge(intent, onMergeStatus);
-          return signInResult.user;
-        } catch (signInErr) {
-          if (intent) onMergeStatus?.('idle');
-          throw signInErr;
-        }
+        const result = await recoverFromCredentialInUse(
+          credential,
+          authInstance,
+          onMergeStatus,
+        );
+        return result.user;
       }
     }
     throw err;

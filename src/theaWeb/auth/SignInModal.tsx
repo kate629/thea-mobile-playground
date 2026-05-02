@@ -3,9 +3,10 @@ import { Modal, Spinner } from 'react-bootstrap';
 import styled, { createGlobalStyle, css } from 'styled-components';
 
 import {
-  consumeGoogleRedirectResult,
+  consumeAuthRedirectResult,
   isValidEmail,
   sendPasswordReset,
+  signInWithApple,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
@@ -314,7 +315,7 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [providerLoading, setProviderLoading] = useState<'google' | 'apple' | null>(null);
 
   const [resetSent, setResetSent] = useState(false);
   const [resetCooldownUntil, setResetCooldownUntil] = useState(0);
@@ -332,10 +333,12 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
     onModeChange(next);
   };
 
-  // Mobile-redirect Google flow: when modal opens, pick up any pending result.
+  // Mobile-redirect Google/Apple flow: when modal opens, pick up any pending
+  // result. Provider-agnostic — `getRedirectResult` doesn't care which OAuth
+  // provider initiated the redirect.
   useEffect(() => {
     let cancelled = false;
-    consumeGoogleRedirectResult(undefined, setMergeStatus)
+    consumeAuthRedirectResult(undefined, setMergeStatus)
       .then(async (user) => {
         if (cancelled || !user) return;
         await onSuccess();
@@ -350,12 +353,15 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleGoogle = async () => {
+  const runProviderSignIn = async (
+    name: 'google' | 'apple',
+    signInFn: typeof signInWithGoogle,
+  ) => {
     setEmailError('');
     setPasswordError('');
-    setGoogleLoading(true);
+    setProviderLoading(name);
     try {
-      const result = await signInWithGoogle(undefined, setMergeStatus);
+      const result = await signInFn(undefined, setMergeStatus);
       if (result?.user) {
         await onSuccess();
       }
@@ -365,13 +371,16 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         // User cancelled — silent.
       } else {
-        console.error('[SignInModal] Google sign-in failed:', err);
+        console.error(`[SignInModal] ${name} sign-in failed:`, err);
         setPasswordError('Sign-in failed. Please try again.');
       }
     } finally {
-      setGoogleLoading(false);
+      setProviderLoading(null);
     }
   };
+
+  const handleGoogle = () => runProviderSignIn('google', signInWithGoogle);
+  const handleApple = () => runProviderSignIn('apple', signInWithApple);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -459,9 +468,24 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
 
       <Spacer $h={24} />
 
-      <ProviderButton type="button" onClick={handleGoogle} disabled={googleLoading || submitting}>
-        {googleLoading ? <Spinner animation="border" size="sm" /> : <GoogleIcon />}
-        <span>{googleLoading ? 'Signing in…' : 'Continue with Google'}</span>
+      <ProviderButton
+        type="button"
+        onClick={handleApple}
+        disabled={providerLoading !== null || submitting}
+      >
+        {providerLoading === 'apple' ? <Spinner animation="border" size="sm" /> : <AppleIcon />}
+        <span>{providerLoading === 'apple' ? 'Signing in…' : 'Continue with Apple'}</span>
+      </ProviderButton>
+
+      <Spacer $h={12} />
+
+      <ProviderButton
+        type="button"
+        onClick={handleGoogle}
+        disabled={providerLoading !== null || submitting}
+      >
+        {providerLoading === 'google' ? <Spinner animation="border" size="sm" /> : <GoogleIcon />}
+        <span>{providerLoading === 'google' ? 'Signing in…' : 'Continue with Google'}</span>
       </ProviderButton>
 
       <Divider>
@@ -509,7 +533,7 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
 
         <Spacer $h={16} />
 
-        <PrimaryButton type="submit" disabled={submitting || googleLoading}>
+        <PrimaryButton type="submit" disabled={submitting || providerLoading !== null}>
           {submitting && <Spinner animation="border" size="sm" />}
           {submitting ? (mode === 'signup' ? 'Creating account…' : 'Signing in…') : primaryLabel}
         </PrimaryButton>
@@ -566,6 +590,15 @@ const EyeOffGlyph: React.FC = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
     <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+const AppleIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden>
+    <path
+      fill="#000000"
+      d="M11.182 8.2c-.018-1.846 1.504-2.74 1.572-2.785-.857-1.252-2.193-1.422-2.668-1.443-1.137-.116-2.215.668-2.792.668-.575 0-1.466-.65-2.41-.633-1.241.018-2.39.722-3.027 1.83-1.29 2.236-.33 5.547.93 7.367.616.892 1.349 1.893 2.31 1.857.927-.038 1.277-.6 2.396-.6 1.119 0 1.434.6 2.412.582.997-.018 1.628-.91 2.236-1.806.706-1.04.997-2.046 1.014-2.097-.022-.011-1.945-.747-1.973-2.94zM9.4 2.802c.51-.62.853-1.482.759-2.34-.733.029-1.62.488-2.146 1.108-.473.55-.886 1.428-.774 2.27.817.063 1.652-.418 2.161-1.038z"
+    />
   </svg>
 );
 

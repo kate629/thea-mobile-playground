@@ -5,7 +5,7 @@ import { ThemeProvider } from 'styled-components';
 import { AuthGateProvider, useAuthGate } from '../AuthGateContext';
 import { theme } from '../../../theme';
 
-// AuthGateProvider's mount-effect calls `consumeGoogleRedirectResult` from
+// AuthGateProvider's mount-effect calls `consumeAuthRedirectResult` from
 // accountAuth, which transitively loads firebase/auth → undici → TextDecoder
 // (not polyfilled in Jest's jsdom env). Stub the function so the test stays
 // firebase-free. Plain function form, not jest.fn().mockResolvedValue, to
@@ -13,7 +13,7 @@ import { theme } from '../../../theme';
 // undefined at evaluation time.
 jest.mock('../accountAuth', () => ({
   __esModule: true,
-  consumeGoogleRedirectResult: () => Promise.resolve(null),
+  consumeAuthRedirectResult: () => Promise.resolve(null),
 }));
 
 // SignInModal pulls in firebase via accountAuth — replace it with a tiny stub
