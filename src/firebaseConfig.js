@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInAnonymously } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth, signInAnonymously } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -10,6 +10,13 @@ const firebaseConfig = {
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
+
+// Dev-only: when REACT_APP_USE_EMULATOR=1 the SDK is rewired at first
+// instance creation to talk to the local Firebase emulators
+// (firestore:8080, auth:9099, functions:5001 — see thea-serverless
+// firebase.json). Strict opt-in — never on in production builds. Use
+// `REACT_APP_USE_EMULATOR=1 npm start` to enable.
+export const USE_EMULATOR = process.env.REACT_APP_USE_EMULATOR === "1";
 
 let _app = null;
 let _auth = null;
@@ -21,12 +28,24 @@ export function getAppInstance() {
 }
 
 export function getAuthInstance() {
-  if (!_auth) _auth = getAuth(getAppInstance());
+  if (!_auth) {
+    _auth = getAuth(getAppInstance());
+    if (USE_EMULATOR) {
+      // disableWarnings silences the dev-only banner; safe because the flag
+      // gate already prevents this branch from running in prod builds.
+      connectAuthEmulator(_auth, "http://127.0.0.1:9099", { disableWarnings: true });
+    }
+  }
   return _auth;
 }
 
 export function getDbInstance() {
-  if (!_db) _db = getFirestore(getAppInstance());
+  if (!_db) {
+    _db = getFirestore(getAppInstance());
+    if (USE_EMULATOR) {
+      connectFirestoreEmulator(_db, "127.0.0.1", 8080);
+    }
+  }
   return _db;
 }
 

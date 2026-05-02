@@ -30,6 +30,7 @@ import { useBackButtonGuard } from '../hooks/useBackButtonGuard';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
 import { useRedirectOnSignOut } from '../hooks/useRedirectOnSignOut';
 import { useRegenerate } from '../hooks/useRegenerate';
+import { buildPreferenceSignals } from '../lib/preferenceSignals';
 import {
   carouselsToSections,
   isSessionReadyToDisplay,
@@ -98,9 +99,26 @@ const RecommendationResultsPage: React.FC = () => {
     recommendationId,
   );
   const { session, error: sessionError } = useCarouselSession(doc?.carouselSessionId);
-  const { liked, dismissed, purchased, hydrated } = useGiftActivities(recipientId);
+  const {
+    liked,
+    dismissed,
+    purchased,
+    likedDetails,
+    dismissedDetails,
+    purchasedDetails,
+    hydrated,
+  } = useGiftActivities(recipientId);
   const navigate = useNavigate();
   const { state: regenerateState, regenerate, reset: resetRegenerate } = useRegenerate();
+
+  // Generic preference primitives the carousel callable consumes — built
+  // from the recipient's prior `giftActivity` so the agent can adapt to
+  // user signal across regenerates. The combination + cap logic lives in
+  // `lib/preferenceSignals.ts` so it's covered by unit tests.
+  const preferenceSignals = useMemo(
+    () => buildPreferenceSignals(likedDetails, dismissedDetails, purchasedDetails),
+    [likedDetails, dismissedDetails, purchasedDetails],
+  );
 
   // Per-session counter — increments each time the user enters a regenerate
   // state. Threaded onto every product_saved / product_dismissed event so the
@@ -194,7 +212,7 @@ const RecommendationResultsPage: React.FC = () => {
     // Capture pre-regenerate state. expectedRecommendationId is null until
     // regenerate resolves with the new id — see the clear-effect below.
     setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
-    regenerate({ recipientId, recommendation: doc })
+    regenerate({ recipientId, recommendation: doc, preferenceSignals })
       .then((res) => {
         // Stamp the expected new id so the clear-effect knows when the
         // page has actually loaded the new doc, not the old one.
@@ -209,7 +227,7 @@ const RecommendationResultsPage: React.FC = () => {
         // rather than against frozen old content.
         setRefreshSnapshot(null);
       });
-  }, [recipientId, doc, sections, regenerateState.status, regenerate, navigate]);
+  }, [recipientId, doc, sections, regenerateState.status, regenerate, navigate, preferenceSignals]);
 
   // Clear the snapshot once we're actually viewing the NEW session AND the
   // pipeline has reached a terminal state. Both gates are required —
@@ -386,7 +404,7 @@ const RecommendationResultsPage: React.FC = () => {
       });
       setRefreshSnapshot({ doc, sections, expectedRecommendationId: null });
       const requestOverride = profileDraftToRegenerateRequest(next, recipientId, doc);
-      regenerate({ recipientId, recommendation: doc, requestOverride })
+      regenerate({ recipientId, recommendation: doc, requestOverride, preferenceSignals })
         .then((res) => {
           setRefreshSnapshot((prev) =>
             prev ? { ...prev, expectedRecommendationId: res.recommendationId } : null,
@@ -397,7 +415,7 @@ const RecommendationResultsPage: React.FC = () => {
           setRefreshSnapshot(null);
         });
     },
-    [recipientId, doc, sections, regenerateState.status, regenerate, navigate],
+    [recipientId, doc, sections, regenerateState.status, regenerate, navigate, preferenceSignals],
   );
 
   // Auto-save path — only fires on drawer close when the user changed

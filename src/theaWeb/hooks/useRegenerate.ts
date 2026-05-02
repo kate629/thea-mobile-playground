@@ -15,6 +15,15 @@ export type RegenerateState =
   | { status: 'ready'; result: TheaWebSubmitGiftFlowResponse }
   | { status: 'error'; error: Error };
 
+// Generic preference primitives the carousel callable consumes. Sourced from
+// the recipient's prior `giftActivity` on the FE; the BE never sees the
+// underlying recipient/uid scoping — it only sees these resolved fields.
+export interface PreferenceSignals {
+  likedProductTitles: string[];
+  dismissedProductTitles: string[];
+  excludedProductIds: string[];
+}
+
 interface UseRegenerate {
   state: RegenerateState;
   // Re-fires submitGiftFlow with the same recipient + quiz input snapshot the
@@ -30,6 +39,9 @@ interface UseRegenerate {
     recipientId: string;
     recommendation: Recommendation;
     requestOverride?: TheaWebSubmitGiftFlowRequest;
+    // Optional. When supplied, threads the recipient's prior likes/dismisses
+    // into the carousel callable so follow-up runs can adapt to user signal.
+    preferenceSignals?: PreferenceSignals;
   }) => Promise<TheaWebSubmitGiftFlowResponse>;
   reset: () => void;
 }
@@ -41,9 +53,10 @@ interface UseRegenerate {
 function kickOffPipeline(
   payload: TheaWebSubmitGiftFlowRequest,
   carouselSessionId: string,
+  preferenceSignals?: PreferenceSignals,
 ) {
   const callable = payload.mode === 'FAST' ? getFastCarouselFeed : getCarouselFeed;
-  const args = {
+  const args: Record<string, unknown> = {
     selected_chips: payload.input.interests,
     recipient_gender: payload.recipient.gender ?? '',
     recipient_age: payload.recipient.age ?? 0,
@@ -54,6 +67,17 @@ function kickOffPipeline(
     // on the BE side so the agent can score + filter by it.
     occasion: payload.input.occasion,
   };
+  if (preferenceSignals) {
+    if (preferenceSignals.likedProductTitles.length > 0) {
+      args.liked_product_titles = preferenceSignals.likedProductTitles;
+    }
+    if (preferenceSignals.dismissedProductTitles.length > 0) {
+      args.dismissed_product_titles = preferenceSignals.dismissedProductTitles;
+    }
+    if (preferenceSignals.excludedProductIds.length > 0) {
+      args.excluded_product_ids = preferenceSignals.excludedProductIds;
+    }
+  }
   callable(args).catch((err) => {
     console.error('Carousel pipeline kick-off (regenerate) failed:', err);
   });
@@ -105,6 +129,7 @@ export function useRegenerate(): UseRegenerate {
       recipientId: string;
       recommendation: Recommendation;
       requestOverride?: TheaWebSubmitGiftFlowRequest;
+      preferenceSignals?: PreferenceSignals;
     }) => {
       if (inFlightRef.current) {
         throw new Error('Regenerate already in flight');
@@ -116,7 +141,7 @@ export function useRegenerate(): UseRegenerate {
         const payload =
           args.requestOverride ?? buildRegenerateRequest(args.recipientId, args.recommendation);
         const { data } = await submitGiftFlow(payload);
-        kickOffPipeline(payload, data.carouselSessionId);
+        kickOffPipeline(payload, data.carouselSessionId, args.preferenceSignals);
         setState({ status: 'ready', result: data });
         return data;
       } catch (err) {

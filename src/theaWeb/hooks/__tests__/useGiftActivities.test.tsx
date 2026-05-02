@@ -41,11 +41,19 @@ const Harness: React.FC<HarnessProps> = ({ recipientId, onState }) => {
 
 interface FakeDoc {
   id: string;
-  data: () => { state: string };
+  data: () => {
+    state: string;
+    productSnapshot?: { title?: string; brand?: string };
+  };
 }
-const docOf = (id: string, state: string): FakeDoc => ({
+const docOf = (
+  id: string,
+  state: string,
+  snapshot?: { title?: string; brand?: string },
+): FakeDoc => ({
   id,
-  data: () => ({ state }),
+  data: () =>
+    snapshot !== undefined ? { state, productSnapshot: snapshot } : { state },
 });
 const snapOf = (docs: FakeDoc[]) => ({ forEach: (fn: (d: FakeDoc) => void) => docs.forEach(fn) });
 
@@ -237,6 +245,137 @@ describe('useGiftActivities', () => {
     const after = seen[seen.length - 1].liked;
     expect(after).not.toBe(before);
     expect(after.has('p2')).toBe(true);
+  });
+
+  test('details arrays carry id+title+brand from productSnapshot per state', async () => {
+    // Load-bearing: these arrays feed the carousel callable's preference
+    // primitives. A regression here means follow-up recommendations stop
+    // adapting to user signal, silently.
+    mockEnsureAuth.mockResolvedValue('uid-1');
+    let snapNext: ((snap: any) => void) | null = null;
+    mockOnSnapshot.mockImplementation((_ref, onNext) => {
+      snapNext = onNext;
+      return () => {};
+    });
+
+    let latest: ReturnType<typeof useGiftActivities> | null = null;
+    render(<Harness recipientId="r1" onState={(s) => (latest = s)} />);
+
+    await waitFor(() => expect(snapNext).not.toBeNull());
+    await act(async () => {
+      snapNext!(
+        snapOf([
+          docOf('p1', 'SAVED', { title: 'Bose headphones', brand: 'Bose' }),
+          docOf('p2', 'SAVED', { title: 'Le Creuset' }),
+          docOf('p3', 'DISMISSED', { title: 'Generic mug' }),
+          docOf('p4', 'PURCHASED', { title: 'Stanley cup', brand: 'Stanley' }),
+        ]),
+      );
+    });
+
+    await waitFor(() => expect(latest!.hydrated).toBe(true));
+    expect(latest!.likedDetails).toEqual([
+      { id: 'p1', title: 'Bose headphones', brand: 'Bose' },
+      { id: 'p2', title: 'Le Creuset' },
+    ]);
+    expect(latest!.dismissedDetails).toEqual([{ id: 'p3', title: 'Generic mug' }]);
+    expect(latest!.purchasedDetails).toEqual([
+      { id: 'p4', title: 'Stanley cup', brand: 'Stanley' },
+    ]);
+  });
+
+  test('details arrays drop docs missing productSnapshot.title', async () => {
+    // Some legacy docs may lack a snapshot title — the Set still tracks the
+    // id (so the heart-fill works), but the detail entry is skipped because
+    // we have nothing useful to feed the algo as a title.
+    mockEnsureAuth.mockResolvedValue('uid-1');
+    let snapNext: ((snap: any) => void) | null = null;
+    mockOnSnapshot.mockImplementation((_ref, onNext) => {
+      snapNext = onNext;
+      return () => {};
+    });
+
+    let latest: ReturnType<typeof useGiftActivities> | null = null;
+    render(<Harness recipientId="r1" onState={(s) => (latest = s)} />);
+
+    await waitFor(() => expect(snapNext).not.toBeNull());
+    await act(async () => {
+      snapNext!(
+        snapOf([
+          docOf('p1', 'SAVED'), // no snapshot at all
+          docOf('p2', 'SAVED', { title: '' }), // empty title
+          docOf('p3', 'SAVED', { title: 'Real' }),
+        ]),
+      );
+    });
+
+    await waitFor(() => expect(latest!.hydrated).toBe(true));
+    // Sets still have everything — heart-fill must not regress.
+    expect(latest!.liked.size).toBe(3);
+    // Details only carry the entry with a real title.
+    expect(latest!.likedDetails).toEqual([{ id: 'p3', title: 'Real' }]);
+  });
+
+  test('uid change clears details arrays alongside the Sets', async () => {
+    mockEnsureAuth.mockResolvedValueOnce('uid-1').mockResolvedValueOnce('uid-2');
+    const subs: Array<{ next: (snap: any) => void; unsub: jest.Mock }> = [];
+    mockOnSnapshot.mockImplementation((_ref, onNext) => {
+      const unsub = jest.fn();
+      subs.push({ next: onNext, unsub });
+      return unsub;
+    });
+    let authListener: ((user: any) => void) | null = null;
+    mockOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      authListener = cb;
+      return () => {};
+    });
+
+    let latest: ReturnType<typeof useGiftActivities> | null = null;
+    render(<Harness recipientId="r1" onState={(s) => (latest = s)} />);
+
+    await waitFor(() => expect(subs.length).toBe(1));
+    await act(async () => {
+      subs[0].next(
+        snapOf([docOf('p1', 'SAVED', { title: 'Old user thing' })]),
+      );
+    });
+    await waitFor(() => expect(latest!.likedDetails.length).toBe(1));
+
+    await act(async () => {
+      authListener!({ uid: 'uid-2' });
+    });
+
+    // Stale anon details must not bleed into the permanent uid's view.
+    expect(latest!.likedDetails).toEqual([]);
+    expect(latest!.dismissedDetails).toEqual([]);
+    expect(latest!.purchasedDetails).toEqual([]);
+  });
+
+  test('content-equal detail arrays reuse the same array reference', async () => {
+    // Same contract as the Sets — downstream useMemo on these arrays should
+    // not invalidate when the snapshot delivers identical content.
+    mockEnsureAuth.mockResolvedValue('uid-1');
+    let snapNext: ((snap: any) => void) | null = null;
+    mockOnSnapshot.mockImplementation((_ref, onNext) => {
+      snapNext = onNext;
+      return () => {};
+    });
+
+    const seen: Array<ReturnType<typeof useGiftActivities>> = [];
+    render(<Harness recipientId="r1" onState={(s) => seen.push(s)} />);
+
+    await waitFor(() => expect(snapNext).not.toBeNull());
+    await act(async () => {
+      snapNext!(snapOf([docOf('p1', 'SAVED', { title: 'A' })]));
+    });
+    await waitFor(() => expect(seen[seen.length - 1].likedDetails.length).toBe(1));
+    const refBefore = seen[seen.length - 1].likedDetails;
+
+    await act(async () => {
+      snapNext!(snapOf([docOf('p1', 'SAVED', { title: 'A' })]));
+    });
+    const refAfter = seen[seen.length - 1].likedDetails;
+    expect(refAfter).toBe(refBefore);
   });
 
   test('unsubscribes on unmount', async () => {

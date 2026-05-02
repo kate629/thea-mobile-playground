@@ -4,10 +4,22 @@ import { useEffect, useState } from 'react';
 import { useAuth, useDb, useEnsureAuth } from '../firebase/FirebaseContext';
 import { giftActivityCollectionPath } from '../schemas/paths';
 
+// Lightweight per-activity detail used for feeding preference primitives back
+// into the recommendation algo. Title (and brand when present) is read straight
+// off the frozen `productSnapshot` so we don't need a separate product lookup.
+export interface GiftActivityDetail {
+  id: string;
+  title: string;
+  brand?: string;
+}
+
 interface UseGiftActivitiesResult {
   liked: Set<string>;
   dismissed: Set<string>;
   purchased: Set<string>;
+  likedDetails: GiftActivityDetail[];
+  dismissedDetails: GiftActivityDetail[];
+  purchasedDetails: GiftActivityDetail[];
   hydrated: boolean;
   error: Error | null;
 }
@@ -32,6 +44,26 @@ function reuseIfEqual(prev: Set<string>, next: Set<string>): Set<string> {
   return setsEqual(prev, next) ? prev : next;
 }
 
+// Same content-equality reuse trick for the detail arrays so callers that
+// memoize on the array reference don't churn on identical re-deliveries.
+function detailsEqual(a: GiftActivityDetail[], b: GiftActivityDetail[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x.id !== y.id || x.title !== y.title || x.brand !== y.brand) return false;
+  }
+  return true;
+}
+
+function reuseDetailsIfEqual(
+  prev: GiftActivityDetail[],
+  next: GiftActivityDetail[],
+): GiftActivityDetail[] {
+  return detailsEqual(prev, next) ? prev : next;
+}
+
 // Subscribes to `theaWebUser/{uid}/recipient/{recipientId}/giftActivity`.
 // Each snapshot is split into three Sets keyed by `state`. The (uid, recipientId)
 // pair is the cache key — on auth uid swap (anon → permanent via mergeGiftFlow)
@@ -47,6 +79,9 @@ export function useGiftActivities(
   const [liked, setLiked] = useState<Set<string>>(() => new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [purchased, setPurchased] = useState<Set<string>>(() => new Set());
+  const [likedDetails, setLikedDetails] = useState<GiftActivityDetail[]>(() => []);
+  const [dismissedDetails, setDismissedDetails] = useState<GiftActivityDetail[]>(() => []);
+  const [purchasedDetails, setPurchasedDetails] = useState<GiftActivityDetail[]>(() => []);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -58,6 +93,9 @@ export function useGiftActivities(
         setLiked(new Set());
         setDismissed(new Set());
         setPurchased(new Set());
+        setLikedDetails([]);
+        setDismissedDetails([]);
+        setPurchasedDetails([]);
         setHydrated(false);
         setError(null);
         return nextUid;
@@ -90,15 +128,37 @@ export function useGiftActivities(
             const nextLiked = new Set<string>();
             const nextDismissed = new Set<string>();
             const nextPurchased = new Set<string>();
+            const nextLikedDetails: GiftActivityDetail[] = [];
+            const nextDismissedDetails: GiftActivityDetail[] = [];
+            const nextPurchasedDetails: GiftActivityDetail[] = [];
             snap.forEach((d) => {
-              const state = (d.data() as { state?: string }).state;
-              if (state === 'SAVED') nextLiked.add(d.id);
-              else if (state === 'DISMISSED') nextDismissed.add(d.id);
-              else if (state === 'PURCHASED') nextPurchased.add(d.id);
+              const data = d.data() as {
+                state?: string;
+                productSnapshot?: { title?: string; brand?: string };
+              };
+              const state = data.state;
+              const title = data.productSnapshot?.title ?? '';
+              const brand = data.productSnapshot?.brand;
+              const detail: GiftActivityDetail = brand
+                ? { id: d.id, title, brand }
+                : { id: d.id, title };
+              if (state === 'SAVED') {
+                nextLiked.add(d.id);
+                if (title) nextLikedDetails.push(detail);
+              } else if (state === 'DISMISSED') {
+                nextDismissed.add(d.id);
+                if (title) nextDismissedDetails.push(detail);
+              } else if (state === 'PURCHASED') {
+                nextPurchased.add(d.id);
+                if (title) nextPurchasedDetails.push(detail);
+              }
             });
             setLiked((prev) => reuseIfEqual(prev, nextLiked));
             setDismissed((prev) => reuseIfEqual(prev, nextDismissed));
             setPurchased((prev) => reuseIfEqual(prev, nextPurchased));
+            setLikedDetails((prev) => reuseDetailsIfEqual(prev, nextLikedDetails));
+            setDismissedDetails((prev) => reuseDetailsIfEqual(prev, nextDismissedDetails));
+            setPurchasedDetails((prev) => reuseDetailsIfEqual(prev, nextPurchasedDetails));
             setHydrated(true);
           },
           (err) => {
@@ -120,5 +180,14 @@ export function useGiftActivities(
     };
   }, [uid, recipientId, db, ensureAuth]);
 
-  return { liked, dismissed, purchased, hydrated, error };
+  return {
+    liked,
+    dismissed,
+    purchased,
+    likedDetails,
+    dismissedDetails,
+    purchasedDetails,
+    hydrated,
+    error,
+  };
 }
