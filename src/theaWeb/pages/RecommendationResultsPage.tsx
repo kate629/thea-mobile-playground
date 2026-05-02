@@ -798,6 +798,16 @@ const RecommendationResultsPage: React.FC = () => {
               onSaveClick={handleSaveClick}
               onDismissFinalize={handleDismissFinalize}
               onMarkPurchased={handleMarkPurchased}
+              carouselIndex={i}
+              totalCarousels={filteredSections.length}
+              carouselSessionId={doc?.carouselSessionId}
+              // Gate impressions on COMPLETED session state so streaming-phase
+              // products that get REPLACED by curation don't emit garbage
+              // carousel_visible / carousel_scroll events. Bug #74 / two-phase
+              // agent flicker. The outer JSX branch ALSO renders carousels
+              // when status === 'PROCESSING' && displaySections.length > 0
+              // (streaming intermediate); this prop is the analytics-side gate.
+              trackingEnabled={status === 'COMPLETED'}
             />
           ))}
         </ResultsDiscoverTab>

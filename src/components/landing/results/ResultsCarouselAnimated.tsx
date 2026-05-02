@@ -20,6 +20,12 @@ export interface ResultsCarouselAnimatedProps {
   onSaveClick?: (item: ResultsProductCardItem) => void;
   onDismissFinalize?: (item: ResultsProductCardItem) => void;
   onMarkPurchased?: (item: ResultsProductCardItem) => void;
+  /** Position of this carousel within the page (0-indexed) — analytics. */
+  carouselIndex?: number;
+  totalCarousels?: number;
+  carouselSessionId?: string;
+  /** True only when session.status === 'COMPLETED' upstream — see ResultsCarousel for why. */
+  trackingEnabled?: boolean;
 }
 
 export const ResultsCarouselAnimated: React.FC<ResultsCarouselAnimatedProps> = ({
@@ -35,6 +41,10 @@ export const ResultsCarouselAnimated: React.FC<ResultsCarouselAnimatedProps> = (
   onSaveClick,
   onDismissFinalize,
   onMarkPurchased,
+  carouselIndex,
+  totalCarousels,
+  carouselSessionId,
+  trackingEnabled,
 }) => {
   const { slots, dismiss } = useResultsCarousel(products, {
     isLiked,
@@ -58,6 +68,10 @@ export const ResultsCarouselAnimated: React.FC<ResultsCarouselAnimatedProps> = (
         setTimeout(() => onDismissFinalize?.(item), 250);
       }}
       onMarkPurchased={onMarkPurchased}
+      carouselIndex={carouselIndex}
+      totalCarousels={totalCarousels}
+      carouselSessionId={carouselSessionId}
+      trackingEnabled={trackingEnabled}
     />
   );
 };

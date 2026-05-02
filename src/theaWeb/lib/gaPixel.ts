@@ -73,6 +73,60 @@ export function gaPageView(params: GaPageViewParams): void {
   );
 }
 
+// --- User identity ---------------------------------------------------------
+
+const GA_PROPERTY_ID = 'G-KV1K3W6CLJ';
+
+/**
+ * Set the GA4 `user_id` to the Firebase UID. Re-firing for the SAME uid is a
+ * no-op at the gtag layer (config calls are idempotent), but the caller (the
+ * `useGaUserIdentity` hook) still de-dups on uid change to avoid extra work.
+ *
+ * IMPORTANT: passing `null` clears the user_id (e.g. on signOut). Without
+ * this, GA4 would continue stamping subsequent events with the previous
+ * UID even after auth state cleared — leaking the prior user's identifier
+ * across browsing sessions on shared devices.
+ *
+ * `send_page_view: false` mirrors the initial config in `public/index.html`
+ * so this re-config never accidentally fires a phantom page_view on every
+ * auth state change (auth resolves can re-fire several times per session).
+ */
+export function gaSetUserId(uid: string | null): void {
+  if (typeof window === 'undefined' || typeof window.gtag === 'undefined') return;
+  window.gtag('config', GA_PROPERTY_ID, {
+    user_id: uid,
+    send_page_view: false,
+  });
+}
+
+/** Firebase Auth provider IDs we expect at the signup boundary. */
+export type SignUpMethod =
+  | 'password'
+  | 'google.com'
+  | 'apple.com'
+  | 'facebook.com'
+  | 'unknown';
+
+export interface GaSignUpParams {
+  /** Firebase provider id captured from `user.providerData[0].providerId`. */
+  method: SignUpMethod | string;
+}
+
+/**
+ * Standard GA4 `sign_up` event. Fired exactly once per Firebase UID at the
+ * moment the user transitions from anonymous-or-null to a real account.
+ *
+ * The detection lives in `useGaUserIdentity`, NOT in any individual signup
+ * UI handler — there are multiple entry points (heart-tap modal, header
+ * button, sticky-footer button, mobile Google redirect callback) and
+ * instrumenting each one risks (a) missing future entry points and (b)
+ * double-firing when handlers chain through one another. Watching the auth
+ * state transition catches every path for free.
+ */
+export function gaSignUp(params: GaSignUpParams): void {
+  fireWhenIdle(() => emit('sign_up', { ...params }));
+}
+
 // --- Quiz funnel ------------------------------------------------------------
 
 /** Surfaces that initiate quiz entry. Spec §11.1. */

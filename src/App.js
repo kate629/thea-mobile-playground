@@ -10,6 +10,7 @@ import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
 import { MergeStateProvider } from "./theaWeb/auth/MergeStateContext";
 import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
 import { useDeferredNavToResults } from "./theaWeb/hooks/useDeferredNavToResults";
+import { useGaUserIdentity } from "./theaWeb/hooks/useGaUserIdentity";
 import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
 import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
 import { gaFirstRender } from "./theaWeb/lib/gaPixel";
@@ -123,6 +124,14 @@ function FirstRenderMount() {
   return null;
 }
 
+// Wires GA4 `user_id` to the Firebase UID and fires the GA4 `sign_up` event
+// on the (anon|null) → permanent transition. Mounted inside FirebaseProvider
+// because the hook calls useAuth(). One mount per app load is enough.
+function GaUserIdentityMount() {
+  useGaUserIdentity();
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -132,6 +141,7 @@ function App() {
             <AuthGateProvider>
         <PageTrackingMount />
         <FirstRenderMount />
+        <GaUserIdentityMount />
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route

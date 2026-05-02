@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { ResultsProductCard } from './ResultsProductCard';
 import { ResultsProductCardItem, ResultsProductCardState } from './types';
+import { useCarouselImpression } from '../../../theaWeb/hooks/useCarouselImpression';
+import { gaCarouselScroll, gaCarouselVisible } from '../../../theaWeb/lib/gaPixel';
 
 export interface ResultsCarouselSlot {
   item: ResultsProductCardItem;
@@ -19,6 +21,25 @@ export interface ResultsCarouselProps {
   onSaveClick?: (item: ResultsProductCardItem) => void;
   onDismiss?: (item: ResultsProductCardItem) => void;
   onMarkPurchased?: (item: ResultsProductCardItem) => void;
+  /**
+   * Position of this carousel within the page (0-indexed). When provided
+   * alongside `totalCarousels`, drives the `carousel_visible` /
+   * `carousel_scroll` analytics events on results pages; otherwise impression
+   * tracking is skipped (e.g., Storybook stories, results-page tests that
+   * don't care about analytics).
+   */
+  carouselIndex?: number;
+  totalCarousels?: number;
+  /** carouselSession id — joins GA4 events back to the Firestore recommendation. */
+  carouselSessionId?: string;
+  /**
+   * Gates the carousel-impression / scroll events. Pass `true` ONLY when
+   * the parent's `session.status === 'COMPLETED'` (or refresh-snapshot is
+   * active) so that streaming-phase products — which get REPLACED by the
+   * curation-phase set — do not emit impressions. See bug #74 / two-phase
+   * agent flicker memo. Defaults to false; tracking is opt-in.
+   */
+  trackingEnabled?: boolean;
 }
 
 const Section = styled.div`
@@ -207,6 +228,9 @@ export const SkeletonResultsCarousel: React.FC<{ tileCount?: number }> = ({
   </Section>
 );
 
+const SCROLL_THRESHOLDS: Array<25 | 50 | 75 | 100> = [25, 50, 75, 100];
+const SCROLL_THROTTLE_MS = 200;
+
 export const ResultsCarousel: React.FC<ResultsCarouselProps> = ({
   title,
   slots,
@@ -215,15 +239,83 @@ export const ResultsCarousel: React.FC<ResultsCarouselProps> = ({
   onSaveClick,
   onDismiss,
   onMarkPurchased,
+  carouselIndex,
+  totalCarousels,
+  carouselSessionId,
+  trackingEnabled = false,
 }) => {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  // Tracking is enabled only when the parent passes `trackingEnabled=true`
+  // (gated on session.status === 'COMPLETED' / refreshSnapshot upstream) AND
+  // the dimensional metadata is present. Mirrors the CarouselSection guard
+  // so partial wiring sites (Storybook, tests) don't fire incomplete events.
+  const dimsPresent =
+    carouselIndex !== undefined && totalCarousels !== undefined;
+  const tracking = trackingEnabled && dimsPresent && slots.length > 0;
+  const totalCards = slots.length;
+
+  const fireVisible = useCallback(() => {
+    if (!tracking) return;
+    gaCarouselVisible({
+      carousel_name: title,
+      carousel_index: carouselIndex!,
+      total_carousels: totalCarousels!,
+      total_cards: totalCards,
+      ...(carouselSessionId !== undefined ? { carousel_session_id: carouselSessionId } : {}),
+    });
+  }, [tracking, title, carouselIndex, totalCarousels, totalCards, carouselSessionId]);
+  useCarouselImpression(sectionRef, fireVisible, tracking);
+
+  // carousel_scroll — passive listener, 200ms throttle, dedupe per-threshold
+  // via a ref-Set. Mirrors the CarouselSection.tsx pattern. The shared
+  // module-scope IntersectionObserver in useCarouselImpression covers the
+  // visibility event; this useEffect handles the per-component scroll
+  // listener.
+  const firedThresholdsRef = useRef<Set<number>>(new Set());
+  const lastScrollTickRef = useRef<number>(0);
+  useEffect(() => {
+    if (!tracking) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const handle = () => {
+      const now = Date.now();
+      if (now - lastScrollTickRef.current < SCROLL_THROTTLE_MS) return;
+      lastScrollTickRef.current = now;
+      const scrollWidth = el.scrollWidth - el.clientWidth;
+      if (scrollWidth <= 0) return;
+      const percent = Math.min(100, (el.scrollLeft / scrollWidth) * 100);
+      for (const threshold of SCROLL_THRESHOLDS) {
+        if (percent < threshold) continue;
+        if (firedThresholdsRef.current.has(threshold)) continue;
+        firedThresholdsRef.current.add(threshold);
+        gaCarouselScroll({
+          carousel_name: title,
+          carousel_index: carouselIndex!,
+          total_carousels: totalCarousels!,
+          total_cards: totalCards,
+          cards_visible: Math.min(
+            totalCards,
+            Math.max(1, Math.ceil((threshold / 100) * totalCards)),
+          ),
+          percent_seen: threshold,
+          ...(carouselSessionId !== undefined ? { carousel_session_id: carouselSessionId } : {}),
+        });
+      }
+    };
+    el.addEventListener('scroll', handle, { passive: true });
+    return () => el.removeEventListener('scroll', handle);
+  }, [tracking, title, carouselIndex, totalCarousels, totalCards, carouselSessionId]);
+
   if (slots.length === 0) return null;
   return (
-    <Section>
+    <Section ref={sectionRef}>
       <TitleRow>
         <Title>{title}</Title>
       </TitleRow>
       <ScrollContainer>
-        <Scroller>
+        <Scroller ref={scrollerRef}>
           {slots.map((slot, index) => (
             <Slot key={slot.item.id} $state={slot.state}>
               <ResultsProductCard
