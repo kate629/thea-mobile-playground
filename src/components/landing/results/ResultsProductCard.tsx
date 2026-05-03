@@ -15,6 +15,9 @@ export interface ResultsProductCardProps {
   onMarkPurchased?: () => void;
   /** Notified when the overflow menu opens/closes. */
   onOverflowOpenChange?: (open: boolean) => void;
+  /** Optional ref attached to the card root. Used by ranker-telemetry impression
+   *  tracking; safe to omit elsewhere. */
+  cardRef?: React.Ref<HTMLDivElement | null>;
 }
 
 const Root = styled.div`
@@ -201,8 +204,12 @@ export const ResultsProductCard: React.FC<ResultsProductCardProps> = ({
   onDismiss,
   onMarkPurchased,
   onOverflowOpenChange,
+  cardRef,
 }) => (
-  <Root>
+  // styled-components' LegacyRef typing predates strict null-tracking; cast to
+  // satisfy the older Ref<HTMLDivElement> signature without requiring callers
+  // to use a non-null ref.
+  <Root ref={cardRef as React.Ref<HTMLDivElement>}>
     <Inner onClick={onClick}>
       <ImageFrame>
         <Img src={item.imageUrl} alt={item.title} loading={priority ? 'eager' : 'lazy'} />

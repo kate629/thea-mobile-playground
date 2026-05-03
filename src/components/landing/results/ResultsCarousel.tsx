@@ -21,6 +21,9 @@ export interface ResultsCarouselProps {
   onSaveClick?: (item: ResultsProductCardItem) => void;
   onDismiss?: (item: ResultsProductCardItem) => void;
   onMarkPurchased?: (item: ResultsProductCardItem) => void;
+  /** Optional per-card ref-getter — used by ranker-telemetry impression
+   *  tracking. Returns the ref to attach to a slot's card root. */
+  getCardRef?: (productId: string) => React.Ref<HTMLDivElement | null> | undefined;
   /**
    * Position of this carousel within the page (0-indexed). When provided
    * alongside `totalCarousels`, drives the `carousel_visible` /
@@ -239,6 +242,7 @@ export const ResultsCarousel: React.FC<ResultsCarouselProps> = ({
   onSaveClick,
   onDismiss,
   onMarkPurchased,
+  getCardRef,
   carouselIndex,
   totalCarousels,
   carouselSessionId,
@@ -326,6 +330,7 @@ export const ResultsCarousel: React.FC<ResultsCarouselProps> = ({
                 onSaveClick={() => onSaveClick?.(slot.item)}
                 onDismiss={() => onDismiss?.(slot.item)}
                 onMarkPurchased={() => onMarkPurchased?.(slot.item)}
+                cardRef={getCardRef?.(slot.item.id)}
               />
             </Slot>
           ))}

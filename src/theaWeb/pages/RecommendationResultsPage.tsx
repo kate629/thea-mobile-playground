@@ -57,6 +57,7 @@ import {
 } from '../lib/gaPixel';
 import { ageBucket, metaQuizResultsViewed, metaViewContent } from '../lib/metaPixel';
 import { useTimeToFirstResult } from '../hooks/useTimeToFirstResult';
+import { logEvent } from '../lib/eventSink';
 
 const ProcessingHint = styled.p`
   text-align: center;
@@ -536,6 +537,58 @@ const RecommendationResultsPage: React.FC = () => {
     [carouselTitleById, cardPositionById, doc],
   );
 
+  // Same shape but for the first-party event sink (ranker-telemetry path).
+  // Adds recommendation_id + recipient_id, which we deliberately keep OUT of
+  // GA4 events to honor the gaPixel.ts "no PII" comment — the first-party
+  // sink already has user_id, so the join is intentional and accountable.
+  const buildSinkProductProps = useCallback(
+    (item: ResultsProductCardItem): Record<string, unknown> => {
+      const ga = buildProductReactionParams(item);
+      return {
+        product_id: ga.product_id,
+        product_name: ga.product_name,
+        ...(ga.brand !== undefined ? { brand: ga.brand } : {}),
+        ...(ga.price !== undefined ? { price: ga.price } : {}),
+        carousel_name: ga.carousel_name,
+        card_position: ga.card_position,
+        regenerate_count: ga.regenerate_count,
+        ...(ga.relationship !== undefined ? { relationship: ga.relationship } : {}),
+        ...(ga.occasion !== undefined ? { occasion: ga.occasion } : {}),
+        ...(ga.gender !== undefined ? { gender: ga.gender } : {}),
+        ...(ga.age_range !== undefined ? { age_range: ga.age_range } : {}),
+        ...(ga.carousel_session_id !== undefined
+          ? { session_id: ga.carousel_session_id }
+          : {}),
+        ...(doc?.recommendationId !== undefined
+          ? { recommendation_id: doc.recommendationId }
+          : {}),
+        ...(recipientId !== undefined ? { recipient_id: recipientId } : {}),
+      };
+    },
+    [buildProductReactionParams, doc, recipientId],
+  );
+
+  // Stable impression-context for ResultsCarouselAnimated. Passed once per
+  // render rather than per-card; the carousel does the per-card fan-out.
+  // Keyed by carouselSessionId so changing recommendations causes the
+  // children to remount their impression hooks.
+  const impressionContext = useMemo(
+    () => ({
+      sessionId: doc?.carouselSessionId,
+      recommendationId: doc?.recommendationId,
+      recipientId,
+      relationship: doc?.recipientSnapshot?.relationship,
+      occasion: doc?.input?.occasion,
+      gender: doc?.recipientSnapshot?.gender,
+      ageRange:
+        doc?.recipientSnapshot?.age != null
+          ? ageBucket(doc.recipientSnapshot.age)
+          : undefined,
+      regenerateCount: regenerateCountRef.current,
+    }),
+    [doc, recipientId],
+  );
+
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
       // No UNSAVED state on the BE — un-save is a follow-up endpoint. Until
@@ -547,6 +600,8 @@ const RecommendationResultsPage: React.FC = () => {
       // gate should still be counted in the save-intent dashboard cell — the
       // BE just won't have the activity row. Matches the old v6 behavior.
       gaProductSaved(buildProductReactionParams(item));
+      // Mirror to first-party event sink for ranker training.
+      logEvent('product_saved', buildSinkProductProps(item));
 
       if (auth.currentUser?.isAnonymous !== false) {
         requestSignIn({
@@ -562,7 +617,7 @@ const RecommendationResultsPage: React.FC = () => {
     // A proper fix (likely: read `auth` via ref) is tracked separately. The
     // existing behavior matches what's been shipping since PR #82/#79.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [liked, fireActivity, requestSignIn, buildProductReactionParams],
+    [liked, fireActivity, requestSignIn, buildProductReactionParams, buildSinkProductProps],
   );
 
   const handleDismissFinalize = useCallback(
@@ -570,9 +625,10 @@ const RecommendationResultsPage: React.FC = () => {
       // Anon users CAN dismiss (BE only requires auth.uid which the anon
       // session provides). Fire unconditionally — matches BE behavior.
       gaProductDismissed(buildProductReactionParams(item));
+      logEvent('product_dismissed', buildSinkProductProps(item));
       fireActivity(item.id, 'DISMISSED');
     },
-    [fireActivity, buildProductReactionParams],
+    [fireActivity, buildProductReactionParams, buildSinkProductProps],
   );
 
   const handleMarkPurchased = useCallback(
@@ -585,6 +641,9 @@ const RecommendationResultsPage: React.FC = () => {
       // don't fire the activity until auth lands, the card naturally stays
       // in place during the modal — same intent-preservation behavior as
       // the heart, no extra optimistic state needed.
+      // Fire the first-party purchase event on intent (same as save) so the
+      // ranker has a positive signal even if the auth-gate is abandoned.
+      logEvent('product_purchased', buildSinkProductProps(item));
       if (auth.currentUser?.isAnonymous !== false) {
         requestSignIn({
           mode: 'signup',
@@ -596,7 +655,7 @@ const RecommendationResultsPage: React.FC = () => {
     },
     // Same exhaustive-deps tradeoff as `handleSaveClick` above — see note there.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fireActivity, requestSignIn],
+    [fireActivity, requestSignIn, buildSinkProductProps],
   );
 
   const handleProductClick = useCallback(
@@ -638,11 +697,18 @@ const RecommendationResultsPage: React.FC = () => {
           ? { carousel_session_id: doc.carouselSessionId }
           : {}),
       });
+      // First-party mirror — the ranker treats clicks as a mid-strength
+      // positive signal; carries destination_url for downstream attribution
+      // joins.
+      logEvent('product_clicked', {
+        ...buildSinkProductProps(item),
+        destination_url: item.productUrl ?? '',
+      });
       if (item.productUrl) {
         openExternal(item.productUrl);
       }
     },
-    [carouselTitleById, cardPositionById, doc],
+    [carouselTitleById, cardPositionById, doc, buildSinkProductProps],
   );
 
   const isLiked = useCallback((id: string) => liked.has(id), [liked]);
@@ -798,6 +864,7 @@ const RecommendationResultsPage: React.FC = () => {
               onSaveClick={handleSaveClick}
               onDismissFinalize={handleDismissFinalize}
               onMarkPurchased={handleMarkPurchased}
+              impressionContext={impressionContext}
               carouselIndex={i}
               totalCarousels={filteredSections.length}
               carouselSessionId={doc?.carouselSessionId}

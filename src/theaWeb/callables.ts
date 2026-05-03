@@ -3,6 +3,8 @@ import { httpsCallable, type HttpsCallable } from 'firebase/functions';
 import { functions } from '../firebaseFunctions';
 import {
   THEA_WEB_CALLABLES,
+  type TheaWebLogEventsRequest,
+  type TheaWebLogEventsResponse,
   type TheaWebMergeGiftFlowRequest,
   type TheaWebMergeGiftFlowResponse,
   type TheaWebMintMergeTokenRequest,
@@ -46,3 +48,11 @@ export const mintMergeToken: HttpsCallable<
   TheaWebMintMergeTokenRequest,
   TheaWebMintMergeTokenResponse
 > = httpsCallable(functions, THEA_WEB_CALLABLES.mintMergeToken, { timeout: 30_000 });
+
+// First-party telemetry sink for the product-ranker training pipeline.
+// Tolerant by design — never blocks user actions, drops invalid events
+// silently. See `lib/eventSink.ts` for the batcher that calls this.
+export const logEvents: HttpsCallable<
+  TheaWebLogEventsRequest,
+  TheaWebLogEventsResponse
+> = httpsCallable(functions, THEA_WEB_CALLABLES.logEvents, { timeout: 15_000 });
