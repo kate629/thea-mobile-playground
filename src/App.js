@@ -99,6 +99,8 @@ const RecommendationResultsPage = lazy(() =>
   import("./theaWeb/pages/RecommendationResultsPage"),
 );
 const BoardRoute = lazy(() => import("./theaWeb/pages/BoardRoute"));
+const TermsPage = lazy(() => import("./theaWeb/pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./theaWeb/pages/PrivacyPage"));
 
 // Lazy so the ~600 hardcoded sample products don't bloat the root bundle.
 const OccasionRoute = lazy(() =>
@@ -207,6 +209,22 @@ function App() {
             element={
               <Suspense fallback={null}>
                 <RecommendationResultsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/terms"
+            element={
+              <Suspense fallback={null}>
+                <TermsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/privacy"
+            element={
+              <Suspense fallback={null}>
+                <PrivacyPage />
               </Suspense>
             }
           />
