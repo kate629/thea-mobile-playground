@@ -141,4 +141,9 @@ export const OCCASION_TILES: OccasionGridTile[] = [
     cdnUrl: 'https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2FKprZFh7sY56rcOSbicRq%2Fdac45baa70a51015_orig.webp?alt=media&token=e9c08bed-de04-4c2f-bd40-48ce3be7e9f7',
     cdnMobileUrl: 'https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2FKprZFh7sY56rcOSbicRq%2Fdac45baa70a51015_mobile.webp?alt=media&token=67a2bdef-99ce-4dc5-9c06-cb35a4065b73',
   },
+  {
+    event: 'TEACHER_APPRECIATION',
+    title: 'Teacher Appreciation',
+    imageUrl: 'https://www.bando.com/cdn/shop/files/bando-3p-chronicle-andy-warhol-soup-can-crayons-sharpener-02.jpg?v=1769098451',
+  },
 ];

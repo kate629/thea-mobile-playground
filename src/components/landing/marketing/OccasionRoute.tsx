@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useParams, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { OccasionPage } from './OccasionPage';
+import { TeacherAppreciationPage } from './TeacherAppreciationPage';
 import { MothersDayQuizBanner } from './MothersDayQuizBanner';
 import { useAuthGate } from '../../../theaWeb/auth/AuthGateContext';
 import type { QuizEntryPoint } from '../../../theaWeb/lib/gaPixel';
@@ -11,6 +12,7 @@ import { SAMPLE_ANNIVERSARY_SECTIONS } from './sampleAnniversaryCarousels';
 import { SAMPLE_HOUSEWARMING_SECTIONS } from './sampleHousewarmingCarousels';
 import { SAMPLE_NEW_BABY_SECTIONS } from './sampleNewBabyCarousels';
 import { SAMPLE_GRADUATION_SECTIONS } from './sampleGraduationCarousels';
+import { SAMPLE_TEACHER_APPRECIATION_PRODUCTS } from './sampleTeacherAppreciationProducts';
 import { CarouselProduct } from './CarouselSection';
 import { openExternal } from '../../../theaWeb/lib/openExternal';
 
@@ -118,6 +120,23 @@ export const OccasionRoute: React.FC = () => {
     () => handleCtaClick('banner_mothers_day'),
     [handleCtaClick],
   );
+
+  /* Teacher Appreciation is a vertical-grid guide rather than horizontal
+     carousels — separate page component, but reuses the same handlers so
+     analytics (occasion=teacher_appreciation, entry_point=sticky_occasion)
+     stays consistent with the other guide surfaces. */
+  if (slug === 'teacher_appreciation') {
+    return (
+      <TeacherAppreciationPage
+        title="Teacher Appreciation Gifts"
+        products={SAMPLE_TEACHER_APPRECIATION_PRODUCTS}
+        onProductClick={handleProductClick}
+        onSignInClick={handleSignInClick}
+        onCtaClick={handleStickyCtaClick}
+        occasion={slug}
+      />
+    );
+  }
 
   if (!config) return <Navigate to="/" replace />;
 
