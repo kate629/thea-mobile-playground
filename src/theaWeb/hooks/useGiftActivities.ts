@@ -4,13 +4,18 @@ import { useEffect, useState } from 'react';
 import { useAuth, useDb, useEnsureAuth } from '../firebase/FirebaseContext';
 import { giftActivityCollectionPath } from '../schemas/paths';
 
-// Lightweight per-activity detail used for feeding preference primitives back
-// into the recommendation algo. Title (and brand when present) is read straight
-// off the frozen `productSnapshot` so we don't need a separate product lookup.
+// Per-activity detail mirrored straight off the frozen `productSnapshot`. Used
+// for two consumers: (1) preference primitives fed back into the recommendation
+// algo (only needs title/brand), and (2) the Saved/Purchased grids, which need
+// the visual fields too so they can render activities whose products are no
+// longer in the current carousel sections (e.g. after a regenerate).
 export interface GiftActivityDetail {
   id: string;
   title: string;
   brand?: string;
+  price?: number;
+  imageUrl?: string;
+  productUrl?: string;
 }
 
 interface UseGiftActivitiesResult {
@@ -52,7 +57,16 @@ function detailsEqual(a: GiftActivityDetail[], b: GiftActivityDetail[]): boolean
   for (let i = 0; i < a.length; i++) {
     const x = a[i];
     const y = b[i];
-    if (x.id !== y.id || x.title !== y.title || x.brand !== y.brand) return false;
+    if (
+      x.id !== y.id ||
+      x.title !== y.title ||
+      x.brand !== y.brand ||
+      x.price !== y.price ||
+      x.imageUrl !== y.imageUrl ||
+      x.productUrl !== y.productUrl
+    ) {
+      return false;
+    }
   }
   return true;
 }
@@ -134,14 +148,22 @@ export function useGiftActivities(
             snap.forEach((d) => {
               const data = d.data() as {
                 state?: string;
-                productSnapshot?: { title?: string; brand?: string };
+                productSnapshot?: {
+                  title?: string;
+                  brand?: string;
+                  price?: number;
+                  imageUrl?: string;
+                  url?: string;
+                };
               };
               const state = data.state;
-              const title = data.productSnapshot?.title ?? '';
-              const brand = data.productSnapshot?.brand;
-              const detail: GiftActivityDetail = brand
-                ? { id: d.id, title, brand }
-                : { id: d.id, title };
+              const snapshot = data.productSnapshot;
+              const title = snapshot?.title ?? '';
+              const detail: GiftActivityDetail = { id: d.id, title };
+              if (snapshot?.brand) detail.brand = snapshot.brand;
+              if (typeof snapshot?.price === 'number') detail.price = snapshot.price;
+              if (snapshot?.imageUrl) detail.imageUrl = snapshot.imageUrl;
+              if (snapshot?.url) detail.productUrl = snapshot.url;
               if (state === 'SAVED') {
                 nextLiked.add(d.id);
                 if (title) nextLikedDetails.push(detail);

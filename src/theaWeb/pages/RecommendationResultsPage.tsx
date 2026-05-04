@@ -24,7 +24,7 @@ import { recordActivity, updateRecipient } from '../callables';
 import { openExternal } from '../lib/openExternal';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useExitAnimationQueue } from '../hooks/useExitAnimationQueue';
-import { useGiftActivities } from '../hooks/useGiftActivities';
+import { useGiftActivities, type GiftActivityDetail } from '../hooks/useGiftActivities';
 import { useLeaveWarning } from '../hooks/useLeaveWarning';
 import { useBackButtonGuard } from '../hooks/useBackButtonGuard';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
@@ -721,19 +721,47 @@ const RecommendationResultsPage: React.FC = () => {
     [liked, pendingLikedIds],
   );
 
+  // Snapshot fallback: when an activity's product is no longer in the
+  // currently rendered carousel sections (most often after a regenerate),
+  // synthesize a card item from the frozen `productSnapshot` instead of
+  // dropping it. The grids would otherwise show empty-state copy while the
+  // tab badge — which counts straight off the BE-truth Set — still says >0.
+  const detailById = useMemo(() => {
+    const map = new Map<string, GiftActivityDetail>();
+    for (const detail of likedDetails) map.set(detail.id, detail);
+    for (const detail of purchasedDetails) map.set(detail.id, detail);
+    return map;
+  }, [likedDetails, purchasedDetails]);
+
+  const fromSnapshot = useCallback(
+    (id: string): ResultsProductCardItem | undefined => {
+      const detail = detailById.get(id);
+      if (!detail) return undefined;
+      return {
+        id: detail.id,
+        title: detail.title,
+        imageUrl: detail.imageUrl ?? '',
+        brand: detail.brand,
+        price: detail.price,
+        productUrl: detail.productUrl,
+      };
+    },
+    [detailById],
+  );
+
   const savedItems = useMemo(
     () =>
       Array.from(liked)
-        .map((id) => itemById.get(id))
+        .map((id) => itemById.get(id) ?? fromSnapshot(id))
         .filter((x): x is ResultsProductCardItem => Boolean(x)),
-    [liked, itemById],
+    [liked, itemById, fromSnapshot],
   );
   const purchasedItems = useMemo(
     () =>
       Array.from(purchased)
-        .map((id) => itemById.get(id))
+        .map((id) => itemById.get(id) ?? fromSnapshot(id))
         .filter((x): x is ResultsProductCardItem => Boolean(x)),
-    [purchased, itemById],
+    [purchased, itemById, fromSnapshot],
   );
 
   if (!recipientId || !recommendationId) {
