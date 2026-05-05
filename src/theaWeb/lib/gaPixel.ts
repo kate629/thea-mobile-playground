@@ -78,14 +78,35 @@ export function gaPageView(params: GaPageViewParams): void {
 const GA_PROPERTY_ID = 'G-KV1K3W6CLJ';
 
 /**
- * Set the GA4 `user_id` to the Firebase UID. Re-firing for the SAME uid is a
- * no-op at the gtag layer (config calls are idempotent), but the caller (the
+ * Wire the Firebase UID into GA4 via TWO separate channels. Both are needed;
+ * neither alone is sufficient for end-to-end per-user analysis.
+ *
+ *   1. `gtag('config', GA_ID, { user_id })` — GA4's built-in User-ID feature.
+ *      Used by GA4 internally to stitch sessions across devices and time for
+ *      the same person. NOT exposed as a queryable custom dimension (the
+ *      property name `user_id` is reserved by GA4).
+ *
+ *   2. `gtag('set', 'user_properties', { thea_uid })` — sets a custom
+ *      user-scoped property which IS queryable as `customUser:thea_uid` in
+ *      the Data API once registered as a custom dimension in GA4 Admin.
+ *      The dimension was registered 2026-05-05 with property name `thea_uid`.
+ *
+ * Why `thea_uid` and not e.g. `firebase_uid`? GA4 reserves these prefixes:
+ *   - `firebase_*` (Firebase SDK integration)
+ *   - `google_*`   (Google integrations)
+ *   - `ga_*`       (GA4 internal)
+ *   - `_*`         (leading underscore — GA4 internal)
+ * Custom dimensions on those prefixes get rejected with "User property name
+ * is not allowed." See `~/git/thea/.claude/rules/gotchas.md` for the full
+ * trap explanation.
+ *
+ * Re-firing for the SAME uid is idempotent at gtag, but the caller (the
  * `useGaUserIdentity` hook) still de-dups on uid change to avoid extra work.
  *
- * IMPORTANT: passing `null` clears the user_id (e.g. on signOut). Without
- * this, GA4 would continue stamping subsequent events with the previous
- * UID even after auth state cleared — leaking the prior user's identifier
- * across browsing sessions on shared devices.
+ * IMPORTANT: passing `null` clears BOTH user_id and thea_uid (e.g. on
+ * signOut). Without this, GA4 would continue stamping subsequent events
+ * with the previous UID even after auth state cleared — leaking the prior
+ * user's identifier across browsing sessions on shared devices.
  *
  * `send_page_view: false` mirrors the initial config in `public/index.html`
  * so this re-config never accidentally fires a phantom page_view on every
@@ -96,6 +117,9 @@ export function gaSetUserId(uid: string | null): void {
   window.gtag('config', GA_PROPERTY_ID, {
     user_id: uid,
     send_page_view: false,
+  });
+  window.gtag('set', 'user_properties', {
+    thea_uid: uid,
   });
 }
 

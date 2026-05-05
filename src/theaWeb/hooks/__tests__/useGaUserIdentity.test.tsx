@@ -75,27 +75,35 @@ describe('useGaUserIdentity', () => {
     delete (window as unknown as { gtag?: unknown }).gtag;
   });
 
-  test('sets gtag user_id on every uid change including null', () => {
+  test('sets gtag user_id AND thea_uid user property on every uid change including null', () => {
     render(<Probe />);
     expect(mockLastAuthCallback).toBeTruthy();
 
-    // Anonymous user lands first
+    // Anonymous user lands first — TWO gtag calls per uid change:
+    //   1. config call with user_id (GA4 User-ID feature)
+    //   2. set call with thea_uid user property (queryable custom dimension)
     mockLastAuthCallback!(makeUser({ uid: 'anon-1', isAnonymous: true }));
     expect(gtag).toHaveBeenCalledWith('config', 'G-KV1K3W6CLJ', {
       user_id: 'anon-1',
       send_page_view: false,
     });
+    expect(gtag).toHaveBeenCalledWith('set', 'user_properties', {
+      thea_uid: 'anon-1',
+    });
 
-    // Same uid → no extra config call
+    // Same uid → no extra calls (caller dedups in the hook)
     gtag.mockClear();
     mockLastAuthCallback!(makeUser({ uid: 'anon-1', isAnonymous: true }));
     expect(gtag).not.toHaveBeenCalled();
 
-    // signOut → null uid → config with null user_id (clears prior user_id)
+    // signOut → null uid → BOTH calls clear prior identity
     mockLastAuthCallback!(null);
     expect(gtag).toHaveBeenCalledWith('config', 'G-KV1K3W6CLJ', {
       user_id: null,
       send_page_view: false,
+    });
+    expect(gtag).toHaveBeenCalledWith('set', 'user_properties', {
+      thea_uid: null,
     });
   });
 
