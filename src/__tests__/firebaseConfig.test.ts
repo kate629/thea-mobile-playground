@@ -37,6 +37,9 @@ jest.mock('firebase/auth', () => ({
     auth.currentUser = { uid: 'anon-uid' };
     return Promise.resolve({ user: { ...auth.currentUser, getIdToken: () => Promise.resolve('tok') } });
   }),
+  setPersistence: jest.fn(() => Promise.resolve()),
+  browserLocalPersistence: { type: 'LOCAL' },
+  connectAuthEmulator: jest.fn(),
 }));
 
 jest.mock('firebase/firestore', () => ({

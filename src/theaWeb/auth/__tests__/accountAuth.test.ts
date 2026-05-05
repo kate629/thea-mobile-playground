@@ -101,7 +101,12 @@ function withMobileUA(): () => void {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Each test sees a fresh sessionStorage so the redirect-marker assertions
+  // aren't polluted by a previous test's state.
+  sessionStorage.clear();
 });
+
+const REDIRECT_MARKER_KEY = 'thea:authRedirectStarted';
 
 const anonUser: any = { uid: 'anon-1', isAnonymous: true };
 const realUser: any = { uid: 'real-1', isAnonymous: false };
@@ -500,23 +505,23 @@ describe('signInWithGoogle (regression after refactor)', () => {
 });
 
 describe('consumeAuthRedirectResult', () => {
-  test('success path returns result.user', async () => {
+  test('success path returns result.user inside the wrapper', async () => {
     const auth = authWith(anonUser);
     mockedGetRedirect.mockResolvedValueOnce({ user: realUser });
 
-    const user = await consumeAuthRedirectResult(auth);
+    const result = await consumeAuthRedirectResult(auth);
 
-    expect(user).toBe(realUser);
+    expect(result.user).toBe(realUser);
     expect(mockedSignInCred).not.toHaveBeenCalled();
   });
 
-  test('null result returns null', async () => {
+  test('null result returns user=null inside the wrapper', async () => {
     const auth = authWith(anonUser);
     mockedGetRedirect.mockResolvedValueOnce(null);
 
-    const user = await consumeAuthRedirectResult(auth);
+    const result = await consumeAuthRedirectResult(auth);
 
-    expect(user).toBeNull();
+    expect(result.user).toBeNull();
   });
 
   test('Apple credential-already-in-use → recovers via OAuthProvider extractor + merges', async () => {
@@ -529,9 +534,9 @@ describe('consumeAuthRedirectResult', () => {
     mockedMint.mockResolvedValueOnce({ data: { token: 'tok-r', expiresAt: 0 } });
     mockedSignInCred.mockResolvedValueOnce({ user: realUser });
 
-    const user = await consumeAuthRedirectResult(auth);
+    const result = await consumeAuthRedirectResult(auth);
 
-    expect(user).toBe(realUser);
+    expect(result.user).toBe(realUser);
     expect(mockedMerge).toHaveBeenCalledWith({ fromUid: 'anon-1', token: 'tok-r' });
   });
 
@@ -546,12 +551,16 @@ describe('consumeAuthRedirectResult', () => {
     mockedMint.mockResolvedValueOnce({ data: { token: 'tok-rg', expiresAt: 0 } });
     mockedSignInCred.mockResolvedValueOnce({ user: realUser });
 
-    const user = await consumeAuthRedirectResult(auth);
+    const result = await consumeAuthRedirectResult(auth);
 
-    expect(user).toBe(realUser);
+    expect(result.user).toBe(realUser);
   });
 
-  test('credential-already-in-use with no recoverable credential rethrows', async () => {
+  test('credential-already-in-use with no recoverable credential surfaces errorCode (no rethrow)', async () => {
+    // Phase 2 change: instead of rethrowing — which left the AuthGate root
+    // useEffect to swallow the error in a generic console.error and gave the
+    // user no signal — we now return the wrapper with `errorCode` populated.
+    // The gate fires `auth_redirect_lost` telemetry on this branch.
     const auth = authWith(anonUser);
     const inUseErr = Object.assign(new Error('in use'), {
       code: 'auth/credential-already-in-use',
@@ -560,7 +569,10 @@ describe('consumeAuthRedirectResult', () => {
     mockedAppleCredFromError.mockReturnValueOnce(null);
     mockedGoogleCredFromError.mockReturnValueOnce(null);
 
-    await expect(consumeAuthRedirectResult(auth)).rejects.toBe(inUseErr);
+    const result = await consumeAuthRedirectResult(auth);
+
+    expect(result.user).toBeNull();
+    expect(result.errorCode).toBe('auth/credential-already-in-use');
   });
 
   test('non-in-use rejection rethrows', async () => {
@@ -571,5 +583,132 @@ describe('consumeAuthRedirectResult', () => {
     mockedGetRedirect.mockRejectedValueOnce(otherErr);
 
     await expect(consumeAuthRedirectResult(auth)).rejects.toBe(otherErr);
+  });
+});
+
+// Phase 2 introduces a sessionStorage marker written immediately before any
+// signInWithRedirect / linkWithRedirect call. The marker lets the post-redirect
+// AuthGate distinguish "no redirect was ever in flight" from "we initiated a
+// redirect and the credential was lost between provider and return" — Bug 2's
+// detection signal. These tests fail on master (no marker is written today)
+// and pass once Phase 2 adds the writes inside `signInWithOAuthProvider`.
+describe('redirect-marker — written before mobile redirect (Bug 2 detection)', () => {
+  test('anon mobile linkWithRedirect via signInWithApple writes the marker with provider=apple', async () => {
+    const restoreUA = withMobileUA();
+    try {
+      const auth = authWith(anonUser);
+      mockedLinkRedirect.mockResolvedValueOnce(undefined);
+
+      await signInWithApple(auth);
+
+      const raw = sessionStorage.getItem(REDIRECT_MARKER_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw as string);
+      expect(parsed.provider).toBe('apple');
+      expect(typeof parsed.ts).toBe('number');
+    } finally {
+      restoreUA();
+    }
+  });
+
+  test('anon mobile linkWithRedirect via signInWithGoogle writes the marker with provider=google', async () => {
+    const restoreUA = withMobileUA();
+    try {
+      const auth = authWith(anonUser);
+      mockedLinkRedirect.mockResolvedValueOnce(undefined);
+
+      await signInWithGoogle(auth);
+
+      const raw = sessionStorage.getItem(REDIRECT_MARKER_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw as string);
+      expect(parsed.provider).toBe('google');
+    } finally {
+      restoreUA();
+    }
+  });
+
+  test('non-anon mobile signInWithRedirect via signInWithApple writes the marker', async () => {
+    const restoreUA = withMobileUA();
+    try {
+      const auth = authWith(realUser);
+      mockedSignInRedirect.mockResolvedValueOnce(undefined);
+
+      await signInWithApple(auth);
+
+      const raw = sessionStorage.getItem(REDIRECT_MARKER_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw as string);
+      expect(parsed.provider).toBe('apple');
+    } finally {
+      restoreUA();
+    }
+  });
+
+  test('desktop popup path does NOT write the marker (no redirect, no need)', async () => {
+    // Desktop UA — withMobileUA NOT called.
+    const auth = authWith(anonUser);
+    mockedLinkPopup.mockResolvedValueOnce({ user: realUser });
+
+    await signInWithApple(auth);
+
+    expect(sessionStorage.getItem(REDIRECT_MARKER_KEY)).toBeNull();
+  });
+});
+
+describe('consumeAuthRedirectResult — return shape & marker handling', () => {
+  test('clears the marker after a successful redirect-result', async () => {
+    sessionStorage.setItem(
+      REDIRECT_MARKER_KEY,
+      JSON.stringify({ provider: 'apple', ts: Date.now() }),
+    );
+    const auth = authWith(anonUser);
+    mockedGetRedirect.mockResolvedValueOnce({ user: realUser });
+
+    await consumeAuthRedirectResult(auth);
+
+    expect(sessionStorage.getItem(REDIRECT_MARKER_KEY)).toBeNull();
+  });
+
+  test('clears the marker even when getRedirectResult returns null (credential lost)', async () => {
+    sessionStorage.setItem(
+      REDIRECT_MARKER_KEY,
+      JSON.stringify({ provider: 'google', ts: Date.now() }),
+    );
+    const auth = authWith(anonUser);
+    mockedGetRedirect.mockResolvedValueOnce(null);
+
+    await consumeAuthRedirectResult(auth);
+
+    expect(sessionStorage.getItem(REDIRECT_MARKER_KEY)).toBeNull();
+  });
+
+  test('returns markerPresent=true when redirect was initiated (Bug 2 detection)', async () => {
+    sessionStorage.setItem(
+      REDIRECT_MARKER_KEY,
+      JSON.stringify({ provider: 'apple', ts: Date.now() }),
+    );
+    const auth = authWith(anonUser);
+    mockedGetRedirect.mockResolvedValueOnce(null);
+
+    const result = (await consumeAuthRedirectResult(auth)) as unknown as {
+      user: unknown;
+      markerPresent: boolean;
+    };
+
+    expect(result).toMatchObject({ user: null, markerPresent: true });
+  });
+
+  test('returns markerPresent=false when no redirect was in flight (cold load)', async () => {
+    // Note: NO sessionStorage marker preset.
+    const auth = authWith(anonUser);
+    mockedGetRedirect.mockResolvedValueOnce(null);
+
+    const result = (await consumeAuthRedirectResult(auth)) as unknown as {
+      user: unknown;
+      markerPresent: boolean;
+    };
+
+    expect(result).toMatchObject({ user: null, markerPresent: false });
   });
 });

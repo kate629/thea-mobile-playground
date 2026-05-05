@@ -26,7 +26,11 @@ import TermsPage from '../TermsPage';
 import { AuthGateContext } from '../../auth/AuthGateContext';
 import { theme } from '../../../theme';
 
-const noopGate = { requestSignIn: jest.fn() };
+const noopGate = {
+  requestSignIn: jest.fn(),
+  redirectFailed: false,
+  dismissRedirectFailed: jest.fn(),
+};
 
 function renderPage() {
   return render(

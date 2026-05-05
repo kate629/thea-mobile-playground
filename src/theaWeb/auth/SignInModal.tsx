@@ -3,7 +3,6 @@ import { Modal, Spinner } from 'react-bootstrap';
 import styled, { createGlobalStyle, css } from 'styled-components';
 
 import {
-  consumeAuthRedirectResult,
   isValidEmail,
   sendPasswordReset,
   signInWithApple,
@@ -333,25 +332,12 @@ const AuthBody: React.FC<AuthBodyProps> = ({ mode, onModeChange, onSuccess }) =>
     onModeChange(next);
   };
 
-  // Mobile-redirect Google/Apple flow: when modal opens, pick up any pending
-  // result. Provider-agnostic — `getRedirectResult` doesn't care which OAuth
-  // provider initiated the redirect.
-  useEffect(() => {
-    let cancelled = false;
-    consumeAuthRedirectResult(undefined, setMergeStatus)
-      .then(async (user) => {
-        if (cancelled || !user) return;
-        await onSuccess();
-      })
-      .catch(() => {
-        // No pending result — silent.
-      });
-    return () => {
-      cancelled = true;
-    };
-    // Run once per mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The post-redirect consume happens once at the AuthGate root (`useEffect`
+  // in AuthGateContext) so it lands regardless of which page the user returns
+  // to and regardless of whether the modal is even open. The duplicate call
+  // that used to live here was dead in the redirect-failed case (modal not
+  // open on cold reload) and racy in the success case (two consumers, one
+  // result). Removed in Phase 2.
 
   const runProviderSignIn = async (
     name: 'google' | 'apple',

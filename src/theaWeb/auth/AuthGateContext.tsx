@@ -28,6 +28,15 @@ export interface AuthGateValue {
    * it runs the moment the user is signed in.
    */
   requestSignIn: (options?: SignInOptions) => void;
+  /**
+   * True when a mobile OAuth redirect was initiated (marker present in
+   * sessionStorage) but the credential never came back on return. Surfaces
+   * a "sign-in didn't complete" affordance so the user isn't silently left
+   * anonymous. Bug 2 detection — only ever true on a post-redirect mount.
+   */
+  redirectFailed: boolean;
+  /** Dismiss the redirect-failed affordance after the user acknowledges it. */
+  dismissRedirectFailed: () => void;
 }
 
 /**
@@ -40,6 +49,7 @@ export const AuthGateContext = createContext<AuthGateValue | null>(null);
 export const AuthGateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>('signup');
+  const [redirectFailed, setRedirectFailed] = useState(false);
   const onAuthedRef = useRef<SignInOptions['onAuthed']>(undefined);
 
   // Mobile Google/Apple sign-in returns via full-page redirect, landing on a
@@ -50,10 +60,32 @@ export const AuthGateProvider: React.FC<{ children: ReactNode }> = ({ children }
   // with same-origin `authDomain` (configured in `.env`) so the credential
   // the auth handler stored is in the same origin's IndexedDB and isn't
   // partitioned away by the browser.
+  //
+  // If a redirect-marker is present but no user came back, it's Bug 2 — fire
+  // telemetry and surface the failure so the user isn't silently anon.
   useEffect(() => {
-    consumeAuthRedirectResult().catch((err) => {
-      console.error('[AuthGate] consumeAuthRedirectResult failed:', err);
-    });
+    consumeAuthRedirectResult()
+      .then((result) => {
+        if (result.markerPresent && !result.user) {
+          // Lazy-require so consumers that only render
+          // `<AuthGateContext.Provider value={stub}>` (no AuthGateProvider
+          // mounted, mount-effect never runs) don't drag the eventSink
+          // module — and its firebase/functions transitive — into their
+          // import graph. The require runs once the first time a
+          // redirect-lost actually fires, which only happens with the real
+          // provider mounted in app code.
+          // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+          const { logEvent } = require('../lib/eventSink') as typeof import('../lib/eventSink');
+          logEvent('auth_redirect_lost', {
+            ua: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+            error_code: result.errorCode ?? null,
+          });
+          setRedirectFailed(true);
+        }
+      })
+      .catch((err) => {
+        console.error('[AuthGate] consumeAuthRedirectResult failed:', err);
+      });
   }, []);
 
   const requestSignIn = useCallback((options?: SignInOptions) => {
@@ -79,8 +111,14 @@ export const AuthGateProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (!next) onAuthedRef.current = undefined;
   }, []);
 
+  const dismissRedirectFailed = useCallback(() => {
+    setRedirectFailed(false);
+  }, []);
+
   return (
-    <AuthGateContext.Provider value={{ requestSignIn }}>
+    <AuthGateContext.Provider
+      value={{ requestSignIn, redirectFailed, dismissRedirectFailed }}
+    >
       {children}
       <SignInModal
         open={open}

@@ -8,7 +8,11 @@ export default {
   component: HeaderAccountMenu,
 };
 
-const noopGate = { requestSignIn: () => {} };
+const noopGate = {
+  requestSignIn: () => {},
+  redirectFailed: false,
+  dismissRedirectFailed: () => {},
+};
 
 const userInitial: User = {
   uid: 'permanent-uid',

@@ -23,7 +23,11 @@ export default {
  * are deferred to RTL/jest tests.
  */
 
-const noopGate = { requestSignIn: () => {} };
+const noopGate = {
+  requestSignIn: () => {},
+  redirectFailed: false,
+  dismissRedirectFailed: () => {},
+};
 
 export const SignupDefault = {
   render: () => (

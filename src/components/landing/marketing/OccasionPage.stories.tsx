@@ -29,7 +29,11 @@ const mockSignedInUser: User = {
   photoURL: null,
 } as unknown as User;
 
-const noopAuthGate = { requestSignIn: () => undefined };
+const noopAuthGate = {
+  requestSignIn: () => undefined,
+  redirectFailed: false,
+  dismissRedirectFailed: () => undefined,
+};
 
 const SignedInHeaderActions = (
   <AuthGateContext.Provider value={noopAuthGate}>

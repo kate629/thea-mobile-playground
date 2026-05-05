@@ -11,7 +11,12 @@ export type TheaWebLogEventName =
   | 'product_clicked'
   | 'product_purchased'
   | 'candidate_set'
-  | 'carousel_impression';
+  | 'carousel_impression'
+  // Bug 2 detection: a mobile OAuth redirect was initiated (marker written)
+  // but no credential came back (`getRedirectResult` returned null or the
+  // resulting user is still anon). Properties: `provider`, `ua`,
+  // `error_code` when applicable.
+  | 'auth_redirect_lost';
 
 export interface TheaWebLogEvent {
   /** Client-generated uuid v4. Dedup key in BigQuery. */

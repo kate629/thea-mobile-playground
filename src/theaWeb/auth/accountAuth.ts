@@ -63,6 +63,59 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
+ * Redirect marker — persisted to sessionStorage immediately before any
+ * `signInWithRedirect`/`linkWithRedirect` call, so the post-redirect mount can
+ * tell "we initiated a redirect" apart from "this is just a cold load." If
+ * the marker is present but the credential never arrives (storage
+ * partitioning, ITP, bfcache, or just a user who hit Back), the gate fires
+ * an `auth_redirect_lost` telemetry event and surfaces a retry affordance
+ * instead of silently leaving the user signed out (Bug 2 detection).
+ */
+const REDIRECT_MARKER_KEY = 'thea:authRedirectStarted';
+
+export interface RedirectMarker {
+  provider: 'apple' | 'google';
+  ts: number;
+}
+
+function writeRedirectMarker(provider: RedirectMarker['provider']): void {
+  try {
+    sessionStorage.setItem(
+      REDIRECT_MARKER_KEY,
+      JSON.stringify({ provider, ts: Date.now() } satisfies RedirectMarker),
+    );
+  } catch {
+    // sessionStorage can throw under Safari Private Browsing or quota; the
+    // marker is best-effort diagnostic, not load-bearing for sign-in itself.
+  }
+}
+
+function readAndClearRedirectMarker(): RedirectMarker | null {
+  try {
+    const raw = sessionStorage.getItem(REDIRECT_MARKER_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(REDIRECT_MARKER_KEY);
+    const parsed = JSON.parse(raw) as Partial<RedirectMarker>;
+    if (
+      (parsed.provider === 'apple' || parsed.provider === 'google') &&
+      typeof parsed.ts === 'number'
+    ) {
+      return { provider: parsed.provider, ts: parsed.ts };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function providerKey(
+  provider: GoogleAuthProvider | OAuthProvider,
+): RedirectMarker['provider'] {
+  if (provider instanceof GoogleAuthProvider) return 'google';
+  return 'apple';
+}
+
+/**
  * Mint a merge token while we're still authenticated as the anon uid, then
  * return both. Callers capture this BEFORE switching auth.
  */
@@ -250,6 +303,7 @@ async function signInWithOAuthProvider(
   if (anonUser) {
     try {
       if (mobile) {
+        writeRedirectMarker(providerKey(provider));
         await linkWithRedirect(anonUser, provider);
         return null;
       }
@@ -270,6 +324,7 @@ async function signInWithOAuthProvider(
   }
 
   if (mobile) {
+    writeRedirectMarker(providerKey(provider));
     await signInWithRedirect(authInstance, provider);
     return null;
   }
@@ -307,14 +362,29 @@ export async function signInWithApple(
  * credential and sign in as the existing user instead of stranding the user
  * unsigned. Provider-agnostic — handles both Google and Apple via
  * `credentialFromError` (which tries both extractors).
+ *
+ * Returns `markerPresent` so the caller can distinguish "cold page load,
+ * nothing to consume" from "we kicked off a redirect but no credential came
+ * back" — only the latter is a Bug 2 signal worth surfacing to the user.
+ * `errorCode` is populated when getRedirectResult itself failed in a way we
+ * suppressed (e.g. unrecoverable `credential-already-in-use`), so telemetry
+ * can pivot on the failure mode.
  */
+export interface ConsumeRedirectResult {
+  user: User | null;
+  markerPresent: boolean;
+  errorCode?: string;
+}
+
 export async function consumeAuthRedirectResult(
   authInstance: Auth = defaultAuth,
   onMergeStatus?: OnMergeStatus,
-): Promise<User | null> {
+): Promise<ConsumeRedirectResult> {
+  const marker = readAndClearRedirectMarker();
+  const markerPresent = marker !== null;
   try {
     const result = await getRedirectResult(authInstance);
-    return result?.user ?? null;
+    return { user: result?.user ?? null, markerPresent };
   } catch (err) {
     const code = (err as { code?: string })?.code;
     if (code === 'auth/credential-already-in-use') {
@@ -325,8 +395,9 @@ export async function consumeAuthRedirectResult(
           authInstance,
           onMergeStatus,
         );
-        return result.user;
+        return { user: result.user, markerPresent };
       }
+      return { user: null, markerPresent, errorCode: code };
     }
     throw err;
   }

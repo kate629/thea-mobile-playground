@@ -1,5 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ThemeProvider } from 'styled-components';
+
+import { theme } from '../../../theme';
 
 // --- Mocks ----------------------------------------------------------------
 //
@@ -62,15 +65,18 @@ jest.mock('../../auth/HeaderAccountMenu', () => ({
 // useLeaveWarning + useBackButtonGuard + useRedirectOnSignOut pull in
 // firebase/auth via firebaseConfig, which crashes jsdom (undici/TextDecoder
 // chain). Stub the hooks down to inert shapes so the page tree mounts.
-jest.mock('../../hooks/useLeaveWarning', () => ({
-  useLeaveWarning: () => ({
+jest.mock('../../hooks/useLeaveWarning', () => {
+  const RESULT = {
     open: false,
     requestLeave: jest.fn(),
     confirmLeave: jest.fn(),
     cancelLeave: jest.fn(),
     isSignedIn: false,
-  }),
-}));
+  };
+  return {
+    useLeaveWarning: () => RESULT,
+  };
+});
 
 // Stubbed because the page wires it for browser back-button + swipe-back
 // (bug #62). The hook attaches a real popstate listener; in tests we don't
@@ -83,94 +89,126 @@ jest.mock('../../hooks/useRedirectOnSignOut', () => ({
   useRedirectOnSignOut: jest.fn(),
 }));
 
+// Time-to-first-result hook calls performance.getEntriesByName, which jsdom
+// doesn't fully implement. Inert stub keeps the page tree quiet.
+jest.mock('../../hooks/useTimeToFirstResult', () => ({
+  useTimeToFirstResult: jest.fn(),
+}));
+
 // useRegenerate pulls in firebaseFunctions → firebase/functions → undici chain.
-jest.mock('../../hooks/useRegenerate', () => ({
-  useRegenerate: () => ({
+jest.mock('../../hooks/useRegenerate', () => {
+  const RESULT = {
     state: { status: 'idle' },
     regenerate: jest.fn(() => Promise.resolve()),
     reset: jest.fn(),
-  }),
-}));
+  };
+  return {
+    useRegenerate: () => RESULT,
+  };
+});
 
 // Replace the recommendation doc + carousel session + activity hooks with
 // trivial fixtures. The page just needs `doc` non-null + at least one
 // product in `sections` for the discover body to render carousels.
-jest.mock('../../hooks/useRecommendationDoc', () => ({
-  useRecommendationDoc: () => ({
-    doc: {
-      id: 'rec-1',
-      recipientId: 'rcp-1',
-      carouselSessionId: 'sess-1',
-      recipientSnapshot: {
-        name: 'Jordan',
-        emoji: '🎁',
-        relationship: 'friend',
-        ageRange: '30s',
-        gender: 'any',
-      },
-      // input is the canonical RecommendationInput on the doc; the page now
-      // reads input.occasion/interests/etc. for the profile drawer + adapters.
-      input: {
-        occasion: 'BIRTHDAY',
-        occasionLabel: 'Birthday',
-        interests: [],
-        vibes: [],
-        priceMin: 25,
-        priceMax: 200,
-      },
-      occasion: 'BIRTHDAY',
-      status: 'COMPLETED',
-      isActive: true,
+jest.mock('../../hooks/useRecommendationDoc', () => {
+  const FAKE_DOC = {
+    id: 'rec-1',
+    recipientId: 'rcp-1',
+    recommendationId: 'rec-1',
+    carouselSessionId: 'sess-1',
+    recipientSnapshot: {
+      name: 'Jordan',
+      emoji: '🎁',
+      relationship: 'friend',
+      ageRange: '30s',
+      gender: 'any',
     },
-    loading: false,
-    error: null,
-  }),
-}));
+    input: {
+      occasion: 'BIRTHDAY',
+      occasionLabel: 'Birthday',
+      interests: [],
+      vibes: [],
+      priceMin: 25,
+      priceMax: 200,
+    },
+    occasion: 'BIRTHDAY',
+    status: 'COMPLETED',
+    isActive: true,
+  };
+  const RESULT = { doc: FAKE_DOC, loading: false, error: null };
+  return {
+    useRecommendationDoc: () => RESULT,
+  };
+});
 
-jest.mock('../../hooks/useCarouselSession', () => ({
-  useCarouselSession: () => ({
-    session: { status: 'COMPLETED', carousels: [] },
-    error: null,
-  }),
-}));
+jest.mock('../../hooks/useCarouselSession', () => {
+  const FAKE_SESSION = { status: 'COMPLETED', carousels: [] };
+  const RESULT = { session: FAKE_SESSION, error: null };
+  return {
+    useCarouselSession: () => RESULT,
+  };
+});
 
-jest.mock('../../hooks/useGiftActivities', () => ({
-  useGiftActivities: () => ({
-    liked: new Set<string>(),
-    dismissed: new Set<string>(),
-    purchased: new Set<string>(),
+// Frozen empties keep referential identity stable across renders — without
+// this, the page's useEffects (which depend on `liked`, `sections`, etc.)
+// re-fire every render, and the `setPendingLikedIds` / `setPixelResultsFired`
+// calls inside trip React's "Maximum update depth" guard. Refs are
+// constructed inside the factory closure because jest hoists `jest.mock`
+// above the top-level statements in the file.
+jest.mock('../../hooks/useGiftActivities', () => {
+  const EMPTY_SET = new Set<string>();
+  const EMPTY_DETAILS: never[] = [];
+  const FAKE_GIFT_ACTIVITIES = {
+    liked: EMPTY_SET,
+    dismissed: EMPTY_SET,
+    purchased: EMPTY_SET,
+    likedDetails: EMPTY_DETAILS,
+    dismissedDetails: EMPTY_DETAILS,
+    purchasedDetails: EMPTY_DETAILS,
     hydrated: true,
     error: null,
-  }),
-}));
+  };
+  return {
+    useGiftActivities: () => FAKE_GIFT_ACTIVITIES,
+  };
+});
 
-jest.mock('../../hooks/useExitAnimationQueue', () => ({
-  useExitAnimationQueue: () => new Set<string>(),
-}));
+jest.mock('../../hooks/useExitAnimationQueue', () => {
+  const EMPTY_SET = new Set<string>();
+  return {
+    useExitAnimationQueue: () => EMPTY_SET,
+  };
+});
 
 // Mock the adapter so we can ignore the carousel session shape and still
 // surface a single product the test can click on.
-const FAKE_ITEM = {
-  id: 'prod-1',
-  title: 'Cozy Throw Blanket',
-  description: 'soft + warm',
-  imageUrl: '',
-  productUrl: '',
-  brand: 'Test',
-  price: '',
-};
-jest.mock('../../lib/resultsAdapters', () => ({
-  carouselsToSections: () => [
+jest.mock('../../lib/resultsAdapters', () => {
+  const FAKE_ITEM = {
+    id: 'prod-1',
+    title: 'Cozy Throw Blanket',
+    description: 'soft + warm',
+    imageUrl: '',
+    productUrl: '',
+    brand: 'Test',
+    price: '',
+  };
+  const FAKE_SECTIONS = [
     { id: 'c1', title: 'Cozy gifts', products: [FAKE_ITEM] },
-  ],
-  recipientHeaderProps: () => ({
+  ];
+  const FAKE_HEADER = {
     personName: 'Jordan',
     personEmoji: '🎁',
     occasion: 'Birthday',
     age: '30s',
     relationship: 'Friend',
-  }),
-}));
+  };
+  return {
+    carouselsToSections: () => FAKE_SECTIONS,
+    recipientHeaderProps: () => FAKE_HEADER,
+    isSessionReadyToDisplay: () => true,
+    mergeHeaderWithDraft: (header: Record<string, unknown>) => header,
+  };
+});
 
 // Stub ResultsPage / ResultsDiscoverTab / ResultsCarouselAnimated to a
 // minimal pass-through that exposes a "mark purchased" button per item.
@@ -229,6 +267,21 @@ jest.mock('../../../components/landing/results/ResultsPurchasedGrid', () => ({
   ResultsPurchasedGrid: () => null,
 }));
 
+// ProfileDrawer reads styled theme values inside its <Backdrop>/<Drawer>
+// tree even when closed (drawer={open:false} still renders the slot). It
+// also wires up a portal + escape-key listener that have nothing to do with
+// the auth/heart flow under test. Stub it to a no-op.
+jest.mock('../../../components/landing/results/ProfileDrawer', () => ({
+  ProfileDrawer: () => null,
+}));
+
+// AlertDialog (used by useLeaveWarning's leave-confirmation modal) renders
+// even when open=false because the Bootstrap Modal it wraps mounts its DOM
+// portal eagerly. Stub it.
+jest.mock('../../../components/ui/AlertDialog', () => ({
+  AlertDialog: () => null,
+}));
+
 // --- Imports under test ---------------------------------------------------
 
 // Pulled after mocks are registered so the page picks up the stubs.
@@ -275,36 +328,83 @@ beforeEach(() => {
   };
 });
 
-// Skipped pending follow-up: the test hangs in jsdom (node 22) for unknown
-// reasons even after mocks for useNavigate, useLeaveWarning, useRegenerate
-// are in place. Suspect a circular import or styled-components/test-utils
-// interaction. Tracked as a follow-up so the bundle PR can land green.
-describe.skip('RecommendationResultsPage — mark-as-purchased auth gate (bug #22)', () => {
-  test('anon user click opens sign-in modal and does NOT fire recordActivity yet', () => {
-    render(<RecommendationResultsPage />);
-
-    fireEvent.click(screen.getByTestId('mark-prod-1'));
-
-    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
-    expect(mockRequestSignIn).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: 'signup', onAuthed: expect.any(Function) }),
+// Bug 1 post-fix invariants. The fix shape: anon clicks on heart /
+// mark-purchased fire recordActivity immediately under the current uid;
+// the modal still opens for anon as a conversion nudge but is no longer
+// load-bearing for the save. mergeGiftFlow (already wired) migrates the
+// giftActivity into the permanent uid on sign-in. Killing the in-memory
+// onAuthed-callback dependency is what makes the mobile redirect path
+// work — the React tree can be torn down by the post-OAuth tab reload
+// without losing the save.
+describe('RecommendationResultsPage — heart save (Bug 1 post-fix invariants)', () => {
+  test('anon click on heart fires recordActivity immediately under the anon uid', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
     );
-    expect(mockRecordActivity).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('save-prod-1'));
+
+    expect(mockRecordActivity).toHaveBeenCalledTimes(1);
+    expect(mockRecordActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: 'prod-1',
+        state: 'SAVED',
+        recipientIds: ['rcp-1'],
+      }),
+    );
   });
 
-  test('after auth completes (onAuthed fires), recordActivity is called with PURCHASED', async () => {
-    render(<RecommendationResultsPage />);
+  test('anon click on heart opens the sign-in modal as a conversion nudge with no onAuthed gate', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('save-prod-1'));
+
+    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
+    expect(mockRequestSignIn).toHaveBeenCalledWith({ mode: 'signup' });
+    // Critical: the save must NOT depend on a callback firing post-auth.
+    // That dependency is what mobile redirect destroys (Bug 1).
+    expect(getCapturedOnAuthed()).toBeUndefined();
+  });
+
+  test('signed-in click on heart fires recordActivity and does not open the modal', () => {
+    (auth as { currentUser: null | { isAnonymous: boolean } }).currentUser = {
+      isAnonymous: false,
+    };
+
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('save-prod-1'));
+
+    expect(mockRequestSignIn).not.toHaveBeenCalled();
+    expect(mockRecordActivity).toHaveBeenCalledTimes(1);
+    expect(mockRecordActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'prod-1', state: 'SAVED' }),
+    );
+  });
+});
+
+// Same post-fix invariants for mark-purchased — the same in-memory-callback
+// trap exists on this handler today, with the same redirect-loss
+// consequence on mobile. Phase 2 applies the same fix to handleMarkPurchased.
+describe('RecommendationResultsPage — mark-purchased (Bug 1 post-fix invariants)', () => {
+  test('anon click on mark-purchased fires recordActivity immediately under the anon uid', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
 
     fireEvent.click(screen.getByTestId('mark-prod-1'));
-    expect(mockRecordActivity).not.toHaveBeenCalled();
-
-    // Simulate the SignInModal succeeding — AuthGate fires the staged
-    // callback the page passed in, which should now run the BE write.
-    const onAuthed = getCapturedOnAuthed();
-    expect(onAuthed).toBeDefined();
-    await act(async () => {
-      await onAuthed?.();
-    });
 
     expect(mockRecordActivity).toHaveBeenCalledTimes(1);
     expect(mockRecordActivity).toHaveBeenCalledWith(
@@ -316,19 +416,17 @@ describe.skip('RecommendationResultsPage — mark-as-purchased auth gate (bug #2
     );
   });
 
-  test('signed-in (non-anonymous) user click fires recordActivity immediately and skips the modal', () => {
-    (auth as { currentUser: null | { isAnonymous: boolean } }).currentUser = {
-      isAnonymous: false,
-    };
-
-    render(<RecommendationResultsPage />);
+  test('anon click on mark-purchased opens the sign-in modal with no onAuthed gate', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
 
     fireEvent.click(screen.getByTestId('mark-prod-1'));
 
-    expect(mockRequestSignIn).not.toHaveBeenCalled();
-    expect(mockRecordActivity).toHaveBeenCalledTimes(1);
-    expect(mockRecordActivity).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'prod-1', state: 'PURCHASED' }),
-    );
+    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
+    expect(mockRequestSignIn).toHaveBeenCalledWith({ mode: 'signup' });
+    expect(getCapturedOnAuthed()).toBeUndefined();
   });
 });

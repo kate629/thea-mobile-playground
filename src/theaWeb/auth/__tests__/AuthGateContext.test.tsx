@@ -11,9 +11,22 @@ import { theme } from '../../../theme';
 // firebase-free. Plain function form, not jest.fn().mockResolvedValue, to
 // sidestep a hoisting quirk where jest.fn() inside the factory returns
 // undefined at evaluation time.
+//
+// Phase 2 changed the return type from `User | null` to
+// `{user, markerPresent, errorCode?}` — match the new shape so the gate's
+// mount-effect doesn't blow up reading `.markerPresent` off null.
 jest.mock('../accountAuth', () => ({
   __esModule: true,
-  consumeAuthRedirectResult: () => Promise.resolve(null),
+  consumeAuthRedirectResult: () =>
+    Promise.resolve({ user: null, markerPresent: false }),
+}));
+
+// `logEvent` (firing `auth_redirect_lost`) lives in `lib/eventSink`, which
+// transitively imports `firebase/functions` (callables). Same TextDecoder
+// hazard — stub the sink so this test is firebase-free.
+jest.mock('../../lib/eventSink', () => ({
+  __esModule: true,
+  logEvent: () => {},
 }));
 
 // SignInModal pulls in firebase via accountAuth — replace it with a tiny stub
@@ -104,6 +117,47 @@ describe('AuthGateContext', () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId('cancel'));
     });
+    expect(onAuthed).not.toHaveBeenCalled();
+  });
+
+  // Bug 1 repro — canonical mechanism behind the mobile heart-save bug.
+  //
+  // Mobile OAuth uses signInWithRedirect, which navigates the entire tab to
+  // the provider and back. Returning is a full-page reload: the React tree
+  // unmounts and remounts. The onAuthed callback registered before the
+  // redirect was held in AuthGateProvider's useRef, which is reinitialized
+  // to undefined on the new mount. So even when consumeAuthRedirectResult
+  // resolves with a real User on the post-redirect mount, no callback fires
+  // — the save action is silently lost.
+  //
+  // Asserts the bug shape today: a callback registered, then the provider
+  // remounts (sim page reload), then a sign-in completes — the original
+  // callback never fires. This test PASSES on master because the bug exists.
+  // After Phase 2 lands (BE persists save under current uid; merge handles
+  // migration), this test stays green because save no longer flows through
+  // an in-memory callback at all — the assertion shape doesn't change.
+  test('Bug 1: onAuthed callback registered before remount is never fired (mobile redirect repro)', async () => {
+    const onAuthed = jest.fn();
+
+    const { unmount } = renderWithGate(<Trigger onAuthed={onAuthed} />);
+    fireEvent.click(screen.getByTestId('trigger'));
+    expect(screen.getByTestId('modal')).toBeTruthy();
+
+    // Tear down the React tree — equivalent to the post-OAuth tab reload
+    // discarding all React state including AuthGateProvider's onAuthedRef.
+    unmount();
+
+    // Fresh mount, no Trigger wired up, no requestSignIn called: this is
+    // the post-redirect state. consumeAuthRedirectResult ran on mount (mocked
+    // to null at the top of the file). Even if it had returned a user, no
+    // callback path exists to fire the original onAuthed — there's no
+    // persistence between mounts.
+    renderWithGate(<div data-testid="post-redirect" />);
+    await act(async () => {
+      // Let the mount-effect's consumeAuthRedirectResult resolve.
+      await Promise.resolve();
+    });
+
     expect(onAuthed).not.toHaveBeenCalled();
   });
 

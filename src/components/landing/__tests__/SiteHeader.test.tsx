@@ -28,7 +28,11 @@ import { SiteHeader } from '../SiteHeader';
 import { AuthGateContext } from '../../../theaWeb/auth/AuthGateContext';
 import { theme } from '../../../theme';
 
-const noopGate = { requestSignIn: jest.fn() };
+const noopGate = {
+  requestSignIn: jest.fn(),
+  redirectFailed: false,
+  dismissRedirectFailed: jest.fn(),
+};
 
 function renderHeader(ui: React.ReactElement) {
   return render(

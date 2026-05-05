@@ -1,5 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, signInAnonymously } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  connectAuthEmulator,
+  getAuth,
+  setPersistence,
+  signInAnonymously,
+} from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -30,6 +36,14 @@ export function getAppInstance() {
 export function getAuthInstance() {
   if (!_auth) {
     _auth = getAuth(getAppInstance());
+    // browserLocalPersistence is the default on web, but making it explicit
+    // means Safari Private Browsing (where IndexedDB is read-only and the SDK
+    // silently falls back to in-memory) surfaces a setPersistence rejection
+    // we can log + telemetry-trap. Without this, the user just looks "signed
+    // out on every reload" with no signal — same shape as Bug 2.
+    setPersistence(_auth, browserLocalPersistence).catch((err) => {
+      console.error("[firebaseConfig] setPersistence(browserLocal) failed:", err);
+    });
     if (USE_EMULATOR) {
       // disableWarnings silences the dev-only banner; safe because the flag
       // gate already prevents this branch from running in prod builds.
