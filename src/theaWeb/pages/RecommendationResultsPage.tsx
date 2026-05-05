@@ -44,6 +44,7 @@ import {
   profileDraftToRegenerateRequest,
 } from '../lib/profileDraftAdapter';
 import { useAuthGate } from '../auth/AuthGateContext';
+import { useAuthInFlux } from '../auth/useAuthInFlux';
 import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { useAuth } from '../firebase/FirebaseContext';
 import {
@@ -99,6 +100,10 @@ const RecommendationResultsPage: React.FC = () => {
     recipientId,
     recommendationId,
   );
+  // True during sign-in / link / merge transitions. Used to prefer a spinner
+  // over the "couldn't find this recommendation" empty state when a snapshot
+  // briefly returns `!exists` while listeners reattach under the new uid.
+  const authInFlux = useAuthInFlux();
   const { session, error: sessionError } = useCarouselSession(doc?.carouselSessionId);
   const {
     liked,
@@ -799,11 +804,27 @@ const RecommendationResultsPage: React.FC = () => {
   const displaySections = refreshSnapshot ? refreshSnapshot.sections : sections;
 
   if (!displayDoc) {
-    // BE listener resolved with no doc at this path. Either the recommendation
-    // doesn't exist, or the user is on a different uid than the one that
-    // created it (e.g. signed out, or session was lost before the
-    // `auth.authStateReady` guard shipped). Show a real message instead of
-    // hanging on a spinner.
+    // BE listener resolved with no doc at this path. Two cases:
+    //
+    // 1. Auth is in flux (sign-in / link / merge / uid swap just happened):
+    //    a snapshot can briefly return `!exists` while Firestore listeners
+    //    reattach under the new uid. Render a spinner instead of the
+    //    not-found message — the next snapshot is usually milliseconds away.
+    //
+    // 2. Auth is settled and the doc genuinely isn't there (rec doesn't
+    //    exist under this uid, or session was lost before the
+    //    `auth.authStateReady` guard shipped). Surface a real message so
+    //    the user has a way out instead of a stuck spinner.
+    if (authInFlux) {
+      return (
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: 300 }}
+        >
+          <Spinner animation="border" role="status" />
+        </div>
+      );
+    }
     return (
       <Alert variant="warning" className="mt-4">
         We couldn't find this recommendation. It may have been removed, or you

@@ -135,9 +135,34 @@ jest.mock('../../hooks/useRecommendationDoc', () => {
     status: 'COMPLETED',
     isActive: true,
   };
-  const RESULT = { doc: FAKE_DOC, loading: false, error: null };
+  const state: { doc: unknown; loading: boolean; error: Error | null } = {
+    doc: FAKE_DOC,
+    loading: false,
+    error: null,
+  };
   return {
-    useRecommendationDoc: () => RESULT,
+    useRecommendationDoc: () => state,
+    __setRecDocState: (next: Partial<typeof state>) => {
+      Object.assign(state, next);
+    },
+    __resetRecDocState: () => {
+      state.doc = FAKE_DOC;
+      state.loading = false;
+      state.error = null;
+    },
+  };
+});
+
+jest.mock('../../auth/useAuthInFlux', () => {
+  const state = { value: false };
+  return {
+    useAuthInFlux: () => state.value,
+    __setAuthInFlux: (v: boolean) => {
+      state.value = v;
+    },
+    __resetAuthInFlux: () => {
+      state.value = false;
+    },
   };
 });
 
@@ -289,6 +314,8 @@ import RecommendationResultsPage from '../RecommendationResultsPage';
 import { auth } from '../../../firebaseConfig';
 import * as callablesMock from '../../callables';
 import * as authGateMock from '../../auth/AuthGateContext';
+import * as recDocMock from '../../hooks/useRecommendationDoc';
+import * as authInFluxMock from '../../auth/useAuthInFlux';
 
 const mockRecordActivity = (
   callablesMock as unknown as { __getMockRecordActivity: () => jest.Mock }
@@ -322,11 +349,32 @@ beforeEach(() => {
     },
   );
   resetCaptured();
+  // Reset the recommendation-doc + auth-in-flux mock state so each test
+  // starts from "doc present, auth settled".
+  (
+    recDocMock as unknown as { __resetRecDocState: () => void }
+  ).__resetRecDocState();
+  (
+    authInFluxMock as unknown as { __resetAuthInFlux: () => void }
+  ).__resetAuthInFlux();
   // Reset to anonymous-by-default — tests opt into "real user" explicitly.
   (auth as { currentUser: null | { isAnonymous: boolean } }).currentUser = {
     isAnonymous: true,
   };
 });
+
+const setRecDocState = (next: { doc?: unknown; loading?: boolean; error?: Error | null }): void => {
+  (
+    recDocMock as unknown as {
+      __setRecDocState: (n: { doc?: unknown; loading?: boolean; error?: Error | null }) => void;
+    }
+  ).__setRecDocState(next);
+};
+const setAuthInFlux = (v: boolean): void => {
+  (
+    authInFluxMock as unknown as { __setAuthInFlux: (v: boolean) => void }
+  ).__setAuthInFlux(v);
+};
 
 // Bug 1 post-fix invariants. The fix shape: anon clicks on heart /
 // mark-purchased fire recordActivity immediately under the current uid;
@@ -428,5 +476,42 @@ describe('RecommendationResultsPage — mark-purchased (Bug 1 post-fix invariant
     expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
     expect(mockRequestSignIn).toHaveBeenCalledWith({ mode: 'signup' });
     expect(getCapturedOnAuthed()).toBeUndefined();
+  });
+});
+
+// "doc not found" branch behavior. Phase 2a fix moved heart save off the
+// in-memory onAuthed callback, so an anon user signing in mid-page now
+// triggers a uid-flip / merge / linkWithRedirect-in-place transition. During
+// that transition Firestore listeners briefly re-bind under the new auth
+// state and a snapshot can return `!exists` for one beat. Without the
+// authInFlux gate the page flashes "we couldn't find this recommendation"
+// for that beat. With it, the spinner shows until the next snapshot lands.
+describe('RecommendationResultsPage — doc-not-found branch', () => {
+  test('renders the "couldn\'t find" alert when doc is null and auth is settled', () => {
+    setRecDocState({ doc: null });
+    setAuthInFlux(false);
+
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText(/couldn't find this recommendation/i)).toBeInTheDocument();
+  });
+
+  test('renders a spinner (NOT the alert) when doc is null but auth is in flux', () => {
+    setRecDocState({ doc: null });
+    setAuthInFlux(true);
+
+    render(
+      <ThemeProvider theme={theme}>
+        <RecommendationResultsPage />
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByText(/couldn't find this recommendation/i)).toBeNull();
+    // react-bootstrap's <Spinner> renders a div with role="status".
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
