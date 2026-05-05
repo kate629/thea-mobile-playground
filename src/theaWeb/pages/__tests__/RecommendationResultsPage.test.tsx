@@ -1,13 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // --- Mocks ----------------------------------------------------------------
 //
 // The page composes many heavy children (animated carousels, the live
-// Firestore listeners, the auth modal, etc.). For these regression tests
-// we only care about the click-to-recordActivity wiring on the heart and
-// mark-purchased buttons. Stub every dep down to a tiny shape that exposes
-// those two buttons on the rendered page.
+// Firestore listeners, the auth modal, etc.). For this regression test we
+// only care about the auth-gating behavior of `handleMarkPurchased`. Stub
+// every dep down to a tiny shape that exposes the ONE thing the assertion
+// cares about: clicking a "mark purchased" button on the rendered page.
 
 // Mock router params + navigate so the page renders.
 jest.mock('react-router-dom', () => ({
@@ -279,11 +279,32 @@ beforeEach(() => {
 // reasons even after mocks for useNavigate, useLeaveWarning, useRegenerate
 // are in place. Suspect a circular import or styled-components/test-utils
 // interaction. Tracked as a follow-up so the bundle PR can land green.
-describe.skip('RecommendationResultsPage — mark-as-purchased (no auth gate)', () => {
-  test('anon user click fires recordActivity immediately and opens the modal as a conversion nudge', () => {
+describe.skip('RecommendationResultsPage — mark-as-purchased auth gate (bug #22)', () => {
+  test('anon user click opens sign-in modal and does NOT fire recordActivity yet', () => {
     render(<RecommendationResultsPage />);
 
     fireEvent.click(screen.getByTestId('mark-prod-1'));
+
+    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
+    expect(mockRequestSignIn).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'signup', onAuthed: expect.any(Function) }),
+    );
+    expect(mockRecordActivity).not.toHaveBeenCalled();
+  });
+
+  test('after auth completes (onAuthed fires), recordActivity is called with PURCHASED', async () => {
+    render(<RecommendationResultsPage />);
+
+    fireEvent.click(screen.getByTestId('mark-prod-1'));
+    expect(mockRecordActivity).not.toHaveBeenCalled();
+
+    // Simulate the SignInModal succeeding — AuthGate fires the staged
+    // callback the page passed in, which should now run the BE write.
+    const onAuthed = getCapturedOnAuthed();
+    expect(onAuthed).toBeDefined();
+    await act(async () => {
+      await onAuthed?.();
+    });
 
     expect(mockRecordActivity).toHaveBeenCalledTimes(1);
     expect(mockRecordActivity).toHaveBeenCalledWith(
@@ -293,12 +314,9 @@ describe.skip('RecommendationResultsPage — mark-as-purchased (no auth gate)', 
         recipientIds: ['rcp-1'],
       }),
     );
-    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
-    expect(mockRequestSignIn).toHaveBeenCalledWith({ mode: 'signup' });
-    expect(getCapturedOnAuthed()).toBeUndefined();
   });
 
-  test('signed-in (non-anonymous) user click fires recordActivity and does not open the modal', () => {
+  test('signed-in (non-anonymous) user click fires recordActivity immediately and skips the modal', () => {
     (auth as { currentUser: null | { isAnonymous: boolean } }).currentUser = {
       isAnonymous: false,
     };
@@ -311,49 +329,6 @@ describe.skip('RecommendationResultsPage — mark-as-purchased (no auth gate)', 
     expect(mockRecordActivity).toHaveBeenCalledTimes(1);
     expect(mockRecordActivity).toHaveBeenCalledWith(
       expect.objectContaining({ productId: 'prod-1', state: 'PURCHASED' }),
-    );
-  });
-});
-
-// Save (heart) flow — distinct from the purchased gate above. Anon hearts
-// write through to the BE under the anon uid; mergeGiftFlow migrates them on
-// sign-in. The mobile redirect bug (which destroys any in-memory onAuthed
-// ref on the return reload) is structurally avoided by not needing such a
-// ref in the first place. Skipped alongside the purchased tests pending the
-// shared jsdom hang fix.
-describe.skip('RecommendationResultsPage — heart save (no auth gate)', () => {
-  test('anon user click fires recordActivity immediately and opens the modal as a conversion nudge', () => {
-    render(<RecommendationResultsPage />);
-
-    fireEvent.click(screen.getByTestId('save-prod-1'));
-
-    expect(mockRecordActivity).toHaveBeenCalledTimes(1);
-    expect(mockRecordActivity).toHaveBeenCalledWith(
-      expect.objectContaining({
-        productId: 'prod-1',
-        state: 'SAVED',
-        recipientIds: ['rcp-1'],
-      }),
-    );
-    expect(mockRequestSignIn).toHaveBeenCalledTimes(1);
-    expect(mockRequestSignIn).toHaveBeenCalledWith({ mode: 'signup' });
-    // No onAuthed callback — the save isn't gated on auth completing.
-    expect(getCapturedOnAuthed()).toBeUndefined();
-  });
-
-  test('signed-in (non-anonymous) user click fires recordActivity and does not open the modal', () => {
-    (auth as { currentUser: null | { isAnonymous: boolean } }).currentUser = {
-      isAnonymous: false,
-    };
-
-    render(<RecommendationResultsPage />);
-
-    fireEvent.click(screen.getByTestId('save-prod-1'));
-
-    expect(mockRequestSignIn).not.toHaveBeenCalled();
-    expect(mockRecordActivity).toHaveBeenCalledTimes(1);
-    expect(mockRecordActivity).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'prod-1', state: 'SAVED' }),
     );
   });
 });

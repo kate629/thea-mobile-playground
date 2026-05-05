@@ -603,24 +603,19 @@ const RecommendationResultsPage: React.FC = () => {
       // Mirror to first-party event sink for ranker training.
       logEvent('product_saved', buildSinkProductProps(item));
 
-      // Fire under the current uid (anon or permanent). For anon users,
-      // `mergeGiftFlow` migrates the giftActivity into the permanent uid on
-      // sign-in, so we don't need a post-auth replay closure here. This is
-      // also what makes the mobile flow correct: `signInWithRedirect` reloads
-      // the tab on return, which would have erased any in-memory `onAuthed`
-      // ref the modal used to depend on.
-      fireActivity(item.id, 'SAVED');
-
-      // Conversion nudge — open the modal so anon users can promote their
-      // saves to a permanent account. The save itself is already in flight,
-      // so dismissing the modal is harmless (the heart sticks under the anon
-      // uid and migrates on the next sign-in).
       if (auth.currentUser?.isAnonymous !== false) {
-        requestSignIn({ mode: 'signup' });
+        requestSignIn({
+          mode: 'signup',
+          onAuthed: () => fireActivity(item.id, 'SAVED'),
+        });
+        return;
       }
+      fireActivity(item.id, 'SAVED');
     },
     // `auth.currentUser?.isAnonymous` is intentionally omitted — touching this
     // closure on auth changes would invalidate the optimistic-heart UI in flight.
+    // A proper fix (likely: read `auth` via ref) is tracked separately. The
+    // existing behavior matches what's been shipping since PR #82/#79.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [liked, fireActivity, requestSignIn, buildProductReactionParams, buildSinkProductProps],
   );
@@ -638,20 +633,25 @@ const RecommendationResultsPage: React.FC = () => {
 
   const handleMarkPurchased = useCallback(
     (item: ResultsProductCardItem) => {
-      // Mirror the heart's pattern: write under the current uid (anon or
-      // permanent) and rely on `mergeGiftFlow` to migrate the activity into
-      // the permanent uid on sign-in. Avoids the mobile redirect bug where
-      // an in-memory `onAuthed` ref was destroyed by the post-OAuth tab
-      // reload, leaving the PURCHASED state stranded.
+      // Mirror the heart's auth-gate pattern. If the user is anonymous, open
+      // the sign-in modal and stage the PURCHASED write to fire after auth
+      // completes — never write under the throwaway anon uid (otherwise the
+      // purchased state is stranded once they sign in for real). The carousel
+      // filter reads BE-truth `purchased` to hide the card, so since we
+      // don't fire the activity until auth lands, the card naturally stays
+      // in place during the modal — same intent-preservation behavior as
+      // the heart, no extra optimistic state needed.
+      // Fire the first-party purchase event on intent (same as save) so the
+      // ranker has a positive signal even if the auth-gate is abandoned.
       logEvent('product_purchased', buildSinkProductProps(item));
-      fireActivity(item.id, 'PURCHASED');
-
-      // Conversion nudge for anon users — same shape as the heart-save
-      // modal; dismissing it is harmless because the activity is already
-      // persisted under the anon uid.
       if (auth.currentUser?.isAnonymous !== false) {
-        requestSignIn({ mode: 'signup' });
+        requestSignIn({
+          mode: 'signup',
+          onAuthed: () => fireActivity(item.id, 'PURCHASED'),
+        });
+        return;
       }
+      fireActivity(item.id, 'PURCHASED');
     },
     // Same exhaustive-deps tradeoff as `handleSaveClick` above — see note there.
     // eslint-disable-next-line react-hooks/exhaustive-deps
