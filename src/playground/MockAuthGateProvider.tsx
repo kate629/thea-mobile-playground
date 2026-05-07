@@ -4,27 +4,26 @@
 
 import React, { useCallback, useState, type ReactNode } from 'react';
 import { AuthGateContext, type SignInOptions } from '../theaWeb/auth/AuthGateContext';
-import { getAuthState } from './mockData/playgroundConfig';
 
 export const MockAuthGateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [redirectFailed, setRedirectFailed] = useState(false);
 
   const requestSignIn = useCallback((options?: SignInOptions) => {
+    // Save is no longer gated behind sign-in: fire onAuthed instantly, no
+    // modal. The "Sign in" button in the header still uses this when you
+    // explicitly tap it (no onAuthed → no-op here, button drives its own UI).
     const onAuthed = options?.onAuthed;
-    const delay = getAuthState() === 'signedin' ? 0 : 400;
-    // eslint-disable-next-line no-console
-    console.log('[playground] requestSignIn (modal would open)', {
-      mode: options?.mode,
-      delay,
+    if (!onAuthed) {
+      // eslint-disable-next-line no-console
+      console.log('[playground] requestSignIn (no onAuthed — sign-in button)', {
+        mode: options?.mode,
+      });
+      return;
+    }
+    Promise.resolve(onAuthed()).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[playground] onAuthed callback failed:', err);
     });
-    setTimeout(() => {
-      if (onAuthed) {
-        Promise.resolve(onAuthed()).catch((err) => {
-          // eslint-disable-next-line no-console
-          console.error('[playground] onAuthed callback failed:', err);
-        });
-      }
-    }, delay);
   }, []);
 
   const dismissRedirectFailed = useCallback(() => setRedirectFailed(false), []);

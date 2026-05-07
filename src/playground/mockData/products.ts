@@ -3,7 +3,11 @@ import type { RecommendationProduct } from '../../theaWeb/schemas';
 const img = (id: string, w = 800) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
 
+// `interests` is the chip-tab key in the playground. Drives the chip-tab
+// regrouping in carouselSession.ts. Real upstream products carry chips of
+// their own from the agent; we hardcode here for mock purposes.
 export const MOCK_PRODUCTS: RecommendationProduct[] = [
+  // ─── Cozy ────────────────────────────────────────────
   {
     id: 'p1',
     title: 'Hand-thrown ceramic coffee mug, speckled cream',
@@ -15,7 +19,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'A weighty, hand-thrown mug with a soft speckled glaze.',
     url: 'https://example.com/p1',
     affiliateUrl: 'https://example.com/p1?aff=playground',
-    carousel_tags: ['cozy', 'home'],
+    interests: ['cozy'],
   },
   {
     id: 'p2',
@@ -28,7 +32,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Lightweight linen-cotton throw, washed soft.',
     url: 'https://example.com/p2',
     affiliateUrl: 'https://example.com/p2?aff=playground',
-    carousel_tags: ['cozy', 'home'],
+    interests: ['cozy'],
   },
   {
     id: 'p3',
@@ -39,84 +43,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Pure beeswax tapers, hand-rolled in Seattle.',
     url: 'https://example.com/p3',
     affiliateUrl: 'https://example.com/p3?aff=playground',
-    carousel_tags: ['cozy'],
-  },
-  {
-    id: 'p4',
-    title: 'Sterling silver small hoop earrings',
-    price: 62,
-    brand: 'Mejuri',
-    images: [img('1535632787350-4e68ef0ac584')],
-    description: 'Everyday hoops, hypoallergenic, 12mm.',
-    url: 'https://example.com/p4',
-    affiliateUrl: 'https://example.com/p4?aff=playground',
-    carousel_tags: ['jewelry', 'everyday'],
-  },
-  {
-    id: 'p5',
-    title: 'Embroidered linen tote bag',
-    price: 45,
-    brand: 'Lake',
-    images: [img('1591561954557-26941169b49e')],
-    description: 'Hand-embroidered tote with leather handles.',
-    url: 'https://example.com/p5',
-    affiliateUrl: 'https://example.com/p5?aff=playground',
-    carousel_tags: ['accessories'],
-  },
-  {
-    id: 'p6',
-    title: 'Hardcover poetry collection — Mary Oliver',
-    price: 18,
-    brand: 'Penguin',
-    images: [img('1544947950-fa07a98d237f')],
-    description: 'Devotions: The Selected Poems of Mary Oliver.',
-    url: 'https://example.com/p6',
-    affiliateUrl: 'https://example.com/p6?aff=playground',
-    carousel_tags: ['books', 'thoughtful'],
-  },
-  {
-    id: 'p7',
-    title: 'Espresso glass set, weighted bottoms (set of 4)',
-    price: 52,
-    brand: 'Notneutral',
-    images: [img('1495474472287-4d71bcdd2085')],
-    description: 'Heavy-base espresso glasses, lead-free.',
-    url: 'https://example.com/p7',
-    affiliateUrl: 'https://example.com/p7?aff=playground',
-    carousel_tags: ['home', 'kitchen'],
-  },
-  {
-    id: 'p8',
-    title: 'Tatcha Indigo Body Butter',
-    price: 58,
-    brand: 'Tatcha',
-    images: [img('1556228720-195a672e8a03')],
-    description: 'Soothing whipped balm with Japanese indigo.',
-    url: 'https://example.com/p8',
-    affiliateUrl: 'https://example.com/p8?aff=playground',
-    carousel_tags: ['beauty', 'self-care'],
-  },
-  {
-    id: 'p9',
-    title: 'Field Notes pocket notebooks (3-pack)',
-    price: 13,
-    brand: 'Field Notes',
-    images: [img('1517842645767-c639042777db')],
-    description: 'Graph paper, 48 pages each.',
-    url: 'https://example.com/p9',
-    affiliateUrl: 'https://example.com/p9?aff=playground',
-    carousel_tags: ['stationery'],
-  },
-  {
-    id: 'p10',
-    title: 'Cast iron skillet, pre-seasoned 10"',
-    price: 35,
-    brand: 'Lodge',
-    images: [img('1574071318508-1cdbab80d002')],
-    description: 'American-made, ready to cook out of the box.',
-    url: 'https://example.com/p10',
-    affiliateUrl: 'https://example.com/p10?aff=playground',
-    carousel_tags: ['kitchen'],
+    interests: ['cozy'],
   },
   {
     id: 'p11',
@@ -127,7 +54,30 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Quick-dry, soft cotton, Turkish-loomed.',
     url: 'https://example.com/p11',
     affiliateUrl: 'https://example.com/p11?aff=playground',
-    carousel_tags: ['home', 'bath'],
+    interests: ['cozy'],
+  },
+  // ─── Kitchen ─────────────────────────────────────────
+  {
+    id: 'p7',
+    title: 'Espresso glass set, weighted bottoms (set of 4)',
+    price: 52,
+    brand: 'Notneutral',
+    images: [img('1495474472287-4d71bcdd2085')],
+    description: 'Heavy-base espresso glasses, lead-free.',
+    url: 'https://example.com/p7',
+    affiliateUrl: 'https://example.com/p7?aff=playground',
+    interests: ['kitchen'],
+  },
+  {
+    id: 'p10',
+    title: 'Cast iron skillet, pre-seasoned 10"',
+    price: 35,
+    brand: 'Lodge',
+    images: [img('1574071318508-1cdbab80d002')],
+    description: 'American-made, ready to cook out of the box.',
+    url: 'https://example.com/p10',
+    affiliateUrl: 'https://example.com/p10?aff=playground',
+    interests: ['kitchen'],
   },
   {
     id: 'p12',
@@ -138,10 +88,83 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Single piece of American walnut, oil-finished.',
     url: 'https://example.com/p12',
     affiliateUrl: 'https://example.com/p12?aff=playground',
-    carousel_tags: ['kitchen', 'home'],
+    interests: ['kitchen'],
+  },
+  // ─── Beauty ──────────────────────────────────────────
+  {
+    id: 'p4',
+    title: 'Sterling silver small hoop earrings',
+    price: 62,
+    brand: 'Mejuri',
+    images: [img('1535632787350-4e68ef0ac584')],
+    description: 'Everyday hoops, hypoallergenic, 12mm.',
+    url: 'https://example.com/p4',
+    affiliateUrl: 'https://example.com/p4?aff=playground',
+    interests: ['beauty'],
+  },
+  {
+    id: 'p5',
+    title: 'Embroidered linen tote bag',
+    price: 45,
+    brand: 'Lake',
+    images: [img('1591561954557-26941169b49e')],
+    description: 'Hand-embroidered tote with leather handles.',
+    url: 'https://example.com/p5',
+    affiliateUrl: 'https://example.com/p5?aff=playground',
+    interests: ['beauty'],
+  },
+  {
+    id: 'p8',
+    title: 'Tatcha Indigo Body Butter',
+    price: 58,
+    brand: 'Tatcha',
+    images: [img('1556228720-195a672e8a03')],
+    description: 'Soothing whipped balm with Japanese indigo.',
+    url: 'https://example.com/p8',
+    affiliateUrl: 'https://example.com/p8?aff=playground',
+    interests: ['beauty'],
+  },
+  // ─── Books ───────────────────────────────────────────
+  {
+    id: 'p6',
+    title: 'Hardcover poetry collection — Mary Oliver',
+    price: 18,
+    brand: 'Penguin',
+    images: [img('1544947950-fa07a98d237f')],
+    description: 'Devotions: The Selected Poems of Mary Oliver.',
+    url: 'https://example.com/p6',
+    affiliateUrl: 'https://example.com/p6?aff=playground',
+    interests: ['books'],
+  },
+  {
+    id: 'p9',
+    title: 'Field Notes pocket notebooks (3-pack)',
+    price: 13,
+    brand: 'Field Notes',
+    images: [img('1517842645767-c639042777db')],
+    description: 'Graph paper, 48 pages each.',
+    url: 'https://example.com/p9',
+    affiliateUrl: 'https://example.com/p9?aff=playground',
+    interests: ['books'],
   },
 ];
 
 export function findProduct(id: string): RecommendationProduct | undefined {
   return MOCK_PRODUCTS.find((p) => p.id === id);
+}
+
+// The chip-tab labels in the order they appear. Tab labels match the
+// `interests` values on each product.
+export const CHIP_TAB_KEYS = ['cozy', 'kitchen', 'beauty', 'books'] as const;
+export type ChipTabKey = (typeof CHIP_TAB_KEYS)[number];
+
+export const CHIP_TAB_LABELS: Record<ChipTabKey, string> = {
+  cozy: 'Cozy',
+  kitchen: 'Kitchen',
+  beauty: 'Beauty',
+  books: 'Books',
+};
+
+export function productsByChip(chip: ChipTabKey): RecommendationProduct[] {
+  return MOCK_PRODUCTS.filter((p) => p.interests?.includes(chip));
 }

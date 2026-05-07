@@ -1,55 +1,41 @@
 import type { CarouselSession, RecommendationCarousel } from '../../theaWeb/schemas';
-import { MOCK_PRODUCTS } from './products';
+import { CHIP_TAB_KEYS, CHIP_TAB_LABELS, productsByChip } from './products';
 import { getSessionState } from './playgroundConfig';
 
-const COZY_HOME: RecommendationCarousel = {
-  displayName: 'For the cozy homebody',
-  products: ['p1', 'p2', 'p3', 'p11', 'p12']
-    .map((id) => MOCK_PRODUCTS.find((p) => p.id === id)!)
-    .filter(Boolean),
-};
-
-const EVERYDAY_LUXURIES: RecommendationCarousel = {
-  displayName: 'Small everyday luxuries',
-  products: ['p4', 'p8', 'p5', 'p9']
-    .map((id) => MOCK_PRODUCTS.find((p) => p.id === id)!)
-    .filter(Boolean),
-};
-
-const KITCHEN: RecommendationCarousel = {
-  displayName: 'For the home cook',
-  products: ['p10', 'p7', 'p12']
-    .map((id) => MOCK_PRODUCTS.find((p) => p.id === id)!)
-    .filter(Boolean),
-};
-
-const THOUGHTFUL: RecommendationCarousel = {
-  displayName: 'Thoughtful + quiet',
-  products: ['p6', 'p3', 'p9']
-    .map((id) => MOCK_PRODUCTS.find((p) => p.id === id)!)
-    .filter(Boolean),
-};
+// One carousel per chip-tab. Display name = the chip label so the playground
+// BoardLayout can render the chip directly from the carousel `displayName`.
+function carouselForChip(chip: typeof CHIP_TAB_KEYS[number]): RecommendationCarousel {
+  return {
+    displayName: CHIP_TAB_LABELS[chip],
+    products: productsByChip(chip),
+  };
+}
 
 export function buildMockCarouselSession(): CarouselSession {
   const state = getSessionState();
   if (state === 'processing') {
+    // PROCESSING: only show the first chip's products, partial.
+    const firstChip = CHIP_TAB_KEYS[0];
     return {
       status: 'PROCESSING',
       carousels: {
-        cozy: { ...COZY_HOME, products: COZY_HOME.products.slice(0, 2) },
+        [firstChip]: {
+          ...carouselForChip(firstChip),
+          products: carouselForChip(firstChip).products.slice(0, 2),
+        },
       },
-      carouselOrder: ['cozy'],
+      carouselOrder: [firstChip],
     };
+  }
+  // COMPLETED: all chips populated.
+  const carousels: Record<string, RecommendationCarousel> = {};
+  for (const chip of CHIP_TAB_KEYS) {
+    carousels[chip] = carouselForChip(chip);
   }
   return {
     status: 'COMPLETED',
-    carousels: {
-      cozy: COZY_HOME,
-      everyday: EVERYDAY_LUXURIES,
-      kitchen: KITCHEN,
-      thoughtful: THOUGHTFUL,
-    },
-    carouselOrder: ['cozy', 'everyday', 'kitchen', 'thoughtful'],
+    carousels,
+    carouselOrder: [...CHIP_TAB_KEYS],
     pipelineTimingMs: 12_400,
   };
 }
