@@ -416,7 +416,6 @@ const RecommendationResultsPage: React.FC = () => {
         recipientEmoji={recipientEmoji}
         pillInitialValues={pillInitialValues}
         rightActions={<HeaderAccountMenu />}
-        onLogoClick={() => navigate('/')}
         onBackClick={handleBackClick}
         onSparklesClick={drawer.openDrawer}
         chipSections={chipSections}

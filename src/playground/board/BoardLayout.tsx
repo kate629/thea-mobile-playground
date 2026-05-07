@@ -63,7 +63,6 @@ export interface BoardLayoutProps {
   recipientEmoji: string;
   pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
-  onLogoClick?: () => void;
   onBackClick?: () => void;
   onSparklesClick?: () => void;
 
@@ -85,7 +84,6 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   recipientEmoji,
   pillInitialValues,
   rightActions,
-  onLogoClick,
   onBackClick,
   onSparklesClick,
   chipSections,
@@ -131,7 +129,6 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           recipientName={recipientName}
           pillInitialValues={pillInitialValues}
           rightActions={rightActions}
-          onLogoClick={onLogoClick}
           onBackClick={onBackClick}
           onSparklesClick={onSparklesClick}
         />

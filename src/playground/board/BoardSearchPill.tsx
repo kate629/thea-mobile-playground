@@ -179,15 +179,20 @@ const SearchButton = styled.button<{ $disabled: boolean }>`
 const Dropdown = styled.div`
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
-  right: 0;
+  /* Extend slightly past the pill so the dropdown reaches near the
+     viewport edges — gives chips room for ~4 per row and lets the Search
+     CTA sit above the fold without scrolling. The pill row no longer
+     contains the back button, so this needs less left-extension than the
+     prior version. */
+  left: -8px;
+  right: -8px;
   background: #ffffff;
   border: 1px solid ${({ theme }) => theme.color.warmBorder};
   border-radius: 16px;
   box-shadow: ${({ theme }) => theme.shadow.lg};
-  padding: 18px;
+  padding: 16px;
   z-index: 30;
-  max-height: 60vh;
+  max-height: 78vh;
   overflow-y: auto;
 `;
 
