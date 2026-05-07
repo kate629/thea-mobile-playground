@@ -7,6 +7,8 @@ import { BoardFeed } from './BoardFeed';
 import { BoardHeader } from './BoardHeader';
 import { BoardSavedPanel } from './BoardSavedPanel';
 import type { BoardSearchPillInitialValues } from './BoardSearchPill';
+import { BoardEditChipsPanel } from './BoardEditChipsPanel';
+import { getChipMeta } from './canonicalChips';
 import { accentForEmoji } from './recipientAccent';
 import { useBottomSheet } from './useBottomSheet';
 import { useFlightAnimation } from './useFlightAnimation';
@@ -50,6 +52,13 @@ const MainContent = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 0;
+`;
+
+// Wraps the chip-tab strip so the BoardEditChipsPanel can position itself
+// absolutely below it.
+const ChipStripWrap = styled.div`
+  position: relative;
+  flex: 0 0 auto;
 `;
 
 const FeedScroll = styled.div`
@@ -108,15 +117,79 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   const [activeKey, setActiveKey] = useState(initialKey);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
 
+  // Which chip keys render as tabs in the strip. Initialized from the
+  // chips the recipient already has products for; mutated via the
+  // "+ More" edit panel. Adding a chip not in the original session shows
+  // an empty tab — real implementation would refetch products for that
+  // category.
+  const [selectedChipKeys, setSelectedChipKeys] = useState<Set<string>>(
+    () => new Set(chipSections.map((s) => s.key)),
+  );
+  const [editPanelOpen, setEditPanelOpen] = useState(false);
+
+  // Keep selectedChipKeys in sync with the initial section list when it
+  // first loads (the page may render with empty chipSections briefly
+  // while the session resolves).
+  React.useEffect(() => {
+    if (selectedChipKeys.size === 0 && chipSections.length > 0) {
+      setSelectedChipKeys(new Set(chipSections.map((s) => s.key)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipSections]);
+
+  // Build the visible sections from selectedChipKeys, falling back to
+  // synthetic empty sections (label + emoji from canonicalChips) for
+  // selected chips that don't have products yet.
+  const visibleSections = useMemo(() => {
+    const byKey = new Map(chipSections.map((s) => [s.key, s]));
+    const ordered: BoardChipSection[] = [];
+    // Preserve session order for known sections, then append newly-added
+    // chips in alpha order at the end.
+    chipSections.forEach((s) => {
+      if (selectedChipKeys.has(s.key)) ordered.push(s);
+    });
+    const added = Array.from(selectedChipKeys)
+      .filter((k) => !byKey.has(k))
+      .sort();
+    added.forEach((k) => {
+      const meta = getChipMeta(k);
+      ordered.push({
+        key: k,
+        label: meta?.label ?? k,
+        emoji: meta?.emoji,
+        products: [],
+      });
+    });
+    return ordered;
+  }, [chipSections, selectedChipKeys]);
+
+  // If the activeKey was removed from selection, fall back to the first
+  // visible section.
+  React.useEffect(() => {
+    if (visibleSections.length === 0) return;
+    if (!visibleSections.find((s) => s.key === activeKey)) {
+      setActiveKey(visibleSections[0].key);
+    }
+  }, [visibleSections, activeKey]);
+
   const tabs: ChipTab[] = useMemo(
-    () => chipSections.map((s) => ({ key: s.key, label: s.label, emoji: s.emoji })),
-    [chipSections],
+    () => visibleSections.map((s) => ({ key: s.key, label: s.label, emoji: s.emoji })),
+    [visibleSections],
   );
 
   const activeProducts = useMemo(
-    () => chipSections.find((s) => s.key === activeKey)?.products ?? [],
-    [chipSections, activeKey],
+    () => visibleSections.find((s) => s.key === activeKey)?.products ?? [],
+    [visibleSections, activeKey],
   );
+
+  const handleToggleChip = (key: string) => {
+    setSelectedChipKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const accent = useMemo(() => accentForEmoji(recipientEmoji), [recipientEmoji]);
 
@@ -146,7 +219,21 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
         />
       </StickyTop>
       <MainContent>
-        <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
+        <ChipStripWrap>
+          <BoardChipTabs
+            tabs={tabs}
+            activeKey={activeKey}
+            onChange={setActiveKey}
+            trailingLabel="More"
+            onTrailingClick={() => setEditPanelOpen(true)}
+          />
+          <BoardEditChipsPanel
+            open={editPanelOpen}
+            selectedKeys={selectedChipKeys}
+            onToggle={handleToggleChip}
+            onClose={() => setEditPanelOpen(false)}
+          />
+        </ChipStripWrap>
         <FeedScroll>
           <BoardFeed
             products={activeProducts}
