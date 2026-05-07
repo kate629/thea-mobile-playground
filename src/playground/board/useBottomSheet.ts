@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * Three-snap-point bottom-sheet drag controller.
  *
  * Snap points (as fraction of viewport height — small = sheet covers more):
- *   - expanded:  0.10 (sheet covers ~90%, top sits just below the Mom header)
+ *   - expanded:  0.20 (sheet covers ~80%, top sits just below the entire
+ *                      sticky header — Mom row + search pill — so the
+ *                      sheet's close X isn't hidden behind it)
  *   - default:   0.72 (sheet covers ~28%, header + thumb row visible)
  *   - collapsed: 0.90 (sheet covers ~10%, just the handle + label peek)
  *
@@ -20,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type SheetSnap = 'expanded' | 'default' | 'collapsed';
 
 const SNAP_FRACTIONS: Record<SheetSnap, number> = {
-  expanded: 0.10,
+  expanded: 0.20,
   default: 0.72,
   collapsed: 0.90,
 };
