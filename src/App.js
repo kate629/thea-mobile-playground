@@ -5,16 +5,11 @@ import { ThemeProvider } from "styled-components";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LandingPage } from "./components/landing/marketing/LandingPage";
 import { QuizLoadingAnimated } from "./components/landing/quiz/QuizLoadingAnimated";
-import { UserAuthContextProvider } from "./context/UserAuthContext.js";
-import { AuthGateProvider, useAuthGate } from "./theaWeb/auth/AuthGateContext";
-import { MergeStateProvider } from "./theaWeb/auth/MergeStateContext";
-import { FirebaseProvider } from "./theaWeb/firebase/FirebaseContext";
+import { useAuthGate } from "./theaWeb/auth/AuthGateContext";
 import { useDeferredNavToResults } from "./theaWeb/hooks/useDeferredNavToResults";
-import { useGaUserIdentity } from "./theaWeb/hooks/useGaUserIdentity";
-import { usePageTracking } from "./theaWeb/hooks/usePageTracking";
 import { useSubmitGiftFlow } from "./theaWeb/hooks/useSubmitGiftFlow";
-import { gaFirstRender } from "./theaWeb/lib/gaPixel";
 import { quizDisplayOccasionToEnum } from "./theaWeb/lib/loadingAmbientImages";
+import { MockProviders } from "./playground/MockProviders";
 import { theme } from "./theme";
 
 function LandingRoute() {
@@ -107,43 +102,14 @@ const OccasionRoute = lazy(() =>
   import("./components/landing/marketing/OccasionRoute").then((m) => ({ default: m.OccasionRoute }))
 );
 
-// Mounted inside BrowserRouter (see src/index.js) so useLocation works.
-// Fires Meta pixel PageView on every route change.
-function PageTrackingMount() {
-  usePageTracking();
-  return null;
-}
-
-// Fires `page_first_render` exactly once per app load. Mounted as a sibling
-// to PageTrackingMount so it runs after the first route's first commit.
-// Pairs with bounce-attribution analysis: a Meta-reported LPV without a
-// matching gaFirstRender means the React app failed to mount (bug or
-// webview crash), distinct from "rendered but user bounced fast."
-function FirstRenderMount() {
-  React.useEffect(() => {
-    gaFirstRender();
-  }, []);
-  return null;
-}
-
-// Wires GA4 `user_id` to the Firebase UID and fires the GA4 `sign_up` event
-// on the (anon|null) → permanent transition. Mounted inside FirebaseProvider
-// because the hook calls useAuth(). One mount per app load is enough.
-function GaUserIdentityMount() {
-  useGaUserIdentity();
-  return null;
-}
+// PLAYGROUND: PageTrackingMount / FirstRenderMount / GaUserIdentityMount
+// removed — they fire GA4 / Meta pixels and bind onAuthStateChanged to the
+// real Firebase Auth instance, which would crash against our fake auth.
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
-      <FirebaseProvider>
-        <UserAuthContextProvider>
-          <MergeStateProvider>
-            <AuthGateProvider>
-        <PageTrackingMount />
-        <FirstRenderMount />
-        <GaUserIdentityMount />
+      <MockProviders>
         <Routes>
           <Route path="/" element={<LandingRoute />} />
           <Route
@@ -237,10 +203,7 @@ function App() {
             }
           />
         </Routes>
-            </AuthGateProvider>
-          </MergeStateProvider>
-        </UserAuthContextProvider>
-      </FirebaseProvider>
+      </MockProviders>
     </ThemeProvider>
   );
 }

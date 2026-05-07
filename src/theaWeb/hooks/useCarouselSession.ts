@@ -1,8 +1,9 @@
-import { doc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { useAuth, useDb } from '../firebase/FirebaseContext';
-import { normalizeCarouselSession } from '../lib/normalizeCarouselSession';
+// PLAYGROUND STUB — returns a fixture CarouselSession driven by the
+// `?session=processing|completed` URL param. Real version at
+// upstream:src/theaWeb/hooks/useCarouselSession.ts. Never port this back.
+
+import { useMemo } from 'react';
+import { buildMockCarouselSession } from '../../playground/mockData/carouselSession';
 import type { CarouselSession } from '../schemas';
 
 interface UseCarouselSessionResult {
@@ -11,74 +12,13 @@ interface UseCarouselSessionResult {
   error: Error | null;
 }
 
-// Subscribes to the agent's carouselSessions doc and normalizes its snake_case
-// shape into the typed CarouselSession the components consume. Renders
-// progressively from each snapshot — never gates paint on terminal status.
-//
-// Why this is separate from useRecommendationDoc: the agent's progressive
-// writes land in carouselSessions, not in the recommendation doc. The
-// recommendation doc owns user-scoped metadata (input, recipientSnapshot,
-// status); the session doc owns carousel chrome + product stream.
-//
-// Tracks uid even though the carouselSessions/{id} path is uid-less: the
-// listener's auth token rotates on link/upgrade, and Firestore rules
-// re-evaluate against the new uid. Re-binding on swap flushes any stale
-// token state.
-export function useCarouselSession(carouselSessionId: string | undefined): UseCarouselSessionResult {
-  const auth = useAuth();
-  const db = useDb();
-  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
-  const [session, setSession] = useState<CarouselSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+export function useCarouselSession(
+  carouselSessionId: string | undefined,
+): UseCarouselSessionResult {
+  const session = useMemo<CarouselSession | null>(() => {
+    if (!carouselSessionId) return null;
+    return buildMockCarouselSession();
+  }, [carouselSessionId]);
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      const nextUid = user?.uid ?? null;
-      setUid((prev) => {
-        if (prev === nextUid) return prev;
-        setSession(null);
-        setLoading(true);
-        setError(null);
-        return nextUid;
-      });
-    });
-  }, [auth]);
-
-  useEffect(() => {
-    if (!carouselSessionId) {
-      setSession(null);
-      setLoading(false);
-      return;
-    }
-
-    // Reset session before subscribing to a different sessionId. Without
-    // this, when carouselSessionId changes (e.g. user clicks "Refresh my
-    // picks" → regenerate → new sessionId on the same component instance,
-    // or any other route param change that swaps the recommendation),
-    // the OLD session's data renders for ~100-500ms while the new
-    // subscription waits for its first snapshot. Mirrors the reset in
-    // `useRecommendationDoc.ts:77` for the same reason.
-    setSession(null);
-    setLoading(true);
-    setError(null);
-
-    const ref = doc(db, 'carouselSessions', carouselSessionId);
-    const unsubscribe = onSnapshot(
-      ref,
-      (snap) => {
-        const normalized = snap.exists() ? normalizeCarouselSession(snap.data()) : null;
-        setSession(normalized);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [uid, carouselSessionId, db]);
-
-  return { session, loading, error };
+  return { session, loading: false, error: null };
 }
