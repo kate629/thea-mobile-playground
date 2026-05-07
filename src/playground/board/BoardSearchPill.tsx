@@ -1,17 +1,58 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useCallback, useEffect, useRef } from 'react';
+import styled, { css } from 'styled-components';
+import { Chip } from '../../components/ui/Chip';
+import {
+  useSearchPillState,
+  type SearchPillSegment,
+} from '../../theaWeb/hooks/useSearchPillState';
+import type { Gender } from '../../components/landing/quiz/constants';
 
 /**
- * Visual mimic of `src/components/landing/marketing/SearchPill.tsx` (the
- * logged-in homepage searchbar) for the board surface.
+ * Board-surface fork of `src/components/landing/marketing/SearchPill.tsx`.
  *
- * Three segments — WHO / WHAT / LIKES — show the recipient's frozen values
- * from the recommendation. Tapping any segment OR the sparkles button opens
- * the existing ProfileDrawer for editing. The visual styling is copied from
- * SearchPill so the two surfaces feel identical.
+ * Same visual + dropdown-interaction shape as the logged-in homepage pill:
+ * tap a segment → inline dropdown for that section (NOT a full edit drawer).
+ *
+ * Differences from the homepage version:
+ *   1. Accepts `initialValues` and seeds the underlying `useSearchPillState`
+ *      on mount via the existing setters, then closes any auto-opened
+ *      dropdown so the pill renders quietly with the recipient's values.
+ *   2. Sparkles button fires `onSparklesClick` (callback) instead of
+ *      submitting a fresh quiz flow — the board's parent page wires this
+ *      to whatever "regenerate with new values" path it wants.
+ *
+ * Intentionally a full copy of SearchPill's JSX rather than a wrapper —
+ * the homepage component embeds `useSearchPillState()` internally with no
+ * way to inject seed values, and Kate's port-back rule says don't touch
+ * shared upstream components from the playground.
  */
 
+export interface BoardSearchPillInitialValues {
+  /** Display string from RELATIONSHIPS (e.g. "Mom", "Granddaughter"). */
+  relationship?: string;
+  /** ADULT_AGE_CHIPS bucket value (25/35/45/55/65/75) or KID_AGE_CHIPS value. */
+  age?: number;
+  gender?: Gender;
+  /** Display string from BASE_OCCASION_OPTIONS (e.g. "Mother's Day"). */
+  occasion?: string;
+  /** Capitalized chip labels (e.g. ["Cozy", "Kitchen"]). */
+  interests?: string[];
+  freeform?: string;
+}
+
+export interface BoardSearchPillProps {
+  initialValues?: BoardSearchPillInitialValues;
+  initialOpenSegment?: SearchPillSegment | null;
+  /** Click handler for the clay sparkles button. Receives the live state's
+   *  display values so the parent can decide what to do. */
+  onSparklesClick?: () => void;
+  className?: string;
+}
+
+// ─── Styled (verbatim from SearchPill.tsx, scaled for board surface) ──────
+
 const Wrap = styled.div`
+  position: relative;
   width: 100%;
 `;
 
@@ -24,10 +65,9 @@ const Pill = styled.div`
   box-shadow: ${({ theme }) => theme.shadow.card};
   padding: 4px;
   gap: 0;
-  width: 100%;
 `;
 
-const SegmentButton = styled.button`
+const SegmentButton = styled.button<{ $active: boolean; $hasValue: boolean }>`
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -43,11 +83,15 @@ const SegmentButton = styled.button`
   font-family: inherit;
   position: relative;
   transition: background 150ms ease;
-  min-width: 0; /* allow flex items to shrink below content width for ellipsis */
+  min-width: 0;
 
-  &:hover {
-    background: ${({ theme }) => theme.color.cream};
-  }
+  &:hover { background: ${({ theme }) => theme.color.cream}; }
+
+  ${({ $active, theme }) =>
+    $active &&
+    css`
+      background: ${theme.color.cream};
+    `}
 
   &:focus-visible {
     outline: none;
@@ -68,11 +112,12 @@ const SegmentLabel = styled.span`
   line-height: 1;
 `;
 
-const SegmentValue = styled.span`
+const SegmentValue = styled.span<{ $placeholder: boolean }>`
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
-  color: hsl(var(--foreground));
+  color: ${({ $placeholder }) =>
+    $placeholder ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))'};
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -80,6 +125,25 @@ const SegmentValue = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+`;
+
+const ClearButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: 2px;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  border-radius: 9999px;
+  width: 14px;
+  height: 14px;
+  &:hover {
+    color: hsl(var(--foreground));
+    background: ${({ theme }) => theme.color.warmBorder};
+  }
 `;
 
 const SparklesButton = styled.button`
@@ -96,10 +160,7 @@ const SparklesButton = styled.button`
   color: #ffffff;
   background: ${({ theme }) => theme.gradient.cta};
   transition: transform 150ms ease, box-shadow 150ms ease;
-
-  &:hover {
-    box-shadow: ${({ theme }) => theme.shadow.lg};
-  }
+  &:hover { box-shadow: ${({ theme }) => theme.shadow.lg}; }
   &:active { transform: scale(0.97); }
   &:focus-visible {
     outline: none;
@@ -107,77 +168,349 @@ const SparklesButton = styled.button`
   }
 `;
 
+const Dropdown = styled.div`
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid ${({ theme }) => theme.color.warmBorder};
+  border-radius: 16px;
+  box-shadow: ${({ theme }) => theme.shadow.lg};
+  padding: 18px;
+  z-index: 30;
+  max-height: 60vh;
+  overflow-y: auto;
+`;
+
+const DropdownHeading = styled.h4`
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+`;
+
+const DropdownSection = styled.section`
+  & + & { margin-top: 18px; }
+`;
+
+const ChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const FreeformTextarea = styled.textarea`
+  width: 100%;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid ${({ theme }) => theme.color.warmBorder};
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  background: ${({ theme }) => theme.color.cream};
+  margin-top: 12px;
+  color: hsl(var(--foreground));
+  &::placeholder { color: hsl(var(--muted-foreground)); }
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.color.clay};
+    background: #ffffff;
+  }
+`;
+
+// ─── Icons ───────────────────────────────────────────────────────────────
+
 const SparklesIcon: React.FC = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4L12 3z" />
     <path d="M19 14l.7 1.8L21.5 16l-1.8.7L19 18.5l-.7-1.8L16.5 16l1.8-.7L19 14z" />
     <path d="M5 16l.5 1.3L6.7 18l-1.3.5L5 19.7l-.5-1.3L3.3 18l1.3-.5L5 16z" />
   </svg>
 );
 
-export interface BoardSearchPillProps {
-  whoEmoji?: string;
-  whoText: string;
-  whatText: string;
-  likesText: string;
-  onSegmentClick?: () => void;
-  onSparklesClick?: () => void;
-}
+const XIcon: React.FC = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+// ─── Component ───────────────────────────────────────────────────────────
 
 export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
-  whoEmoji,
-  whoText,
-  whatText,
-  likesText,
-  onSegmentClick,
+  initialValues,
+  initialOpenSegment = null,
   onSparklesClick,
-}) => (
-  <Wrap>
-    <Pill>
-      <SegmentButton
-        type="button"
-        aria-label={`Edit who: ${whoText}`}
-        onClick={onSegmentClick}
-      >
-        <SegmentLabel>Who</SegmentLabel>
-        <SegmentValue>
-          {whoEmoji && <span aria-hidden="true">{whoEmoji}</span>}
-          <span>{whoText}</span>
-        </SegmentValue>
-      </SegmentButton>
-      <SegmentButton
-        type="button"
-        aria-label={`Edit occasion: ${whatText}`}
-        onClick={onSegmentClick}
-      >
-        <SegmentLabel>What</SegmentLabel>
-        <SegmentValue>{whatText || 'Occasion'}</SegmentValue>
-      </SegmentButton>
-      <SegmentButton
-        type="button"
-        aria-label={`Edit likes: ${likesText}`}
-        onClick={onSegmentClick}
-      >
-        <SegmentLabel>Likes</SegmentLabel>
-        <SegmentValue>{likesText || 'Interests'}</SegmentValue>
-      </SegmentButton>
-      <SparklesButton
-        type="button"
-        aria-label="Refresh picks"
-        onClick={onSparklesClick}
-      >
-        <SparklesIcon />
-      </SparklesButton>
-    </Pill>
-  </Wrap>
-);
+  className,
+}) => {
+  const state = useSearchPillState();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const seededRef = useRef(false);
+
+  // Seed state from initialValues on mount. The setters in useSearchPillState
+  // have auto-advance side effects (each one may call setOpenSegment), but
+  // React batches the setState calls inside this effect — so the final state
+  // after `closeDropdown` is { ...seeded values, openSegment: null }.
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    if (!initialValues) {
+      if (initialOpenSegment) state.openDropdown(initialOpenSegment);
+      return;
+    }
+    if (initialValues.relationship) state.setRelationship(initialValues.relationship);
+    if (initialValues.age) state.setAge(initialValues.age);
+    if (initialValues.gender) state.setGender(initialValues.gender);
+    if (initialValues.occasion) state.setOccasion(initialValues.occasion);
+    if (initialValues.interests && initialValues.interests.length > 0) {
+      initialValues.interests.forEach((i) => state.toggleInterest(i));
+    }
+    if (initialValues.freeform) state.setFreeform(initialValues.freeform);
+    // Override the auto-advance from the setters above so the pill renders
+    // closed by default. If the caller passed initialOpenSegment, honor it
+    // after the seed.
+    if (initialOpenSegment) {
+      state.openDropdown(initialOpenSegment);
+    } else {
+      state.closeDropdown();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Outside-click closes any open dropdown.
+  useEffect(() => {
+    if (!state.openSegment) return;
+    const handler = (e: MouseEvent) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) {
+        state.closeDropdown();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [state]);
+
+  const handleRelationshipPick = useCallback(
+    (rel: string) => state.setRelationship(rel),
+    [state],
+  );
+  const handleAgePick = useCallback(
+    (ageValue: number) => state.setAge(ageValue),
+    [state],
+  );
+
+  return (
+    <Wrap ref={wrapRef} className={className}>
+      <Pill>
+        <SegmentButton
+          type="button"
+          $active={state.openSegment === 'who'}
+          $hasValue={Boolean(state.whoDisplay)}
+          aria-expanded={state.openSegment === 'who'}
+          aria-haspopup="dialog"
+          onClick={() => state.toggleDropdown('who')}
+        >
+          <SegmentLabel>Who</SegmentLabel>
+          <SegmentValue $placeholder={!state.whoDisplay}>
+            {state.whoDisplay ? (
+              <>
+                {state.whoEmoji && <span aria-hidden="true">{state.whoEmoji}</span>}
+                <span>{state.whoDisplay}</span>
+                <ClearButton
+                  type="button"
+                  aria-label="Clear who"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    state.clearWho();
+                  }}
+                >
+                  <XIcon />
+                </ClearButton>
+              </>
+            ) : (
+              'Relationship, age'
+            )}
+          </SegmentValue>
+        </SegmentButton>
+
+        <SegmentButton
+          type="button"
+          $active={state.openSegment === 'what'}
+          $hasValue={Boolean(state.whatDisplay)}
+          aria-expanded={state.openSegment === 'what'}
+          aria-haspopup="dialog"
+          onClick={() => state.toggleDropdown('what')}
+        >
+          <SegmentLabel>What</SegmentLabel>
+          <SegmentValue $placeholder={!state.whatDisplay}>
+            {state.whatDisplay ? (
+              <>
+                <span>{state.whatDisplay}</span>
+                <ClearButton
+                  type="button"
+                  aria-label="Clear occasion"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    state.clearWhat();
+                  }}
+                >
+                  <XIcon />
+                </ClearButton>
+              </>
+            ) : (
+              'Occasion'
+            )}
+          </SegmentValue>
+        </SegmentButton>
+
+        <SegmentButton
+          type="button"
+          $active={state.openSegment === 'likes'}
+          $hasValue={state.interests.length > 0}
+          aria-expanded={state.openSegment === 'likes'}
+          aria-haspopup="dialog"
+          onClick={() => state.toggleDropdown('likes')}
+        >
+          <SegmentLabel>Likes</SegmentLabel>
+          <SegmentValue $placeholder={state.interests.length === 0}>
+            {state.interests.length > 0 ? (
+              <>
+                <span>{state.likesDisplay}</span>
+                <ClearButton
+                  type="button"
+                  aria-label="Clear interests"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    state.clearLikes();
+                  }}
+                >
+                  <XIcon />
+                </ClearButton>
+              </>
+            ) : (
+              'Interests'
+            )}
+          </SegmentValue>
+        </SegmentButton>
+
+        <SparklesButton
+          type="button"
+          aria-label="Refresh picks"
+          onClick={() => onSparklesClick?.()}
+        >
+          <SparklesIcon />
+        </SparklesButton>
+      </Pill>
+
+      {state.openSegment === 'who' && (
+        <Dropdown role="dialog" aria-label="Who are you shopping for?">
+          <DropdownSection>
+            <DropdownHeading>Who are you shopping for?</DropdownHeading>
+            <ChipRow>
+              {state.relationshipOptions.map((rel) => (
+                <Chip
+                  key={rel.value}
+                  selected={state.relationship === rel.value}
+                  leading={<span aria-hidden="true">{rel.emoji}</span>}
+                  onClick={() => handleRelationshipPick(rel.value)}
+                >
+                  {rel.value}
+                </Chip>
+              ))}
+            </ChipRow>
+          </DropdownSection>
+          {state.showGenderSelector && (
+            <DropdownSection>
+              <DropdownHeading>Gender</DropdownHeading>
+              <ChipRow role="group" aria-label="Gender">
+                <Chip
+                  selected={state.gender === 'female'}
+                  onClick={() => state.setGender('female')}
+                >
+                  Female
+                </Chip>
+                <Chip
+                  selected={state.gender === 'male'}
+                  onClick={() => state.setGender('male')}
+                >
+                  Male
+                </Chip>
+                <Chip
+                  selected={state.gender === 'other'}
+                  onClick={() => state.setGender('other')}
+                >
+                  Other
+                </Chip>
+              </ChipRow>
+            </DropdownSection>
+          )}
+          <DropdownSection>
+            <DropdownHeading>Age</DropdownHeading>
+            <ChipRow>
+              {state.ageChips.map((chip) => (
+                <Chip
+                  key={chip.value}
+                  selected={state.age === chip.value}
+                  leading={<span aria-hidden="true">{chip.emoji}</span>}
+                  onClick={() => handleAgePick(chip.value)}
+                >
+                  {chip.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </DropdownSection>
+        </Dropdown>
+      )}
+
+      {state.openSegment === 'what' && (
+        <Dropdown role="dialog" aria-label="What's the occasion?">
+          <DropdownSection>
+            <DropdownHeading>What's the occasion?</DropdownHeading>
+            <ChipRow>
+              {state.occasionOptions.map((opt) => (
+                <Chip
+                  key={opt.value}
+                  selected={state.occasion === opt.value}
+                  leading={<span aria-hidden="true">{opt.emoji}</span>}
+                  onClick={() => state.setOccasion(opt.value)}
+                >
+                  {opt.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </DropdownSection>
+        </Dropdown>
+      )}
+
+      {state.openSegment === 'likes' && (
+        <Dropdown role="dialog" aria-label="What do they like?">
+          <DropdownSection>
+            <DropdownHeading>What do they like?</DropdownHeading>
+            <ChipRow>
+              {state.interestPills.map((pill) => (
+                <Chip
+                  key={pill.label}
+                  selected={state.interests.includes(pill.label)}
+                  leading={pill.emoji ? <span aria-hidden="true">{pill.emoji}</span> : undefined}
+                  onClick={() => state.toggleInterest(pill.label)}
+                >
+                  {pill.label}
+                </Chip>
+              ))}
+            </ChipRow>
+            <FreeformTextarea
+              value={state.freeform}
+              onChange={(e) => state.setFreeform(e.target.value)}
+              placeholder={state.freeformPlaceholder}
+              aria-label="Tell us more"
+            />
+          </DropdownSection>
+        </Dropdown>
+      )}
+    </Wrap>
+  );
+};

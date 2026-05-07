@@ -1,6 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
-import { BoardSearchPill } from './BoardSearchPill';
+import {
+  BoardSearchPill,
+  type BoardSearchPillInitialValues,
+} from './BoardSearchPill';
 
 const Wrap = styled.header`
   /* Sticky positioning is owned by the parent StickyTop in BoardLayout. */
@@ -29,23 +32,17 @@ const Logo = styled.button`
 `;
 
 interface BoardHeaderProps {
-  recipientName: string;
-  recipientEmoji: string;
-  whatText: string;
-  likesText: string;
+  pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
-  onPillClick?: () => void;
+  onSparklesClick?: () => void;
 }
 
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
-  recipientName,
-  recipientEmoji,
-  whatText,
-  likesText,
+  pillInitialValues,
   rightActions,
   onLogoClick,
-  onPillClick,
+  onSparklesClick,
 }) => (
   <Wrap>
     <TopRow>
@@ -53,12 +50,8 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
       {rightActions}
     </TopRow>
     <BoardSearchPill
-      whoEmoji={recipientEmoji}
-      whoText={recipientName}
-      whatText={whatText}
-      likesText={likesText}
-      onSegmentClick={onPillClick}
-      onSparklesClick={onPillClick}
+      initialValues={pillInitialValues}
+      onSparklesClick={onSparklesClick}
     />
   </Wrap>
 );

@@ -306,50 +306,82 @@ const RecommendationResultsPage: React.FC = () => {
     );
   }
 
-  const recipientEmoji = doc.recipientSnapshot.emoji ?? '✨';
   const recipientName = doc.recipientSnapshot.name ?? '';
   const interests = doc.input.interests ?? [];
-  const interestsLabel =
-    interests.length === 0
-      ? ''
-      : interests.length <= 2
-      ? interests.map((i) => i.charAt(0).toUpperCase() + i.slice(1)).join(', ')
-      : `${interests
-          .slice(0, 2)
-          .map((i) => i.charAt(0).toUpperCase() + i.slice(1))
-          .join(', ')} +${interests.length - 2}`;
-  const occasionLabel =
-    doc.input.occasionLabel ??
-    (
-      {
-        BIRTHDAY: 'Birthday',
-        MOTHERS_DAY: "Mother's Day",
-        FATHERS_DAY: "Father's Day",
-        ANNIVERSARY: 'Anniversary',
-        GRADUATION: 'Graduation',
-        WEDDING: 'Wedding',
-        NEW_BABY: 'New baby',
-        HOUSEWARMING: 'Housewarming',
-        THANK_YOU: 'Thank you',
-        JUST_BECAUSE: 'Just because',
-        CHRISTMAS: 'Christmas',
-        HANUKKAH: 'Hanukkah',
-        VALENTINES_DAY: "Valentine's Day",
-        OTHER: 'Other',
-      } as Record<string, string>
-    )[doc.input.occasion] ??
-    '';
+
+  // ─── Map the frozen recipient doc to BoardSearchPill seed values ───
+  // The pill's underlying useSearchPillState uses display-string keys
+  // (e.g. "Mom") and the lowercase Gender union ("female"); the schema
+  // uses uppercase enums. Map at the boundary.
+  const RELATIONSHIP_ENUM_TO_DISPLAY: Record<string, string> = {
+    MOM: 'Mom',
+    DAD: 'Dad',
+    PARTNER: 'Partner',
+    SISTER: 'Sister',
+    BROTHER: 'Brother',
+    DAUGHTER: 'Daughter',
+    SON: 'Son',
+    GRANDMA: 'Grandma',
+    GRANDPA: 'Grandpa',
+    GRANDDAUGHTER: 'Granddaughter',
+    GRANDSON: 'Grandson',
+    FRIEND: 'Friend',
+    COWORKER: 'Other',
+    OTHER: 'Other',
+  };
+  const GENDER_ENUM_TO_DISPLAY: Record<string, 'female' | 'male' | 'other'> = {
+    FEMALE: 'female',
+    MALE: 'male',
+    NON_BINARY: 'other',
+    PREFER_NOT_TO_SAY: 'other',
+  };
+  const OCCASION_ENUM_TO_DISPLAY: Record<string, string> = {
+    BIRTHDAY: 'Birthday',
+    MOTHERS_DAY: "Mother's Day",
+    FATHERS_DAY: "Father's Day",
+    ANNIVERSARY: 'Anniversary',
+    GRADUATION: 'Graduation',
+    WEDDING: 'Wedding',
+    NEW_BABY: 'New baby',
+    HOUSEWARMING: 'Housewarming',
+    THANK_YOU: 'Thank you',
+    JUST_BECAUSE: 'Just because',
+    CHRISTMAS: 'Christmas',
+    HANUKKAH: 'Hanukkah',
+    VALENTINES_DAY: "Valentine's Day",
+    OTHER: 'Other',
+  };
+
+  // Adult-age buckets from constants.ts: 25/35/45/55/65/75. Map a numeric
+  // age onto its closest bucket (the pill renders the bucket chip selected).
+  const ADULT_AGE_BUCKETS = [25, 35, 45, 55, 65, 75];
+  function ageToBucket(age: number | undefined): number | undefined {
+    if (age === undefined) return undefined;
+    return ADULT_AGE_BUCKETS.reduce((closest, b) =>
+      Math.abs(b - age) < Math.abs(closest - age) ? b : closest,
+    );
+  }
+
+  const pillInitialValues = {
+    relationship:
+      RELATIONSHIP_ENUM_TO_DISPLAY[doc.recipientSnapshot.relationship] ?? '',
+    age: ageToBucket(doc.recipientSnapshot.age),
+    gender: doc.recipientSnapshot.gender
+      ? GENDER_ENUM_TO_DISPLAY[doc.recipientSnapshot.gender]
+      : undefined,
+    occasion: doc.input.occasionLabel ?? OCCASION_ENUM_TO_DISPLAY[doc.input.occasion] ?? '',
+    interests: interests.map((i) => i.charAt(0).toUpperCase() + i.slice(1)),
+    freeform: doc.input.freeform ?? '',
+  };
 
   return (
     <>
       <BoardLayout
         recipientName={recipientName}
-        recipientEmoji={recipientEmoji}
-        interestsLabel={interestsLabel}
-        occasionLabel={occasionLabel}
+        pillInitialValues={pillInitialValues}
         rightActions={<HeaderAccountMenu />}
         onLogoClick={() => navigate('/')}
-        onPillClick={drawer.openDrawer}
+        onSparklesClick={drawer.openDrawer}
         chipSections={chipSections}
         savedItems={savedItems}
         departingIds={departingIds}

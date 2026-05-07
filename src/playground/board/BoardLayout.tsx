@@ -5,6 +5,7 @@ import { BoardChipTabs, type ChipTab } from './BoardChipTabs';
 import { BoardFeed } from './BoardFeed';
 import { BoardHeader } from './BoardHeader';
 import { BoardSavedPanel } from './BoardSavedPanel';
+import type { BoardSearchPillInitialValues } from './BoardSearchPill';
 import { useFlightAnimation } from './useFlightAnimation';
 
 const Page = styled.div`
@@ -37,14 +38,14 @@ export interface BoardChipSection {
 
 export interface BoardLayoutProps {
   recipientName: string;
-  recipientEmoji: string;
-  /** Compact label for the LIKES segment of the search pill, e.g. "Cozy +2". */
-  interestsLabel: string;
-  /** Display label for the WHAT segment, e.g. "Mother's Day". */
-  occasionLabel: string;
+  /** Seed values for the WHO/WHAT/LIKES search pill — pre-populates the
+   *  dropdown state so the pill shows the recipient's current values. */
+  pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
-  onPillClick?: () => void;
+  /** Sparkles button click — typically wired to "regenerate with new pill
+   *  values" on the parent page. */
+  onSparklesClick?: () => void;
 
   chipSections: BoardChipSection[];
   savedItems: ResultsProductCardItem[];
@@ -61,12 +62,10 @@ export interface BoardLayoutProps {
 
 export const BoardLayout: React.FC<BoardLayoutProps> = ({
   recipientName,
-  recipientEmoji,
-  interestsLabel,
-  occasionLabel,
+  pillInitialValues,
   rightActions,
   onLogoClick,
-  onPillClick,
+  onSparklesClick,
   chipSections,
   savedItems,
   departingIds,
@@ -106,13 +105,10 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
     <Page>
       <StickyTop>
         <BoardHeader
-          recipientName={recipientName}
-          recipientEmoji={recipientEmoji}
-          whatText={occasionLabel}
-          likesText={interestsLabel}
+          pillInitialValues={pillInitialValues}
           rightActions={rightActions}
           onLogoClick={onLogoClick}
-          onPillClick={onPillClick}
+          onSparklesClick={onSparklesClick}
         />
         <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
       </StickyTop>

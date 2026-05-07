@@ -14,7 +14,7 @@ export function buildMockRecommendation(): Recommendation {
     input: {
       occasion: 'MOTHERS_DAY',
       occasionLabel: undefined,
-      interests: ['cozy', 'kitchen', 'beauty', 'books'],
+      interests: ['decor', 'cooking', 'beauty', 'books'],
       freeform: 'Loves slow mornings, a really good book, and small touches around the house.',
     },
     recipientSnapshot: {

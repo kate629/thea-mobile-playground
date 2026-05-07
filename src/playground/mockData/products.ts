@@ -19,7 +19,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'A weighty, hand-thrown mug with a soft speckled glaze.',
     url: 'https://example.com/p1',
     affiliateUrl: 'https://example.com/p1?aff=playground',
-    interests: ['cozy'],
+    interests: ['decor'],
   },
   {
     id: 'p2',
@@ -32,7 +32,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Lightweight linen-cotton throw, washed soft.',
     url: 'https://example.com/p2',
     affiliateUrl: 'https://example.com/p2?aff=playground',
-    interests: ['cozy'],
+    interests: ['decor'],
   },
   {
     id: 'p3',
@@ -43,7 +43,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Pure beeswax tapers, hand-rolled in Seattle.',
     url: 'https://example.com/p3',
     affiliateUrl: 'https://example.com/p3?aff=playground',
-    interests: ['cozy'],
+    interests: ['decor'],
   },
   {
     id: 'p11',
@@ -54,7 +54,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Quick-dry, soft cotton, Turkish-loomed.',
     url: 'https://example.com/p11',
     affiliateUrl: 'https://example.com/p11?aff=playground',
-    interests: ['cozy'],
+    interests: ['decor'],
   },
   // ─── Kitchen ─────────────────────────────────────────
   {
@@ -66,7 +66,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Heavy-base espresso glasses, lead-free.',
     url: 'https://example.com/p7',
     affiliateUrl: 'https://example.com/p7?aff=playground',
-    interests: ['kitchen'],
+    interests: ['cooking'],
   },
   {
     id: 'p10',
@@ -77,7 +77,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'American-made, ready to cook out of the box.',
     url: 'https://example.com/p10',
     affiliateUrl: 'https://example.com/p10?aff=playground',
-    interests: ['kitchen'],
+    interests: ['cooking'],
   },
   {
     id: 'p12',
@@ -88,7 +88,7 @@ export const MOCK_PRODUCTS: RecommendationProduct[] = [
     description: 'Single piece of American walnut, oil-finished.',
     url: 'https://example.com/p12',
     affiliateUrl: 'https://example.com/p12?aff=playground',
-    interests: ['kitchen'],
+    interests: ['cooking'],
   },
   // ─── Beauty ──────────────────────────────────────────
   {
@@ -153,14 +153,16 @@ export function findProduct(id: string): RecommendationProduct | undefined {
   return MOCK_PRODUCTS.find((p) => p.id === id);
 }
 
-// The chip-tab labels in the order they appear. Tab labels match the
-// `interests` values on each product.
-export const CHIP_TAB_KEYS = ['cozy', 'kitchen', 'beauty', 'books'] as const;
+// The chip-tab labels in the order they appear. Keys match the canonical
+// SearchPill interest pills (decor / cooking / beauty / books) so the same
+// values drive both the chip-tab feed grouping AND the LIKES segment of
+// the search pill.
+export const CHIP_TAB_KEYS = ['decor', 'cooking', 'beauty', 'books'] as const;
 export type ChipTabKey = (typeof CHIP_TAB_KEYS)[number];
 
 export const CHIP_TAB_LABELS: Record<ChipTabKey, string> = {
-  cozy: 'Cozy',
-  kitchen: 'Kitchen',
+  decor: 'Decor',
+  cooking: 'Cooking',
   beauty: 'Beauty',
   books: 'Books',
 };
