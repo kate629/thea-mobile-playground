@@ -318,6 +318,27 @@ const RecommendationResultsPage: React.FC = () => {
           .slice(0, 2)
           .map((i) => i.charAt(0).toUpperCase() + i.slice(1))
           .join(', ')} +${interests.length - 2}`;
+  const occasionLabel =
+    doc.input.occasionLabel ??
+    (
+      {
+        BIRTHDAY: 'Birthday',
+        MOTHERS_DAY: "Mother's Day",
+        FATHERS_DAY: "Father's Day",
+        ANNIVERSARY: 'Anniversary',
+        GRADUATION: 'Graduation',
+        WEDDING: 'Wedding',
+        NEW_BABY: 'New baby',
+        HOUSEWARMING: 'Housewarming',
+        THANK_YOU: 'Thank you',
+        JUST_BECAUSE: 'Just because',
+        CHRISTMAS: 'Christmas',
+        HANUKKAH: 'Hanukkah',
+        VALENTINES_DAY: "Valentine's Day",
+        OTHER: 'Other',
+      } as Record<string, string>
+    )[doc.input.occasion] ??
+    '';
 
   return (
     <>
@@ -325,6 +346,7 @@ const RecommendationResultsPage: React.FC = () => {
         recipientName={recipientName}
         recipientEmoji={recipientEmoji}
         interestsLabel={interestsLabel}
+        occasionLabel={occasionLabel}
         rightActions={<HeaderAccountMenu />}
         onLogoClick={() => navigate('/')}
         onPillClick={drawer.openDrawer}

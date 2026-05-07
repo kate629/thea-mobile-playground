@@ -1,14 +1,20 @@
 import React from 'react';
 import styled from 'styled-components';
+import { BoardSearchPill } from './BoardSearchPill';
 
-const Bar = styled.header`
-  /* Sticky positioning is owned by the parent StickyTop in BoardLayout — it
-     pins the header + chip-tab row to the top of the viewport as one block. */
+const Wrap = styled.header`
+  /* Sticky positioning is owned by the parent StickyTop in BoardLayout. */
   background: ${({ theme }) => theme.color.creamLight};
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 8px;
+`;
+
+const TopRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 6px;
 `;
 
 const Logo = styled.button`
@@ -22,47 +28,11 @@ const Logo = styled.button`
   cursor: pointer;
 `;
 
-const Pill = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid ${({ theme }) => theme.color.warmBorder};
-  font-family: ${({ theme }) => theme.font.sans};
-  font-size: 14px;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  max-width: 65%;
-  overflow: hidden;
-`;
-
-const Name = styled.span`
-  font-weight: 600;
-  margin-right: 4px;
-`;
-
-const Interests = styled.span`
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const Pencil: React.FC = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-       style={{ color: 'hsl(var(--muted-foreground))', flexShrink: 0 }}>
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-  </svg>
-);
-
 interface BoardHeaderProps {
   recipientName: string;
   recipientEmoji: string;
-  interestsLabel: string;
+  whatText: string;
+  likesText: string;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
   onPillClick?: () => void;
@@ -71,19 +41,24 @@ interface BoardHeaderProps {
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
   recipientName,
   recipientEmoji,
-  interestsLabel,
+  whatText,
+  likesText,
   rightActions,
   onLogoClick,
   onPillClick,
 }) => (
-  <Bar>
-    <Logo onClick={onLogoClick}>thea</Logo>
-    <Pill type="button" onClick={onPillClick} aria-label="Edit recipient">
-      <span>{recipientEmoji}</span>
-      <Name>{recipientName}</Name>
-      <Interests>{interestsLabel}</Interests>
-      <Pencil />
-    </Pill>
-    {rightActions}
-  </Bar>
+  <Wrap>
+    <TopRow>
+      <Logo onClick={onLogoClick}>thea</Logo>
+      {rightActions}
+    </TopRow>
+    <BoardSearchPill
+      whoEmoji={recipientEmoji}
+      whoText={recipientName}
+      whatText={whatText}
+      likesText={likesText}
+      onSegmentClick={onPillClick}
+      onSparklesClick={onPillClick}
+    />
+  </Wrap>
 );

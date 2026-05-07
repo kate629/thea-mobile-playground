@@ -38,7 +38,10 @@ export interface BoardChipSection {
 export interface BoardLayoutProps {
   recipientName: string;
   recipientEmoji: string;
+  /** Compact label for the LIKES segment of the search pill, e.g. "Cozy +2". */
   interestsLabel: string;
+  /** Display label for the WHAT segment, e.g. "Mother's Day". */
+  occasionLabel: string;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
   onPillClick?: () => void;
@@ -60,6 +63,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   recipientName,
   recipientEmoji,
   interestsLabel,
+  occasionLabel,
   rightActions,
   onLogoClick,
   onPillClick,
@@ -104,7 +108,8 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
         <BoardHeader
           recipientName={recipientName}
           recipientEmoji={recipientEmoji}
-          interestsLabel={interestsLabel}
+          whatText={occasionLabel}
+          likesText={interestsLabel}
           rightActions={rightActions}
           onLogoClick={onLogoClick}
           onPillClick={onPillClick}
