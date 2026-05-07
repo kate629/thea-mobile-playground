@@ -48,6 +48,12 @@ export function useBottomSheet(initial: SheetSnap = 'default'): UseBottomSheetRe
   });
   const startTopRef = useRef(0);
   const startYRef = useRef(0);
+  // True if the pointer moved beyond the tap threshold during a press —
+  // used on pointerUp to distinguish a drag (snap to closest) from a tap
+  // (cycle to next snap). Without tap-to-cycle, users who don't think to
+  // drag the handle have no way to reopen the sheet once it's collapsed.
+  const movedRef = useRef(false);
+  const TAP_THRESHOLD_PX = 5;
 
   // Measure viewport on mount + whenever it changes (orientation, resize).
   useEffect(() => {
@@ -78,6 +84,7 @@ export function useBottomSheet(initial: SheetSnap = 'default'): UseBottomSheetRe
       setIsDragging(true);
       startTopRef.current = topPx;
       startYRef.current = e.clientY;
+      movedRef.current = false;
     },
     [topPx],
   );
@@ -87,6 +94,7 @@ export function useBottomSheet(initial: SheetSnap = 'default'): UseBottomSheetRe
       if (!isDragging) return;
       const points = snapPointsRef.current;
       const delta = e.clientY - startYRef.current;
+      if (Math.abs(delta) > TAP_THRESHOLD_PX) movedRef.current = true;
       const next = Math.max(
         points.expanded,
         Math.min(points.collapsed, startTopRef.current + delta),
@@ -107,6 +115,22 @@ export function useBottomSheet(initial: SheetSnap = 'default'): UseBottomSheetRe
       }
       setIsDragging(false);
       const points = snapPointsRef.current;
+
+      // No drag → tap on handle. Cycle: from "default" → expanded; from
+      // expanded or collapsed → default. Gives users who don't realize the
+      // handle is draggable a single-tap way to open/close the sheet.
+      if (!movedRef.current) {
+        const candidates: SheetSnap[] = ['expanded', 'default', 'collapsed'];
+        const closest = candidates.reduce((prev, curr) =>
+          Math.abs(points[curr] - topPx) < Math.abs(points[prev] - topPx) ? curr : prev,
+        );
+        const nextSnap: SheetSnap = closest === 'default' ? 'expanded' : 'default';
+        // Snap back to its exact pixel value to clear any float drift.
+        setTopPx(points[nextSnap]);
+        return;
+      }
+
+      // Drag → snap to closest of the three points.
       const candidates: Array<[SheetSnap, number]> = [
         ['expanded', points.expanded],
         ['default', points.default],

@@ -25,7 +25,10 @@ const HandleArea = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0 4px;
+  /* Generous hit area so the handle is easy to grab even at the top of a
+     long viewport. Padding doubles as visual breathing room above the chip
+     tabs. */
+  padding: 14px 0 12px;
   cursor: grab;
   touch-action: none; /* let pointer events handle the drag, not native scroll */
   user-select: none;
@@ -33,10 +36,12 @@ const HandleArea = styled.div`
 `;
 
 const HandleBar = styled.span`
-  width: 44px;
+  width: 48px;
   height: 5px;
   border-radius: 999px;
-  background: hsl(var(--border));
+  /* A touch darker than --border so it reads as interactive rather than as
+     a divider. Tap or drag both work via useBottomSheet. */
+  background: hsl(var(--muted-foreground) / 0.45);
   display: block;
 `;
 
