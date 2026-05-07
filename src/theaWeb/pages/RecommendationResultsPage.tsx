@@ -65,6 +65,12 @@ const RecommendationResultsPage: React.FC = () => {
   // Optimistic heart fill: stage immediately, clear once the BE-truth `liked`
   // Set catches up. Same pattern as upstream RecommendationResultsPage.
   const [pendingLikedIds, setPendingLikedIds] = useState<Set<string>>(() => new Set());
+
+  // Items mid-flight to the saved panel. Kept in the feed (with fade-out
+  // styling in BoardFeed) until the animation completes, so the clone isn't
+  // flying through empty space after the layout shifts.
+  const [departingIds, setDepartingIds] = useState<Set<string>>(() => new Set());
+  const FLIGHT_DURATION_MS = 700;
   useEffect(() => {
     setPendingLikedIds((prev) => {
       if (prev.size === 0) return prev;
@@ -165,20 +171,27 @@ const RecommendationResultsPage: React.FC = () => {
   // Build chipSections directly from session.carousels — bypass the dynamic-
   // title resolver in resultsAdapters so the chip labels stay simple ("Cozy",
   // "Kitchen") rather than "For the beauty lover" / "For the bookworm" etc.
-  // The chip-tab UI wants the literal interest, not the curated phrasing.
+  //
+  // Filter: hide products that are saved AND no longer in flight. Items
+  // currently departing (in flight to the saved panel) stay rendered so
+  // BoardFeed can fade them out, keeping the visual hand-off coherent.
   const chipSections: BoardChipSection[] = useMemo(() => {
     if (!session) return [];
     return session.carouselOrder
       .filter((key) => key in session.carousels)
       .map((key) => {
         const c = session.carousels[key];
+        const products = c.products.map(productToCardItem).filter((item) => {
+          const isSaved = liked.has(item.id) || pendingLikedIds.has(item.id);
+          return !isSaved || departingIds.has(item.id);
+        });
         return {
           key,
           label: c.displayName,
-          products: c.products.map(productToCardItem),
+          products,
         };
       });
-  }, [session]);
+  }, [session, liked, pendingLikedIds, departingIds]);
 
   // Saved-items hydration: prefer the in-memory card item from chipSections;
   // fall back to the frozen productSnapshot when an activity's product is no
@@ -225,12 +238,24 @@ const RecommendationResultsPage: React.FC = () => {
   const handleSaveClick = useCallback(
     (item: ResultsProductCardItem) => {
       if (liked.has(item.id)) return;
+      // Mark the card as departing so it stays in the feed (with fade-out
+      // styling) while the flight animation runs. Without this the card
+      // would unmount immediately and the flying clone would travel through
+      // empty space after the layout reflows.
+      setDepartingIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
       fireActivity(item.id, 'SAVED');
-      // Conversion nudge: in playground v1 we don't gate save behind the
-      // modal — MockAuthGateProvider's requestSignIn fires onAuthed instantly
-      // when the heart-tap path uses it. Leaving the call in so the upstream
-      // path (where the modal IS shown) doesn't have to special-case the
-      // playground.
+      window.setTimeout(() => {
+        setDepartingIds((prev) => {
+          if (!prev.has(item.id)) return prev;
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+      }, FLIGHT_DURATION_MS);
       if (auth.currentUser?.isAnonymous !== false) {
         requestSignIn({ mode: 'signup' });
       }
@@ -305,6 +330,7 @@ const RecommendationResultsPage: React.FC = () => {
         onPillClick={drawer.openDrawer}
         chipSections={chipSections}
         savedItems={savedItems}
+        departingIds={departingIds}
         isLiked={isLikedById}
         onSaveClick={handleSaveClick}
         onProductClick={handleProductClick}

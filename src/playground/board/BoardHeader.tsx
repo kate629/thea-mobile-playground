@@ -2,9 +2,8 @@ import React from 'react';
 import styled from 'styled-components';
 
 const Bar = styled.header`
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  /* Sticky positioning is owned by the parent StickyTop in BoardLayout — it
+     pins the header + chip-tab row to the top of the viewport as one block. */
   background: ${({ theme }) => theme.color.creamLight};
   display: flex;
   align-items: center;

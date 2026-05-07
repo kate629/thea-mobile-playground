@@ -2,6 +2,10 @@ import React, { forwardRef } from 'react';
 import styled from 'styled-components';
 import type { ResultsProductCardItem } from '../../components/landing/results/types';
 
+// Thumbnail size — kept in sync with THUMB_SIZE_PX in useFlightAnimation so
+// the flying clone lands at the right scale.
+const THUMB_SIZE = 112;
+
 const Panel = styled.div`
   position: fixed;
   left: 0;
@@ -11,20 +15,20 @@ const Panel = styled.div`
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(10px);
   border-top: 1px solid hsl(var(--border));
-  padding: 10px 12px 12px;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+  padding: 14px 14px 18px;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.06);
 `;
 
 const Header = styled.div`
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 `;
 
 const Label = styled.span`
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: hsl(var(--foreground));
   letter-spacing: 0.02em;
@@ -32,13 +36,13 @@ const Label = styled.span`
 
 const Count = styled.span`
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 12px;
+  font-size: 13px;
   color: hsl(var(--muted-foreground));
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -47,16 +51,16 @@ const Row = styled.div`
 
 const Thumb = styled.button`
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
-  border-radius: 10px;
+  width: ${THUMB_SIZE}px;
+  height: ${THUMB_SIZE}px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--muted));
   padding: 0;
   cursor: pointer;
   transition: transform 150ms ease;
-  &:active { transform: scale(0.95); }
+  &:active { transform: scale(0.96); }
 
   img {
     width: 100%;
@@ -68,9 +72,9 @@ const Thumb = styled.button`
 
 const EmptySlot = styled.div`
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
-  border-radius: 10px;
+  width: ${THUMB_SIZE}px;
+  height: ${THUMB_SIZE}px;
+  border-radius: 14px;
   border: 1.5px dashed hsl(var(--border));
   background: transparent;
 `;

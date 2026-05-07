@@ -8,11 +8,9 @@ export interface ChipTab {
 }
 
 const Bar = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  /* Sticky positioning is owned by the parent StickyTop in BoardLayout. */
   background: ${({ theme }) => theme.color.creamLight};
-  padding: 8px 4px 4px;
+  padding: 8px 4px 10px;
   display: flex;
   gap: 6px;
   overflow-x: auto;

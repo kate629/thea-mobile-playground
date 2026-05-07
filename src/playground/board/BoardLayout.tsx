@@ -14,6 +14,16 @@ const Page = styled.div`
   flex-direction: column;
 `;
 
+// Pins the header AND the chip-tab row to the top of the viewport together
+// so they scroll-stick as one block. Each child setting its own `top: 0`
+// would make them overlap.
+const StickyTop = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: ${({ theme }) => theme.color.creamLight};
+`;
+
 const Main = styled.div`
   flex: 1;
   padding: 0 8px;
@@ -35,6 +45,9 @@ export interface BoardLayoutProps {
 
   chipSections: BoardChipSection[];
   savedItems: ResultsProductCardItem[];
+  /** Item IDs currently animating to the saved panel — rendered with a
+   *  fade-out so the card and the flying clone visually merge. */
+  departingIds?: Set<string>;
 
   isLiked: (id: string) => boolean;
   onSaveClick: (item: ResultsProductCardItem) => void;
@@ -52,6 +65,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   onPillClick,
   chipSections,
   savedItems,
+  departingIds,
   isLiked,
   onSaveClick,
   onProductClick,
@@ -86,19 +100,22 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
 
   return (
     <Page>
-      <BoardHeader
-        recipientName={recipientName}
-        recipientEmoji={recipientEmoji}
-        interestsLabel={interestsLabel}
-        rightActions={rightActions}
-        onLogoClick={onLogoClick}
-        onPillClick={onPillClick}
-      />
-      <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
+      <StickyTop>
+        <BoardHeader
+          recipientName={recipientName}
+          recipientEmoji={recipientEmoji}
+          interestsLabel={interestsLabel}
+          rightActions={rightActions}
+          onLogoClick={onLogoClick}
+          onPillClick={onPillClick}
+        />
+        <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
+      </StickyTop>
       <Main>
         <BoardFeed
           products={activeProducts}
           isLiked={isLiked}
+          departingIds={departingIds}
           onSaveClick={handleSaveWithFlight}
           onProductClick={onProductClick}
           onMarkPurchased={onMarkPurchased}
