@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { RangeSlider } from '../../components/ui/RangeSlider';
 
 /**
  * Compact price-range filter anchored below the pill row. Tap the $ button
- * in BoardHeader to open. Two number inputs for min/max with $ prefixes.
+ * in BoardHeader to open. Uses the upstream dual-thumb RangeSlider — same
+ * one the ProfileDrawer uses — so the playground's price UX matches the
+ * existing profile-edit price slider.
  *
  * v1 stores state in the parent (BoardHeader) but doesn't actually filter
  * products yet — real implementation would thread the range into the
@@ -55,60 +58,17 @@ const CloseButton = styled.button`
   }
 `;
 
-const Row = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
+const SliderRow = styled.div`
+  padding: 8px 6px 4px;
 `;
 
-const Field = styled.label`
-  flex: 1;
+const ValueRow = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-family: ${({ theme }) => theme.font.sans};
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-`;
-
-const InputWrap = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid ${({ theme }) => theme.color.warmBorder};
-  border-radius: 12px;
-  padding: 8px 10px;
-  background: ${({ theme }) => theme.color.cream};
+  justify-content: space-between;
+  margin-top: 8px;
   font-family: ${({ theme }) => theme.font.sans};
   font-size: 14px;
   color: hsl(var(--foreground));
-  &:focus-within {
-    border-color: ${({ theme }) => theme.color.clay};
-    background: #ffffff;
-  }
-`;
-
-const PriceInput = styled.input`
-  border: none;
-  background: transparent;
-  outline: none;
-  font: inherit;
-  color: inherit;
-  width: 100%;
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-`;
-
-const Dash = styled.span`
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-  padding-top: 14px;
 `;
 
 const XIcon: React.FC = () => (
@@ -119,21 +79,22 @@ const XIcon: React.FC = () => (
   </svg>
 );
 
+const SLIDER_MIN = 0;
+const SLIDER_MAX = 200;
+const SLIDER_STEP = 5;
+
 interface BoardPriceFilterProps {
   open: boolean;
-  min: number | '';
-  max: number | '';
-  onChangeMin: (v: number | '') => void;
-  onChangeMax: (v: number | '') => void;
+  /** Tuple [min, max] — same shape as the upstream RangeSlider expects. */
+  value: [number, number];
+  onChange: (next: [number, number]) => void;
   onClose: () => void;
 }
 
 export const BoardPriceFilter: React.FC<BoardPriceFilterProps> = ({
   open,
-  min,
-  max,
-  onChangeMin,
-  onChangeMax,
+  value,
+  onChange,
   onClose,
 }) => {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -149,8 +110,8 @@ export const BoardPriceFilter: React.FC<BoardPriceFilterProps> = ({
   }, [open, onClose]);
 
   if (!open) return null;
-  const parse = (v: string): number | '' => (v.trim() === '' ? '' : Math.max(0, Number(v) || 0));
-
+  const [lo, hi] = value;
+  const hiLabel = hi >= SLIDER_MAX ? `$${SLIDER_MAX}+` : `$${hi}`;
   return (
     <Panel ref={wrapRef} role="dialog" aria-label="Price range">
       <Header>
@@ -159,37 +120,21 @@ export const BoardPriceFilter: React.FC<BoardPriceFilterProps> = ({
           <XIcon />
         </CloseButton>
       </Header>
-      <Row>
-        <Field>
-          Min
-          <InputWrap>
-            <span>$</span>
-            <PriceInput
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={min === '' ? '' : String(min)}
-              onChange={(e) => onChangeMin(parse(e.target.value))}
-              placeholder="0"
-            />
-          </InputWrap>
-        </Field>
-        <Dash>–</Dash>
-        <Field>
-          Max
-          <InputWrap>
-            <span>$</span>
-            <PriceInput
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={max === '' ? '' : String(max)}
-              onChange={(e) => onChangeMax(parse(e.target.value))}
-              placeholder="200+"
-            />
-          </InputWrap>
-        </Field>
-      </Row>
+      <SliderRow>
+        <RangeSlider
+          value={value}
+          min={SLIDER_MIN}
+          max={SLIDER_MAX}
+          step={SLIDER_STEP}
+          ariaLabelLower="Minimum price"
+          ariaLabelUpper="Maximum price"
+          onChange={onChange}
+        />
+      </SliderRow>
+      <ValueRow>
+        <span>${lo}</span>
+        <span>{hiLabel}</span>
+      </ValueRow>
     </Panel>
   );
 };

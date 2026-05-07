@@ -86,7 +86,12 @@ const PriceButton = styled.button<{ $active: boolean }>`
   justify-content: center;
   cursor: pointer;
   color: hsl(var(--foreground));
+  /* Big bold $ — reads as a filter affordance, not an emoji. */
+  font-family: ${({ theme }) => theme.font.sans};
   font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
   transition: background 150ms ease, transform 150ms ease;
   &:hover { background: ${({ theme }) => theme.color.cream}; }
   &:active { transform: scale(0.96); }
@@ -123,10 +128,11 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
 }) => {
   // Price filter state — local to the header for v1. Real implementation
   // would lift this up so the agent can use it as a search constraint.
+  // Default range matches ProfileDrawer's defaults (0–200).
   const [priceOpen, setPriceOpen] = useState(false);
-  const [priceMin, setPriceMin] = useState<number | ''>('');
-  const [priceMax, setPriceMax] = useState<number | ''>('');
-  const priceActive = priceOpen || priceMin !== '' || priceMax !== '';
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
+  // Active when the user has narrowed the range away from full (0–200).
+  const priceActive = priceOpen || priceRange[0] > 0 || priceRange[1] < 200;
 
   return (
     <Wrap>
@@ -157,14 +163,12 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
           $active={priceActive}
           onClick={() => setPriceOpen((o) => !o)}
         >
-          <span aria-hidden="true">💰</span>
+          <span aria-hidden="true">$</span>
         </PriceButton>
         <BoardPriceFilter
           open={priceOpen}
-          min={priceMin}
-          max={priceMax}
-          onChangeMin={setPriceMin}
-          onChangeMax={setPriceMax}
+          value={priceRange}
+          onChange={setPriceRange}
           onClose={() => setPriceOpen(false)}
         />
       </PillRow>
