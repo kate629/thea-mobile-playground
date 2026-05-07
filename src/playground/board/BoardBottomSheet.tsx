@@ -27,6 +27,7 @@ const Sheet = styled.div<{ $isDragging: boolean }>`
 `;
 
 const HandleArea = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,6 +45,37 @@ const HandleBar = styled.span`
   background: hsl(var(--muted-foreground) / 0.45);
   display: block;
 `;
+
+// Close X — only rendered when the sheet is expanded so the user has an
+// obvious way to collapse back to default. Tap-to-cycle on the handle bar
+// works too but isn't discoverable.
+const CloseButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid hsl(var(--border));
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 150ms ease, transform 150ms ease;
+  &:hover { background: #ffffff; }
+  &:active { transform: scale(0.94); }
+`;
+
+const XIcon: React.FC = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
 
 const Body = styled.div<{ $tappable: boolean }>`
   flex: 1;
@@ -117,6 +149,19 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
         onPointerCancel={handlePointerUp}
       >
         <HandleBar />
+        {currentSnap === 'expanded' && (
+          <CloseButton
+            type="button"
+            aria-label="Collapse sheet"
+            onClick={(e) => {
+              e.stopPropagation();
+              snapTo('default');
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <XIcon />
+          </CloseButton>
+        )}
       </HandleArea>
       <Body $tappable={bodyTappable} onClick={handleBodyClick}>
         {children}

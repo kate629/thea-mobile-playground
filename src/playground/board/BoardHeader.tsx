@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
+import { BoardPriceFilter } from './BoardPriceFilter';
 import {
   BoardSearchPill,
   type BoardSearchPillInitialValues,
@@ -14,9 +15,6 @@ const Wrap = styled.header`
   padding: 12px 12px 8px;
 `;
 
-// Three-cell top row: back arrow (left), recipient anchor (center), sign-in
-// or avatar menu (right). The back arrow + recipient identity share the
-// header strip; the search pill sits below for refining picks.
 const TopRow = styled.div`
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -62,6 +60,42 @@ const RightActions = styled.div`
   display: inline-flex;
 `;
 
+// Pill row: search pill + $ price filter button. Position: relative so the
+// price filter dropdown can absolute-position itself below the row.
+const PillRow = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const PillFill = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const PriceButton = styled.button<{ $active: boolean }>`
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  border: 1px solid ${({ theme }) => theme.color.warmBorder};
+  background: ${({ $active, theme }) => ($active ? theme.color.cream : '#ffffff')};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  font-size: 18px;
+  transition: background 150ms ease, transform 150ms ease;
+  &:hover { background: ${({ theme }) => theme.color.cream}; }
+  &:active { transform: scale(0.96); }
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
+  }
+`;
+
 const ArrowLeftIcon: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -86,25 +120,54 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
   rightActions,
   onBackClick,
   onSparklesClick,
-}) => (
-  <Wrap>
-    <TopRow>
-      <BackButton
-        type="button"
-        aria-label="Start a new search"
-        onClick={onBackClick}
-      >
-        <ArrowLeftIcon />
-      </BackButton>
-      <RecipientAnchor>
-        <span aria-hidden="true">{recipientEmoji}</span>
-        <span>{recipientName}</span>
-      </RecipientAnchor>
-      <RightActions>{rightActions}</RightActions>
-    </TopRow>
-    <BoardSearchPill
-      initialValues={pillInitialValues}
-      onSparklesClick={onSparklesClick}
-    />
-  </Wrap>
-);
+}) => {
+  // Price filter state — local to the header for v1. Real implementation
+  // would lift this up so the agent can use it as a search constraint.
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [priceMin, setPriceMin] = useState<number | ''>('');
+  const [priceMax, setPriceMax] = useState<number | ''>('');
+  const priceActive = priceOpen || priceMin !== '' || priceMax !== '';
+
+  return (
+    <Wrap>
+      <TopRow>
+        <BackButton
+          type="button"
+          aria-label="Start a new search"
+          onClick={onBackClick}
+        >
+          <ArrowLeftIcon />
+        </BackButton>
+        <RecipientAnchor>
+          <span aria-hidden="true">{recipientEmoji}</span>
+          <span>{recipientName}</span>
+        </RecipientAnchor>
+        <RightActions>{rightActions}</RightActions>
+      </TopRow>
+      <PillRow>
+        <PillFill>
+          <BoardSearchPill
+            initialValues={pillInitialValues}
+            onSparklesClick={onSparklesClick}
+          />
+        </PillFill>
+        <PriceButton
+          type="button"
+          aria-label="Price range"
+          $active={priceActive}
+          onClick={() => setPriceOpen((o) => !o)}
+        >
+          <span aria-hidden="true">💰</span>
+        </PriceButton>
+        <BoardPriceFilter
+          open={priceOpen}
+          min={priceMin}
+          max={priceMax}
+          onChangeMin={setPriceMin}
+          onChangeMax={setPriceMax}
+          onClose={() => setPriceOpen(false)}
+        />
+      </PillRow>
+    </Wrap>
+  );
+};

@@ -67,8 +67,9 @@ const Pill = styled.div`
   gap: 0;
 `;
 
-const SegmentButton = styled.button<{ $active: boolean; $hasValue: boolean }>`
-  flex: 1;
+const SegmentButton = styled.button<{ $active: boolean; $hasValue: boolean; $compact?: boolean }>`
+  flex: ${({ $compact }) => ($compact ? '0 0 auto' : '1')};
+  ${({ $compact }) => $compact && 'min-width: 110px; max-width: 50%;'}
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -315,6 +316,7 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
           type="button"
           $active={state.openSegment === 'what'}
           $hasValue={Boolean(state.whatDisplay)}
+          $compact
           aria-expanded={state.openSegment === 'what'}
           aria-haspopup="dialog"
           onClick={() => state.toggleDropdown('what')}
@@ -344,29 +346,29 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
         <SegmentButton
           type="button"
           $active={state.openSegment === 'likes'}
-          $hasValue={state.interests.length > 0}
+          $hasValue={Boolean(state.freeform.trim())}
           aria-expanded={state.openSegment === 'likes'}
           aria-haspopup="dialog"
           onClick={() => state.toggleDropdown('likes')}
         >
-          <SegmentLabel>Likes</SegmentLabel>
-          <SegmentValue $placeholder={state.interests.length === 0}>
-            {state.interests.length > 0 ? (
+          <SegmentLabel>More</SegmentLabel>
+          <SegmentValue $placeholder={!state.freeform.trim()}>
+            {state.freeform.trim() ? (
               <>
-                <span>{state.likesDisplay}</span>
+                <span>{state.freeform}</span>
                 <ClearButton
                   type="button"
-                  aria-label="Clear interests"
+                  aria-label="Clear note"
                   onClick={(e) => {
                     e.stopPropagation();
-                    state.clearLikes();
+                    state.setFreeform('');
                   }}
                 >
                   <XIcon />
                 </ClearButton>
               </>
             ) : (
-              'Interests'
+              'Anything else?'
             )}
           </SegmentValue>
         </SegmentButton>
@@ -402,32 +404,19 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
       )}
 
       {state.openSegment === 'likes' && (
-        <Dropdown role="dialog" aria-label="What do they like?">
+        <Dropdown role="dialog" aria-label="Anything else?">
           <DropdownSection>
-            <DropdownHeading>What do they like?</DropdownHeading>
-            <DropdownHelper>Choose at least 2</DropdownHelper>
-            <ChipRow>
-              {state.interestPills.map((pill) => (
-                <Chip
-                  key={pill.label}
-                  selected={state.interests.includes(pill.label)}
-                  leading={pill.emoji ? <span aria-hidden="true">{pill.emoji}</span> : undefined}
-                  onClick={() => state.toggleInterest(pill.label)}
-                >
-                  {pill.label}
-                </Chip>
-              ))}
-            </ChipRow>
+            <DropdownHeading>Anything else about {state.relationship || 'them'}?</DropdownHeading>
             <FreeformTextarea
               value={state.freeform}
               onChange={(e) => state.setFreeform(e.target.value)}
               placeholder={state.freeformPlaceholder}
               aria-label="Tell us more"
+              autoFocus
             />
             <SearchButton
               type="button"
-              $disabled={state.interests.length < 2}
-              disabled={state.interests.length < 2}
+              $disabled={false}
               onClick={() => {
                 state.closeDropdown();
                 onSparklesClick?.();
