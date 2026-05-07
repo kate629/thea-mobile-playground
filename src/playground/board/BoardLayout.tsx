@@ -7,6 +7,7 @@ import { BoardFeed } from './BoardFeed';
 import { BoardHeader } from './BoardHeader';
 import { BoardSavedPanel } from './BoardSavedPanel';
 import type { BoardSearchPillInitialValues } from './BoardSearchPill';
+import { accentForEmoji } from './recipientAccent';
 import { useFlightAnimation } from './useFlightAnimation';
 
 // Mobile shell (Mom's board):
@@ -114,6 +115,8 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
     [chipSections, activeKey],
   );
 
+  const accent = useMemo(() => accentForEmoji(recipientEmoji), [recipientEmoji]);
+
   const flight = useFlightAnimation();
 
   const handleSaveWithFlight = (
@@ -156,6 +159,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           ref={savedPanelRef}
           recipientName={recipientName}
           items={savedItems}
+          accent={accent}
           onItemClick={onSavedItemClick}
         />
       </BoardBottomSheet>
