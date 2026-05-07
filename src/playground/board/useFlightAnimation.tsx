@@ -5,7 +5,7 @@ import styled from 'styled-components';
 const FLIGHT_DURATION_MS = 700;
 // Final on-screen size of the thumb in the saved panel (matches THUMB_SIZE in
 // BoardSavedPanel). Used to compute the scale ratio.
-const THUMB_SIZE_PX = 112;
+const THUMB_SIZE_PX = 132;
 
 interface Flight {
   id: string;

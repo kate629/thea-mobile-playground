@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import type { ResultsProductCardItem } from '../../components/landing/results/types';
+import { BoardBottomSheet } from './BoardBottomSheet';
 import { BoardChipTabs, type ChipTab } from './BoardChipTabs';
 import { BoardFeed } from './BoardFeed';
 import { BoardHeader } from './BoardHeader';
@@ -8,26 +9,47 @@ import { BoardSavedPanel } from './BoardSavedPanel';
 import type { BoardSearchPillInitialValues } from './BoardSearchPill';
 import { useFlightAnimation } from './useFlightAnimation';
 
+// Airbnb-style mobile shell:
+//   ┌──────────────────────────┐  StickyTop (header + search pill)
+//   │   thea          Sign in  │
+//   │  [WHO|WHAT|LIKES   ✨]   │
+//   ├──────────────────────────┤  SavedArea (replaces Airbnb's map)
+//   │  Saved for Mom           │
+//   │  [thumb] [thumb] [thumb] │
+//   ├──────────────────────────┤  BottomSheet — fixed, draggable
+//   │  ────                     │   handle
+//   │  Decor · Cooking · Beauty│   sticky chip tabs
+//   │  ┌──────────────┐         │
+//   │  │ product card │         │   scrollable feed
+//   │  └──────────────┘         │
+//   └──────────────────────────┘
+
 const Page = styled.div`
-  min-height: 100vh;
+  height: 100dvh;
   background: ${({ theme }) => theme.color.creamLight};
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
-// Pins the header AND the chip-tab row to the top of the viewport together
-// so they scroll-stick as one block. Each child setting its own `top: 0`
-// would make them overlap.
 const StickyTop = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  flex: 0 0 auto;
+  position: relative;
+  /* Higher than BoardBottomSheet (z-index: 15) so the search pill's WHO/
+     WHAT/LIKES dropdowns paint OVER the sheet. Without this, dropdowns
+     opening downward from the pill get clipped behind the sheet and the
+     user can't read or tap them. */
+  z-index: 20;
   background: ${({ theme }) => theme.color.creamLight};
 `;
 
-const Main = styled.div`
+const SavedArea = styled.div`
   flex: 1;
-  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Bottom padding clears the bottom sheet at its tallest snap point — the
+     sheet itself is fixed-position so it just sits on top of this area. */
 `;
 
 export interface BoardChipSection {
@@ -38,13 +60,9 @@ export interface BoardChipSection {
 
 export interface BoardLayoutProps {
   recipientName: string;
-  /** Seed values for the WHO/WHAT/LIKES search pill — pre-populates the
-   *  dropdown state so the pill shows the recipient's current values. */
   pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
-  /** Sparkles button click — typically wired to "regenerate with new pill
-   *  values" on the parent page. */
   onSparklesClick?: () => void;
 
   chipSections: BoardChipSection[];
@@ -110,23 +128,29 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           onLogoClick={onLogoClick}
           onSparklesClick={onSparklesClick}
         />
-        <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
       </StickyTop>
-      <Main>
-        <BoardFeed
-          products={activeProducts}
-          isLiked={isLiked}
-          departingIds={departingIds}
-          onSaveClick={handleSaveWithFlight}
-          onProductClick={onProductClick}
-          onMarkPurchased={onMarkPurchased}
+      <SavedArea>
+        <BoardSavedPanel
+          ref={savedPanelRef}
+          recipientName={recipientName}
+          items={savedItems}
+          onItemClick={onSavedItemClick}
         />
-      </Main>
-      <BoardSavedPanel
-        ref={savedPanelRef}
-        recipientName={recipientName}
-        items={savedItems}
-        onItemClick={onSavedItemClick}
+      </SavedArea>
+      <BoardBottomSheet
+        tabsSlot={
+          <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
+        }
+        feedSlot={
+          <BoardFeed
+            products={activeProducts}
+            isLiked={isLiked}
+            departingIds={departingIds}
+            onSaveClick={handleSaveWithFlight}
+            onProductClick={onProductClick}
+            onMarkPurchased={onMarkPurchased}
+          />
+        }
       />
       {flight.portal}
     </Page>

@@ -7,10 +7,13 @@ interface Entry {
   productId: string;
   state: State;
   detail: GiftActivityDetail;
+  /** Monotonically increasing — used to render newest-first in the saved area. */
+  seq: number;
 }
 
 const entries = new Map<string, Entry>();
 const listeners = new Set<() => void>();
+let nextSeq = 1;
 
 function emit() {
   listeners.forEach((l) => l());
@@ -27,10 +30,13 @@ function detailFromProduct(p: RecommendationProduct): GiftActivityDetail {
 }
 
 export function recordMockActivity(product: RecommendationProduct, state: State) {
+  // Bump seq on every record so re-saving an item moves it back to the top
+  // of the saved row (matches the user's mental model of "freshest pick").
   entries.set(product.id, {
     productId: product.id,
     state,
     detail: detailFromProduct(product),
+    seq: nextSeq++,
   });
   emit();
 }
@@ -50,10 +56,12 @@ export function readMockActivity(): {
   const liked = new Set<string>();
   const dismissed = new Set<string>();
   const purchased = new Set<string>();
+  // Sort newest first (descending seq) so caller arrays render newest-first.
+  const sorted = Array.from(entries.values()).sort((a, b) => b.seq - a.seq);
   const likedDetails: GiftActivityDetail[] = [];
   const dismissedDetails: GiftActivityDetail[] = [];
   const purchasedDetails: GiftActivityDetail[] = [];
-  entries.forEach((e) => {
+  sorted.forEach((e) => {
     if (e.state === 'SAVED') {
       liked.add(e.productId);
       likedDetails.push(e.detail);

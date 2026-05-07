@@ -8,35 +8,50 @@ export interface ChipTab {
 }
 
 const Bar = styled.div`
-  /* Sticky positioning is owned by the parent StickyTop in BoardLayout. */
-  background: ${({ theme }) => theme.color.creamLight};
-  padding: 8px 4px 10px;
   display: flex;
-  gap: 6px;
+  align-items: stretch;
+  background: #ffffff;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0 12px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
 `;
 
-const Pill = styled.button<{ $active: boolean }>`
+const Tab = styled.button<{ $active: boolean }>`
   flex: 0 0 auto;
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid ${({ $active }) =>
-    $active ? 'transparent' : 'hsl(var(--border))'};
-  background: ${({ $active, theme }) =>
-    $active ? theme.color.clay : '#ffffff'};
-  color: ${({ $active }) =>
-    $active ? '#ffffff' : 'hsl(var(--foreground))'};
+  padding: 14px 14px 12px;
+  background: transparent;
+  border: none;
+  position: relative;
+  cursor: pointer;
   font-family: ${({ theme }) => theme.font.sans};
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+  font-weight: ${({ $active }) => ($active ? 600 : 500)};
+  color: ${({ $active }) =>
+    $active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'};
   white-space: nowrap;
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition: color 150ms ease;
 
-  &:active { transform: scale(0.97); }
+  &:hover {
+    color: hsl(var(--foreground));
+  }
+
+  /* Active-tab underline indicator. Sits flush with the parent's bottom
+     border so it visually replaces that 1px sliver under the active tab. */
+  &::after {
+    content: '';
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: -1px;
+    height: 2px;
+    background: ${({ $active, theme }) =>
+      $active ? theme.color.clay : 'transparent'};
+    border-radius: 2px 2px 0 0;
+    transition: background 150ms ease;
+  }
 `;
 
 interface BoardChipTabsProps {
@@ -50,9 +65,9 @@ export const BoardChipTabs: React.FC<BoardChipTabsProps> = ({
   activeKey,
   onChange,
 }) => (
-  <Bar role="tablist" aria-label="Interest chips">
+  <Bar role="tablist" aria-label="Interest categories">
     {tabs.map((t) => (
-      <Pill
+      <Tab
         key={t.key}
         type="button"
         role="tab"
@@ -61,7 +76,7 @@ export const BoardChipTabs: React.FC<BoardChipTabsProps> = ({
         onClick={() => onChange(t.key)}
       >
         {t.label}
-      </Pill>
+      </Tab>
     ))}
   </Bar>
 );

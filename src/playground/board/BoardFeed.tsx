@@ -7,7 +7,7 @@ const Feed = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 12px 4px 220px; /* bottom padding clears the larger sticky Saved panel */
+  padding: 12px 4px 32px;
 `;
 
 // Hide the X dismiss button, "..." overflow menu, AND the original heart-only
