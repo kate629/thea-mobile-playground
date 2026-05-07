@@ -7,7 +7,11 @@ const Feed = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 12px 4px 32px;
+  /* Bottom padding clears the saved-tray bottom sheet at its collapsed
+     snap point so the last cards are scrollable into view. At default
+     snap the sheet covers more, but the user can drag it down to reach
+     these items. */
+  padding: 12px 4px 240px;
 `;
 
 // Hide the X dismiss button, "..." overflow menu, AND the original heart-only

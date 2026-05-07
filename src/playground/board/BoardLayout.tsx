@@ -9,19 +9,19 @@ import { BoardSavedPanel } from './BoardSavedPanel';
 import type { BoardSearchPillInitialValues } from './BoardSearchPill';
 import { useFlightAnimation } from './useFlightAnimation';
 
-// Airbnb-style mobile shell:
-//   ┌──────────────────────────┐  StickyTop (header + search pill)
-//   │   thea          Sign in  │
-//   │  [WHO|WHAT|LIKES   ✨]   │
-//   ├──────────────────────────┤  SavedArea (replaces Airbnb's map)
-//   │  Saved for Mom           │
-//   │  [thumb] [thumb] [thumb] │
+// Mobile shell (Mom's board):
+//   ┌──────────────────────────┐  StickyTop (header)
+//   │  ←   🌷 Mom    Sign in   │
+//   │  [WHAT │ LIKES]          │
+//   ├──────────────────────────┤  MainContent (recommendations)
+//   │  Decor · Cooking · ...   │   chip tabs (interest categories)
+//   │  ┌──────────────┐         │
+//   │  │ product card │         │   scrollable feed of recs
+//   │  └──────────────┘         │
 //   ├──────────────────────────┤  BottomSheet — fixed, draggable
 //   │  ────                     │   handle
-//   │  Decor · Cooking · Beauty│   sticky chip tabs
-//   │  ┌──────────────┐         │
-//   │  │ product card │         │   scrollable feed
-//   │  └──────────────┘         │
+//   │  Saved for Mom · 7        │   saved tray (label + thumbs)
+//   │  [thumb] [thumb] [...]    │
 //   └──────────────────────────┘
 
 const Page = styled.div`
@@ -43,13 +43,18 @@ const StickyTop = styled.div`
   background: ${({ theme }) => theme.color.creamLight};
 `;
 
-const SavedArea = styled.div`
+const MainContent = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* Bottom padding clears the bottom sheet at its tallest snap point — the
-     sheet itself is fixed-position so it just sits on top of this area. */
+`;
+
+const FeedScroll = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 8px;
 `;
 
 export interface BoardChipSection {
@@ -133,19 +138,9 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           onSparklesClick={onSparklesClick}
         />
       </StickyTop>
-      <SavedArea>
-        <BoardSavedPanel
-          ref={savedPanelRef}
-          recipientName={recipientName}
-          items={savedItems}
-          onItemClick={onSavedItemClick}
-        />
-      </SavedArea>
-      <BoardBottomSheet
-        tabsSlot={
-          <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
-        }
-        feedSlot={
+      <MainContent>
+        <BoardChipTabs tabs={tabs} activeKey={activeKey} onChange={setActiveKey} />
+        <FeedScroll>
           <BoardFeed
             products={activeProducts}
             isLiked={isLiked}
@@ -154,8 +149,16 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
             onProductClick={onProductClick}
             onMarkPurchased={onMarkPurchased}
           />
-        }
-      />
+        </FeedScroll>
+      </MainContent>
+      <BoardBottomSheet ariaLabel={`Saved tray for ${recipientName}`}>
+        <BoardSavedPanel
+          ref={savedPanelRef}
+          recipientName={recipientName}
+          items={savedItems}
+          onItemClick={onSavedItemClick}
+        />
+      </BoardBottomSheet>
       {flight.portal}
     </Page>
   );

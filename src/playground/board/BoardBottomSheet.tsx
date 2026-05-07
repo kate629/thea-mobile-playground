@@ -52,24 +52,15 @@ const Body = styled.div`
   min-height: 0;
 `;
 
-const FeedScroll = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  /* Internal scroll surface for the recommended-product feed. The chip tabs
-     sit above this and never move with the feed scroll. */
-`;
-
 interface BoardBottomSheetProps {
-  /** Sticky chip-tabs strip rendered at the top of the sheet body. */
-  tabsSlot: React.ReactNode;
-  /** Scrollable feed rendered below the tabs. */
-  feedSlot: React.ReactNode;
+  /** Sheet body contents — the saved tray in the new flipped layout. */
+  children: React.ReactNode;
+  ariaLabel?: string;
 }
 
 export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
-  tabsSlot,
-  feedSlot,
+  children,
+  ariaLabel = 'Saved tray',
 }) => {
   const sheet = useBottomSheet('default');
 
@@ -77,7 +68,7 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
     <Sheet
       $isDragging={sheet.isDragging}
       style={sheet.topPx !== undefined ? { top: `${sheet.topPx}px` } : undefined}
-      aria-label="Recommendations sheet"
+      aria-label={ariaLabel}
     >
       <HandleArea
         role="button"
@@ -89,10 +80,7 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
       >
         <HandleBar />
       </HandleArea>
-      <Body>
-        {tabsSlot}
-        <FeedScroll>{feedSlot}</FeedScroll>
-      </Body>
+      <Body>{children}</Body>
     </Sheet>
   );
 };
