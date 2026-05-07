@@ -60,9 +60,11 @@ export interface BoardChipSection {
 
 export interface BoardLayoutProps {
   recipientName: string;
+  recipientEmoji: string;
   pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
   onLogoClick?: () => void;
+  onBackClick?: () => void;
   onSparklesClick?: () => void;
 
   chipSections: BoardChipSection[];
@@ -80,9 +82,11 @@ export interface BoardLayoutProps {
 
 export const BoardLayout: React.FC<BoardLayoutProps> = ({
   recipientName,
+  recipientEmoji,
   pillInitialValues,
   rightActions,
   onLogoClick,
+  onBackClick,
   onSparklesClick,
   chipSections,
   savedItems,
@@ -123,9 +127,12 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
     <Page>
       <StickyTop>
         <BoardHeader
+          recipientEmoji={recipientEmoji}
+          recipientName={recipientName}
           pillInitialValues={pillInitialValues}
           rightActions={rightActions}
           onLogoClick={onLogoClick}
+          onBackClick={onBackClick}
           onSparklesClick={onSparklesClick}
         />
       </StickyTop>

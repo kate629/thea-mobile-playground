@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styled, { css } from 'styled-components';
 import { Chip } from '../../components/ui/Chip';
 import {
@@ -294,49 +294,15 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [state]);
 
-  const handleRelationshipPick = useCallback(
-    (rel: string) => state.setRelationship(rel),
-    [state],
-  );
-  const handleAgePick = useCallback(
-    (ageValue: number) => state.setAge(ageValue),
-    [state],
-  );
-
   return (
     <Wrap ref={wrapRef} className={className}>
       <Pill>
-        <SegmentButton
-          type="button"
-          $active={state.openSegment === 'who'}
-          $hasValue={Boolean(state.whoDisplay)}
-          aria-expanded={state.openSegment === 'who'}
-          aria-haspopup="dialog"
-          onClick={() => state.toggleDropdown('who')}
-        >
-          <SegmentLabel>Who</SegmentLabel>
-          <SegmentValue $placeholder={!state.whoDisplay}>
-            {state.whoDisplay ? (
-              <>
-                {state.whoEmoji && <span aria-hidden="true">{state.whoEmoji}</span>}
-                <span>{state.whoDisplay}</span>
-                <ClearButton
-                  type="button"
-                  aria-label="Clear who"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    state.clearWho();
-                  }}
-                >
-                  <XIcon />
-                </ClearButton>
-              </>
-            ) : (
-              'Relationship, age'
-            )}
-          </SegmentValue>
-        </SegmentButton>
-
+        {/* WHO segment intentionally hidden on the board surface — the
+            recipient is anchored by the avatar header above the pill, so
+            the pill is just for refining WHAT + LIKES. The hook is still
+            seeded with relationship/age/gender so the WHAT options stay
+            gender-aware (e.g. Mother's Day shows for female recipients) and
+            the LIKES interest pills are age-bucketed. */}
         <SegmentButton
           type="button"
           $active={state.openSegment === 'what'}
@@ -405,66 +371,6 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
           <SparklesIcon />
         </SparklesButton>
       </Pill>
-
-      {state.openSegment === 'who' && (
-        <Dropdown role="dialog" aria-label="Who are you shopping for?">
-          <DropdownSection>
-            <DropdownHeading>Who are you shopping for?</DropdownHeading>
-            <ChipRow>
-              {state.relationshipOptions.map((rel) => (
-                <Chip
-                  key={rel.value}
-                  selected={state.relationship === rel.value}
-                  leading={<span aria-hidden="true">{rel.emoji}</span>}
-                  onClick={() => handleRelationshipPick(rel.value)}
-                >
-                  {rel.value}
-                </Chip>
-              ))}
-            </ChipRow>
-          </DropdownSection>
-          {state.showGenderSelector && (
-            <DropdownSection>
-              <DropdownHeading>Gender</DropdownHeading>
-              <ChipRow role="group" aria-label="Gender">
-                <Chip
-                  selected={state.gender === 'female'}
-                  onClick={() => state.setGender('female')}
-                >
-                  Female
-                </Chip>
-                <Chip
-                  selected={state.gender === 'male'}
-                  onClick={() => state.setGender('male')}
-                >
-                  Male
-                </Chip>
-                <Chip
-                  selected={state.gender === 'other'}
-                  onClick={() => state.setGender('other')}
-                >
-                  Other
-                </Chip>
-              </ChipRow>
-            </DropdownSection>
-          )}
-          <DropdownSection>
-            <DropdownHeading>Age</DropdownHeading>
-            <ChipRow>
-              {state.ageChips.map((chip) => (
-                <Chip
-                  key={chip.value}
-                  selected={state.age === chip.value}
-                  leading={<span aria-hidden="true">{chip.emoji}</span>}
-                  onClick={() => handleAgePick(chip.value)}
-                >
-                  {chip.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </DropdownSection>
-        </Dropdown>
-      )}
 
       {state.openSegment === 'what' && (
         <Dropdown role="dialog" aria-label="What's the occasion?">

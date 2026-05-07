@@ -26,6 +26,7 @@ import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { useAuth } from '../firebase/FirebaseContext';
 
 import { BoardLayout, type BoardChipSection } from '../../playground/board/BoardLayout';
+import { BackToHomeModal } from '../../playground/board/BackToHomeModal';
 
 const EMPTY_DRAFT: import('../../components/landing/results/types').ProfileDraft = {
   emoji: '✨',
@@ -71,6 +72,12 @@ const RecommendationResultsPage: React.FC = () => {
   // flying through empty space after the layout shifts.
   const [departingIds, setDepartingIds] = useState<Set<string>>(() => new Set());
   const FLIGHT_DURATION_MS = 700;
+
+  // Open state for the back-to-home confirmation modal. Triggered by the
+  // back arrow when the user is anonymous AND has saves on the current
+  // board — those saves only live in localStorage and would be lost if
+  // the user starts a new search without signing in.
+  const [backModalOpen, setBackModalOpen] = useState(false);
   useEffect(() => {
     setPendingLikedIds((prev) => {
       if (prev.size === 0) return prev;
@@ -267,6 +274,33 @@ const RecommendationResultsPage: React.FC = () => {
     if (item.productUrl) openExternal(item.productUrl);
   }, []);
 
+  const handleBackClick = useCallback(() => {
+    // Anon user + has saves → confirm before nav. Otherwise just go.
+    const isAnon = auth.currentUser?.isAnonymous !== false;
+    const hasSaves = liked.size > 0 || pendingLikedIds.size > 0;
+    if (isAnon && hasSaves) {
+      setBackModalOpen(true);
+      return;
+    }
+    navigate('/');
+  }, [auth, liked, pendingLikedIds, navigate]);
+
+  const handleSignInFromBackModal = useCallback(() => {
+    // PLAYGROUND STUB: real product would open the sign-in modal here, run
+    // mergeGiftFlow on success to migrate anon localStorage state into the
+    // permanent uid's Firestore subtree, then navigate. For the playground
+    // we just log + navigate so Kate can feel the flow shape.
+    // eslint-disable-next-line no-console
+    console.log('[playground] sign-in + migrate would run here, then nav home');
+    setBackModalOpen(false);
+    navigate('/');
+  }, [navigate]);
+
+  const handleConfirmBackLeave = useCallback(() => {
+    setBackModalOpen(false);
+    navigate('/');
+  }, [navigate]);
+
   const handleMarkPurchased = useCallback(
     (item: ResultsProductCardItem) => {
       fireActivity(item.id, 'PURCHASED');
@@ -307,6 +341,7 @@ const RecommendationResultsPage: React.FC = () => {
   }
 
   const recipientName = doc.recipientSnapshot.name ?? '';
+  const recipientEmoji = doc.recipientSnapshot.emoji ?? '✨';
   const interests = doc.input.interests ?? [];
 
   // ─── Map the frozen recipient doc to BoardSearchPill seed values ───
@@ -378,9 +413,11 @@ const RecommendationResultsPage: React.FC = () => {
     <>
       <BoardLayout
         recipientName={recipientName}
+        recipientEmoji={recipientEmoji}
         pillInitialValues={pillInitialValues}
         rightActions={<HeaderAccountMenu />}
         onLogoClick={() => navigate('/')}
+        onBackClick={handleBackClick}
         onSparklesClick={drawer.openDrawer}
         chipSections={chipSections}
         savedItems={savedItems}
@@ -402,6 +439,13 @@ const RecommendationResultsPage: React.FC = () => {
         onChange={drawer.setField}
         onUpdatePicks={drawer.commit}
         updatePicksDisabled={!drawer.canCommit}
+      />
+      <BackToHomeModal
+        open={backModalOpen}
+        recipientName={recipientName}
+        onSignIn={handleSignInFromBackModal}
+        onConfirmLeave={handleConfirmBackLeave}
+        onCancel={() => setBackModalOpen(false)}
       />
     </>
   );
