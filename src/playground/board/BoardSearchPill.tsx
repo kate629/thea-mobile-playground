@@ -146,26 +146,34 @@ const ClearButton = styled.button`
   }
 `;
 
-const SparklesButton = styled.button`
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+const DropdownHelper = styled.p`
+  margin: -6px 0 12px 0;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+`;
+
+const SearchButton = styled.button<{ $disabled: boolean }>`
+  margin-top: 16px;
+  width: 100%;
+  height: 44px;
   border-radius: 9999px;
   border: none;
-  margin: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 14px;
+  font-weight: 600;
   color: #ffffff;
   background: ${({ theme }) => theme.gradient.cta};
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  &:hover { box-shadow: ${({ theme }) => theme.shadow.lg}; }
-  &:active { transform: scale(0.97); }
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.4);
-  }
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+  ${({ $disabled }) =>
+    $disabled &&
+    `
+      opacity: 0.45;
+      cursor: not-allowed;
+    `}
+  &:hover:not(:disabled) { box-shadow: ${({ theme }) => theme.shadow.lg}; }
+  &:active:not(:disabled) { transform: scale(0.99); }
 `;
 
 const Dropdown = styled.div`
@@ -221,15 +229,6 @@ const FreeformTextarea = styled.textarea`
 `;
 
 // ─── Icons ───────────────────────────────────────────────────────────────
-
-const SparklesIcon: React.FC = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4L12 3z" />
-    <path d="M19 14l.7 1.8L21.5 16l-1.8.7L19 18.5l-.7-1.8L16.5 16l1.8-.7L19 14z" />
-    <path d="M5 16l.5 1.3L6.7 18l-1.3.5L5 19.7l-.5-1.3L3.3 18l1.3-.5L5 16z" />
-  </svg>
-);
 
 const XIcon: React.FC = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -363,13 +362,6 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
           </SegmentValue>
         </SegmentButton>
 
-        <SparklesButton
-          type="button"
-          aria-label="Refresh picks"
-          onClick={() => onSparklesClick?.()}
-        >
-          <SparklesIcon />
-        </SparklesButton>
       </Pill>
 
       {state.openSegment === 'what' && (
@@ -396,6 +388,7 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
         <Dropdown role="dialog" aria-label="What do they like?">
           <DropdownSection>
             <DropdownHeading>What do they like?</DropdownHeading>
+            <DropdownHelper>Choose at least 2</DropdownHelper>
             <ChipRow>
               {state.interestPills.map((pill) => (
                 <Chip
@@ -414,6 +407,17 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
               placeholder={state.freeformPlaceholder}
               aria-label="Tell us more"
             />
+            <SearchButton
+              type="button"
+              $disabled={state.interests.length < 2}
+              disabled={state.interests.length < 2}
+              onClick={() => {
+                state.closeDropdown();
+                onSparklesClick?.();
+              }}
+            >
+              Search
+            </SearchButton>
           </DropdownSection>
         </Dropdown>
       )}
