@@ -21,7 +21,6 @@ const Header = styled.div`
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 10px;
 `;
 
 // Matches the Mom-anchor style in BoardHeader: sans-serif, weight 600,
@@ -35,20 +34,6 @@ const Label = styled.h2`
   color: hsl(var(--foreground));
   letter-spacing: -0.01em;
   line-height: 1.1;
-`;
-
-const counterPulse = keyframes`
-  0% { transform: translateY(-3px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-`;
-
-const Count = styled.span`
-  font-family: ${({ theme }) => theme.font.sans};
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-  display: inline-block;
-  animation: ${counterPulse} 240ms ease-out;
-  animation-fill-mode: backwards;
 `;
 
 // ─── Row layout (default snap) ────────────────────────────────────────
@@ -141,6 +126,8 @@ const GridPrice = styled.p`
 `;
 
 // ─── Thumbnail (row layout) ───────────────────────────────────────────
+// Save-landing animation: just a gentle scale wobble. The earlier halo
+// pulse read as a "pink flash" and was visually loud — pulled it.
 const wobble = keyframes`
   0%   { transform: scale(1); }
   35%  { transform: scale(1.06); }
@@ -148,12 +135,7 @@ const wobble = keyframes`
   100% { transform: scale(1); }
 `;
 
-const haloPulse = keyframes`
-  0%   { box-shadow: 0 0 0 0    var(--accent-glow), 0 6px 16px var(--accent-shadow); }
-  100% { box-shadow: 0 0 0 16px transparent,        0 6px 16px var(--accent-shadow); }
-`;
-
-const Thumb = styled.button<{ $accentSoft: string; $accentGlow: string; $fresh: boolean }>`
+const Thumb = styled.button<{ $accentSoft: string; $fresh: boolean }>`
   flex: 0 0 auto;
   width: ${THUMB_SIZE}px;
   height: ${THUMB_SIZE}px;
@@ -164,18 +146,13 @@ const Thumb = styled.button<{ $accentSoft: string; $accentGlow: string; $fresh: 
   padding: 0;
   cursor: pointer;
   transition: transform 150ms ease;
-  --accent-shadow: ${({ $accentSoft }) =>
+  box-shadow: 0 6px 16px ${({ $accentSoft }) =>
     $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.30)')};
-  --accent-glow: ${({ $accentGlow }) =>
-    $accentGlow.replace('hsl(', 'hsla(').replace(')', ', 0.55)')};
-  box-shadow: 0 6px 16px var(--accent-shadow);
 
   ${({ $fresh }) =>
     $fresh &&
     css`
-      animation:
-        ${wobble} 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
-        ${haloPulse} 700ms ease-out;
+      animation: ${wobble} 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
     `}
 
   &:active { transform: scale(0.96); }
@@ -244,7 +221,6 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
       <Panel ref={ref} data-saved-panel>
         <Header>
           <Label>Saved for {recipientName}</Label>
-          {items.length > 0 && <Count key={items.length}>{items.length}</Count>}
         </Header>
         {layout === 'grid' ? (
           items.length === 0 ? (
@@ -291,7 +267,6 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
                   onClick={() => onItemClick?.(item)}
                   data-saved-thumb-id={item.id}
                   $accentSoft={accent.soft}
-                  $accentGlow={accent.glow}
                   $fresh={freshId === item.id}
                 >
                   <img src={item.imageUrl} alt={item.title} loading="lazy" />

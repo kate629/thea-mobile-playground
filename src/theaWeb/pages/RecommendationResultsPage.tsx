@@ -22,11 +22,11 @@ import {
   profileDraftToRegenerateRequest,
 } from '../lib/profileDraftAdapter';
 import { useAuthGate } from '../auth/AuthGateContext';
-import { HeaderAccountMenu } from '../auth/HeaderAccountMenu';
 import { useAuth } from '../firebase/FirebaseContext';
 
 import { BoardLayout, type BoardChipSection } from '../../playground/board/BoardLayout';
 import { BackToHomeModal } from '../../playground/board/BackToHomeModal';
+import { BoardUserAvatar } from '../../playground/board/BoardUserAvatar';
 
 const EMPTY_DRAFT: import('../../components/landing/results/types').ProfileDraft = {
   emoji: '✨',
@@ -437,7 +437,16 @@ const RecommendationResultsPage: React.FC = () => {
         recipientName={recipientName}
         recipientEmoji={recipientEmoji}
         pillInitialValues={pillInitialValues}
-        rightActions={<HeaderAccountMenu />}
+        rightActions={
+          <BoardUserAvatar
+            initials={
+              auth.currentUser?.isAnonymous === false
+                ? recipientName.charAt(0).toUpperCase()
+                : undefined
+            }
+            onClick={() => navigate('/')}
+          />
+        }
         onBackClick={handleBackClick}
         onSparklesClick={drawer.openDrawer}
         chipSections={chipSections}

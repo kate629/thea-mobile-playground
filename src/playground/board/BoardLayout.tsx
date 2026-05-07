@@ -212,6 +212,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
         <BoardHeader
           recipientEmoji={recipientEmoji}
           recipientName={recipientName}
+          accentSoft={accent.soft}
           pillInitialValues={pillInitialValues}
           rightActions={rightActions}
           onBackClick={onBackClick}
@@ -249,11 +250,8 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
         ariaLabel={`Saved tray for ${recipientName}`}
         topPx={sheet.topPx}
         currentSnap={sheet.currentSnap}
-        isDragging={sheet.isDragging}
-        handlePointerDown={sheet.handlePointerDown}
-        handlePointerMove={sheet.handlePointerMove}
-        handlePointerUp={sheet.handlePointerUp}
-        snapTo={sheet.snapTo}
+        toggle={sheet.toggle}
+        accentSoft={accent.soft}
       >
         <BoardSavedPanel
           ref={savedPanelRef}

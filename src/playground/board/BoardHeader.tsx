@@ -6,9 +6,19 @@ import {
   type BoardSearchPillInitialValues,
 } from './BoardSearchPill';
 
-const Wrap = styled.header`
-  /* Sticky positioning is owned by the parent StickyTop in BoardLayout. */
-  background: ${({ theme }) => theme.color.creamLight};
+const Wrap = styled.header<{ $accentSoft: string }>`
+  /* Sticky positioning is owned by the parent StickyTop in BoardLayout.
+     Background is a gentle gradient: accent-tinted cream at the very top
+     (where the Mom anchor sits) fading to plain cream at the bottom of
+     the header. The bottom sheet has the same accent tint at its top —
+     together the two tinted bookends frame the feed and visually link
+     the Mom header to the Saved tray. */
+  background: linear-gradient(
+    180deg,
+    ${({ $accentSoft }) =>
+        $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.18)')} 0%,
+    ${({ theme }) => theme.color.creamLight} 100%
+  );
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -112,6 +122,8 @@ const ArrowLeftIcon: React.FC = () => (
 interface BoardHeaderProps {
   recipientEmoji: string;
   recipientName: string;
+  /** Soft accent color (HSL) used for the header's gentle gradient. */
+  accentSoft: string;
   pillInitialValues: BoardSearchPillInitialValues;
   rightActions?: React.ReactNode;
   onBackClick?: () => void;
@@ -121,6 +133,7 @@ interface BoardHeaderProps {
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
   recipientEmoji,
   recipientName,
+  accentSoft,
   pillInitialValues,
   rightActions,
   onBackClick,
@@ -135,7 +148,7 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
   const priceActive = priceOpen || priceRange[0] > 0 || priceRange[1] < 200;
 
   return (
-    <Wrap>
+    <Wrap $accentSoft={accentSoft}>
       <TopRow>
         <BackButton
           type="button"

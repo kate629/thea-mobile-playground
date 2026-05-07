@@ -1,18 +1,27 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import type { SheetSnap } from './useBottomSheet';
 
 const PAPER_GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.65 0 0 0 0 0.5 0 0 0 0 0.4 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-const Sheet = styled.div<{ $isDragging: boolean }>`
+const Sheet = styled.div<{ $accentSoft: string }>`
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 15;
+  /* Page accent flowing in: page background already gradients from cream
+     to a faint accent tint at the bottom; the sheet picks up the same
+     accent tint at its top edge so the two surfaces feel connected. */
+  --accent-tint: ${({ $accentSoft }) =>
+    $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.18)')};
   background:
     ${PAPER_GRAIN},
-    linear-gradient(180deg, ${({ theme }) => theme.color.creamLight} 0%, ${({ theme }) => theme.color.cream} 60%, ${({ theme }) => theme.color.cream} 100%);
+    linear-gradient(180deg,
+      var(--accent-tint) 0%,
+      ${({ theme }) => theme.color.creamLight} 35%,
+      ${({ theme }) => theme.color.cream} 100%);
   background-blend-mode: multiply, normal;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
@@ -22,82 +31,68 @@ const Sheet = styled.div<{ $isDragging: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: ${({ $isDragging }) =>
-    $isDragging ? 'none' : 'top 320ms cubic-bezier(0.22, 1, 0.36, 1)'};
+  transition: top 320ms cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
-const HandleArea = styled.div`
-  position: relative;
+const Body = styled.div`
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 14px 0 12px;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  &:active { cursor: grabbing; }
+  min-height: 0;
+  padding-top: 18px;
 `;
 
-const HandleBar = styled.span`
-  width: 48px;
-  height: 5px;
-  border-radius: 999px;
-  background: hsl(var(--muted-foreground) / 0.45);
-  display: block;
-`;
-
-// Close X — only rendered when the sheet is expanded so the user has an
-// obvious way to collapse back to default. Tap-to-cycle on the handle bar
-// works too but isn't discoverable.
-const CloseButton = styled.button`
-  position: absolute;
-  top: 8px;
+// Toggle icon is portal-rendered to document.body so it can use a
+// z-index above the sticky header. Inside the sheet's own stacking
+// context (z-index 15), it would be hidden behind the sticky header
+// (z-index 20) when the sheet is expanded.
+const ToggleButton = styled.button<{ $top: number }>`
+  position: fixed;
+  top: ${({ $top }) => `${$top + 12}px`};
   right: 14px;
-  width: 32px;
-  height: 32px;
+  z-index: 25;
+  width: 36px;
+  height: 36px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid hsl(var(--border));
   cursor: pointer;
   color: hsl(var(--foreground));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px);
-  transition: background 150ms ease, transform 150ms ease;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: top 320ms cubic-bezier(0.22, 1, 0.36, 1),
+              background 150ms ease,
+              transform 150ms ease;
   &:hover { background: #ffffff; }
   &:active { transform: scale(0.94); }
 `;
 
-const XIcon: React.FC = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+const ChevronUp: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
+    <polyline points="18 15 12 9 6 15" />
   </svg>
 );
 
-const Body = styled.div<{ $tappable: boolean }>`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  ${({ $tappable }) => $tappable && 'cursor: pointer;'}
-`;
+const ChevronDown: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
 
 interface BoardBottomSheetProps {
   children: React.ReactNode;
   ariaLabel?: string;
-  /** Sheet drag-state from the parent's useBottomSheet instance — lifted
-   *  up so the parent can also derive `currentSnap` and switch its body
-   *  layout (row vs grid) accordingly. */
+  /** Sheet state from the parent's useBottomSheet instance. */
   topPx: number | undefined;
   currentSnap: SheetSnap;
-  isDragging: boolean;
-  handlePointerDown: (e: React.PointerEvent<HTMLElement>) => void;
-  handlePointerMove: (e: React.PointerEvent<HTMLElement>) => void;
-  handlePointerUp: (e: React.PointerEvent<HTMLElement>) => void;
-  snapTo: (snap: SheetSnap) => void;
+  toggle: () => void;
+  /** Sheet's accent color (recipient-derived) for the gradient bridge. */
+  accentSoft: string;
 }
 
 export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
@@ -105,67 +100,32 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
   ariaLabel = 'Saved tray',
   topPx,
   currentSnap,
-  isDragging,
-  handlePointerDown,
-  handlePointerMove,
-  handlePointerUp,
-  snapTo,
+  toggle,
+  accentSoft,
 }) => {
-  // Tapping the sheet body (not the handle) when not expanded → expand.
-  // Once expanded, taps fall through to children (so users can still
-  // interact with saved items).
-  const bodyTappable = currentSnap !== 'expanded';
-  const handleBodyClick = (e: React.MouseEvent) => {
-    if (!bodyTappable) return;
-    // Only expand when the user clicked the body itself, not a button or
-    // interactive descendant. e.target === e.currentTarget is too strict
-    // (children include text nodes etc.); instead, walk up and bail if
-    // any ancestor up to currentTarget is a button/link/input.
-    const path = e.nativeEvent.composedPath();
-    for (const node of path) {
-      if (node === e.currentTarget) break;
-      if (node instanceof HTMLElement) {
-        const tag = node.tagName;
-        if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'TEXTAREA') {
-          return;
-        }
-      }
-    }
-    snapTo('expanded');
-  };
-
+  const isExpanded = currentSnap === 'expanded';
   return (
-    <Sheet
-      $isDragging={isDragging}
-      style={topPx !== undefined ? { top: `${topPx}px` } : undefined}
-      aria-label={ariaLabel}
-    >
-      <HandleArea
-        role="button"
-        aria-label="Drag to resize sheet"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+    <>
+      <Sheet
+        $accentSoft={accentSoft}
+        style={topPx !== undefined ? { top: `${topPx}px` } : undefined}
+        aria-label={ariaLabel}
       >
-        <HandleBar />
-        {currentSnap === 'expanded' && (
-          <CloseButton
+        <Body>{children}</Body>
+      </Sheet>
+      {topPx !== undefined &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <ToggleButton
             type="button"
-            aria-label="Collapse sheet"
-            onClick={(e) => {
-              e.stopPropagation();
-              snapTo('default');
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
+            aria-label={isExpanded ? 'Collapse saved tray' : 'Expand saved tray'}
+            $top={topPx}
+            onClick={toggle}
           >
-            <XIcon />
-          </CloseButton>
+            {isExpanded ? <ChevronDown /> : <ChevronUp />}
+          </ToggleButton>,
+          document.body,
         )}
-      </HandleArea>
-      <Body $tappable={bodyTappable} onClick={handleBodyClick}>
-        {children}
-      </Body>
-    </Sheet>
+    </>
   );
 };
