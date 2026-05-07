@@ -182,6 +182,26 @@ const RecommendationResultsPage: React.FC = () => {
   // Filter: hide products that are saved AND no longer in flight. Items
   // currently departing (in flight to the saved panel) stay rendered so
   // BoardFeed can fade them out, keeping the visual hand-off coherent.
+  const CHIP_EMOJI: Record<string, string> = {
+    decor: '🏡',
+    cooking: '🍳',
+    beauty: '💄',
+    books: '📚',
+    plants: '🌿',
+    games: '🧩',
+    clothes: '👕',
+    accessories: '🧣',
+    jewelry: '✨',
+    crafts: '🧶',
+    music: '🎵',
+    fitness: '🏋️',
+    sports: '⚽',
+    outdoors: '🏞️',
+    sweets: '🍬',
+    alcohol: '🍷',
+    travel: '✈️',
+    hosting: '🎉',
+  };
   const chipSections: BoardChipSection[] = useMemo(() => {
     if (!session) return [];
     return session.carouselOrder
@@ -195,9 +215,11 @@ const RecommendationResultsPage: React.FC = () => {
         return {
           key,
           label: c.displayName,
+          emoji: CHIP_EMOJI[key],
           products,
         };
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, liked, pendingLikedIds, departingIds]);
 
   // Saved-items hydration: prefer the in-memory card item from chipSections;

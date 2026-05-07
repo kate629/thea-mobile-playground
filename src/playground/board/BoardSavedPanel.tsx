@@ -20,39 +20,38 @@ const Panel = styled.div`
 const Header = styled.div`
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  justify-content: center;
+  gap: 10px;
 `;
 
-// Larger header treatment — italic serif (matches the "thea" wordmark) so the
-// saved tray reads as a real section header, not a label.
+// Matches the Mom-anchor style in BoardHeader: sans-serif, weight 600,
+// 22px, NOT italic. Centered in the saved tray. Reads as a real section
+// heading — same typographic register as the recipient name above.
 const Label = styled.h2`
   margin: 0;
-  font-family: ${({ theme }) => theme.font.serif ?? 'Georgia, serif'};
-  font-style: italic;
-  font-size: 24px;
-  font-weight: 500;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 22px;
+  font-weight: 600;
   color: hsl(var(--foreground));
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   line-height: 1.1;
 `;
 
-// Counter slides in/out on increment so the number doesn't just snap.
 const counterPulse = keyframes`
   0% { transform: translateY(-3px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 `;
 
-const Count = styled.span<{ $animKey: number }>`
+const Count = styled.span`
   font-family: ${({ theme }) => theme.font.sans};
   font-size: 14px;
   color: hsl(var(--muted-foreground));
   display: inline-block;
-  /* Re-key on increment so the keyframes restart. */
   animation: ${counterPulse} 240ms ease-out;
   animation-fill-mode: backwards;
-  &:last-child { /* no-op selector to keep $animKey usage */ }
 `;
 
+// ─── Row layout (default snap) ────────────────────────────────────────
 const Row = styled.div`
   display: flex;
   align-items: center;
@@ -64,10 +63,84 @@ const Row = styled.div`
   padding: 4px 2px 8px;
 `;
 
-// Save-landing animation: a brief halo pulse + a gentle scale wobble on the
-// just-arrived thumbnail. Subtle — the warmth is in the timing, not in big
-// motion. Halo color comes from the recipient's accent so each board has
-// its own quiet signature when items land.
+// ─── Grid layout (expanded snap) ──────────────────────────────────────
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+  padding: 4px 2px 80px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+`;
+
+const GridCard = styled.button<{ $accentSoft: string }>`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease;
+  &:active { transform: scale(0.98); }
+`;
+
+const GridImage = styled.div<{ $accentSoft: string }>`
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 14px;
+  overflow: hidden;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 12px ${({ $accentSoft }) =>
+    $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.25)')};
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+const GridMeta = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px;
+`;
+
+const GridTitle = styled.p`
+  margin: 0;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const GridBrand = styled.p`
+  margin: 0;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+`;
+
+const GridPrice = styled.p`
+  margin: 0;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+`;
+
+// ─── Thumbnail (row layout) ───────────────────────────────────────────
 const wobble = keyframes`
   0%   { transform: scale(1); }
   35%  { transform: scale(1.06); }
@@ -91,9 +164,6 @@ const Thumb = styled.button<{ $accentSoft: string; $accentGlow: string; $fresh: 
   padding: 0;
   cursor: pointer;
   transition: transform 150ms ease;
-  /* Polaroid drop shadow — warm clay tint by default, recipient-accented
-     for variation per board. CSS variables exposed so the halo animation
-     can reference the same accent without re-deriving. */
   --accent-shadow: ${({ $accentSoft }) =>
     $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.30)')};
   --accent-glow: ${({ $accentGlow }) =>
@@ -139,16 +209,16 @@ const EmptyHint = styled.p`
 
 interface BoardSavedPanelProps {
   recipientName: string;
-  /** Items in newest-first order. */
   items: ResultsProductCardItem[];
   accent: RecipientAccent;
+  /** Layout mode: 'row' for default snap (horizontal carousel of thumbs)
+   *  or 'grid' for expanded snap (2-col grid with title/brand/price). */
+  layout?: 'row' | 'grid';
   onItemClick?: (item: ResultsProductCardItem) => void;
 }
 
 export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
-  ({ recipientName, items, accent, onItemClick }, ref) => {
-    // Track the most recently-added item so we can run the save-landing
-    // animation on it (and only on it) when the items array grows.
+  ({ recipientName, items, accent, layout = 'row', onItemClick }, ref) => {
     const [freshId, setFreshId] = useState<string | null>(null);
     const prevFirstIdRef = useRef<string | null>(null);
     const prevCountRef = useRef<number>(items.length);
@@ -174,35 +244,62 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
       <Panel ref={ref} data-saved-panel>
         <Header>
           <Label>Saved for {recipientName}</Label>
-          {items.length > 0 && (
-            <Count key={items.length} $animKey={items.length}>
-              {items.length}
-            </Count>
-          )}
+          {items.length > 0 && <Count key={items.length}>{items.length}</Count>}
         </Header>
-        <Row>
-          {items.length === 0 ? (
-            <>
+        {layout === 'grid' ? (
+          items.length === 0 ? (
+            <Row>
               <EmptySlot $accentSoft={accent.soft} />
               <EmptyHint>Save items below to start {recipientName}'s board</EmptyHint>
-            </>
+            </Row>
           ) : (
-            items.map((item) => (
-              <Thumb
-                key={item.id}
-                type="button"
-                aria-label={`Open ${item.title}`}
-                onClick={() => onItemClick?.(item)}
-                data-saved-thumb-id={item.id}
-                $accentSoft={accent.soft}
-                $accentGlow={accent.glow}
-                $fresh={freshId === item.id}
-              >
-                <img src={item.imageUrl} alt={item.title} loading="lazy" />
-              </Thumb>
-            ))
-          )}
-        </Row>
+            <Grid>
+              {items.map((item) => (
+                <GridCard
+                  key={item.id}
+                  type="button"
+                  aria-label={`Open ${item.title}`}
+                  onClick={() => onItemClick?.(item)}
+                  $accentSoft={accent.soft}
+                  data-saved-thumb-id={item.id}
+                >
+                  <GridImage $accentSoft={accent.soft}>
+                    <img src={item.imageUrl} alt={item.title} loading="lazy" />
+                  </GridImage>
+                  <GridMeta>
+                    <GridTitle>{item.title}</GridTitle>
+                    {item.brand && <GridBrand>{item.brand}</GridBrand>}
+                    {item.price != null && <GridPrice>${Math.round(item.price)}</GridPrice>}
+                  </GridMeta>
+                </GridCard>
+              ))}
+            </Grid>
+          )
+        ) : (
+          <Row>
+            {items.length === 0 ? (
+              <>
+                <EmptySlot $accentSoft={accent.soft} />
+                <EmptyHint>Save items below to start {recipientName}'s board</EmptyHint>
+              </>
+            ) : (
+              items.map((item) => (
+                <Thumb
+                  key={item.id}
+                  type="button"
+                  aria-label={`Open ${item.title}`}
+                  onClick={() => onItemClick?.(item)}
+                  data-saved-thumb-id={item.id}
+                  $accentSoft={accent.soft}
+                  $accentGlow={accent.glow}
+                  $fresh={freshId === item.id}
+                >
+                  <img src={item.imageUrl} alt={item.title} loading="lazy" />
+                </Thumb>
+              ))
+            )}
+          </Row>
+        )}
       </Panel>
     );
   },

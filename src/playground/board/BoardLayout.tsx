@@ -8,6 +8,7 @@ import { BoardHeader } from './BoardHeader';
 import { BoardSavedPanel } from './BoardSavedPanel';
 import type { BoardSearchPillInitialValues } from './BoardSearchPill';
 import { accentForEmoji } from './recipientAccent';
+import { useBottomSheet } from './useBottomSheet';
 import { useFlightAnimation } from './useFlightAnimation';
 
 // Mobile shell (Mom's board):
@@ -61,6 +62,8 @@ const FeedScroll = styled.div`
 export interface BoardChipSection {
   key: string;
   label: string;
+  /** Optional decorative emoji shown alongside the tab label. */
+  emoji?: string;
   products: ResultsProductCardItem[];
 }
 
@@ -106,7 +109,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
 
   const tabs: ChipTab[] = useMemo(
-    () => chipSections.map((s) => ({ key: s.key, label: s.label })),
+    () => chipSections.map((s) => ({ key: s.key, label: s.label, emoji: s.emoji })),
     [chipSections],
   );
 
@@ -117,6 +120,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
 
   const accent = useMemo(() => accentForEmoji(recipientEmoji), [recipientEmoji]);
 
+  const sheet = useBottomSheet('default');
   const flight = useFlightAnimation();
 
   const handleSaveWithFlight = (
@@ -154,12 +158,22 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           />
         </FeedScroll>
       </MainContent>
-      <BoardBottomSheet ariaLabel={`Saved tray for ${recipientName}`}>
+      <BoardBottomSheet
+        ariaLabel={`Saved tray for ${recipientName}`}
+        topPx={sheet.topPx}
+        currentSnap={sheet.currentSnap}
+        isDragging={sheet.isDragging}
+        handlePointerDown={sheet.handlePointerDown}
+        handlePointerMove={sheet.handlePointerMove}
+        handlePointerUp={sheet.handlePointerUp}
+        snapTo={sheet.snapTo}
+      >
         <BoardSavedPanel
           ref={savedPanelRef}
           recipientName={recipientName}
           items={savedItems}
           accent={accent}
+          layout={sheet.currentSnap === 'expanded' ? 'grid' : 'row'}
           onItemClick={onSavedItemClick}
         />
       </BoardBottomSheet>

@@ -48,12 +48,13 @@ const BackButton = styled.button`
 const RecipientAnchor = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 600;
   color: hsl(var(--foreground));
   white-space: nowrap;
+  letter-spacing: -0.01em;
 `;
 
 const RightActions = styled.div`

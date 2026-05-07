@@ -19,6 +19,11 @@ const Feed = styled.div`
 // of the image replaces the heart. Shared ResultsProductCard stays untouched
 // for clean port-back. The wide SaveBar carries a `data-board-save` flag so
 // the `aria-label='Save'` rule below doesn't hide IT too.
+//
+// Also overrides the ImageFrame's aspect-ratio from 4/5 to 1/1 (square) —
+// 20% shorter cards so the Save bar sits comfortably above the bottom-sheet
+// at default snap. Targets the structural path:
+//   CardWrap > Root > Inner > ImageFrame (first child)
 const CardWrap = styled.div<{ $departing?: boolean }>`
   position: relative;
   transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -29,14 +34,19 @@ const CardWrap = styled.div<{ $departing?: boolean }>`
   & button[aria-label='Save']:not([data-board-save]) {
     display: none !important;
   }
+
+  /* Make the image area square instead of 4:5 — 20% shorter overall. */
+  & > div:first-child > div > div:first-child {
+    aspect-ratio: 1 / 1 !important;
+  }
 `;
 
-// Aspect-ratio wrap mirrors the image area's 4:5 ratio so we can position the
+// Aspect-ratio wrap mirrors the image area (now 1:1) so we can position the
 // Save bar at the bottom of the image without measuring the meta area below.
 const ImageOverlayWrap = styled.div`
   position: absolute;
   inset: 0 0 auto 0;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   pointer-events: none;
 `;
 

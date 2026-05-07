@@ -4,6 +4,7 @@ import styled from 'styled-components';
 export interface ChipTab {
   key: string;
   label: string;
+  emoji?: string;
   count?: number;
 }
 
@@ -27,19 +28,20 @@ const Tab = styled.button<{ $active: boolean }>`
   position: relative;
   cursor: pointer;
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 14px;
+  font-size: 16px;
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
   color: ${({ $active }) =>
     $active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'};
   white-space: nowrap;
   transition: color 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 
   &:hover {
     color: hsl(var(--foreground));
   }
 
-  /* Active-tab underline indicator. Sits flush with the parent's bottom
-     border so it visually replaces that 1px sliver under the active tab. */
   &::after {
     content: '';
     position: absolute;
@@ -75,6 +77,7 @@ export const BoardChipTabs: React.FC<BoardChipTabsProps> = ({
         $active={t.key === activeKey}
         onClick={() => onChange(t.key)}
       >
+        {t.emoji && <span aria-hidden="true">{t.emoji}</span>}
         {t.label}
       </Tab>
     ))}

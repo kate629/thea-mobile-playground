@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Three-snap-point bottom-sheet drag controller, Airbnb-style.
+ * Three-snap-point bottom-sheet drag controller.
  *
  * Snap points (as fraction of viewport height — small = sheet covers more):
- *   - expanded:  0.12 (sheet covers ~88% of viewport)
- *   - default:   0.45 (sheet covers ~55%, room for the saved area above)
- *   - collapsed: 0.72 (sheet covers ~28%, just handle + chip tabs visible)
+ *   - expanded:  0.10 (sheet covers ~90%, top sits just below the Mom header)
+ *   - default:   0.72 (sheet covers ~28%, header + thumb row visible)
+ *   - collapsed: 0.90 (sheet covers ~10%, just the handle + label peek)
  *
  * The sheet never fully disappears — the collapsed snap leaves the drag
- * handle and chip-tab strip in view so the user can always grab it back.
+ * handle and a sliver of the saved label in view so the user can always
+ * grab it back.
  *
  * Drag is wired via Pointer Events on the handle. While dragging the
  * sheet's `top` follows the pointer 1:1; on release it animates to the
@@ -19,22 +20,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type SheetSnap = 'expanded' | 'default' | 'collapsed';
 
 const SNAP_FRACTIONS: Record<SheetSnap, number> = {
-  expanded: 0.12,
-  default: 0.45,
-  collapsed: 0.72,
+  expanded: 0.10,
+  default: 0.72,
+  collapsed: 0.90,
 };
 
 interface UseBottomSheetResult {
   /** Current `top` value in pixels — controls sheet position. Undefined
    *  until the first viewport measurement on mount. */
   topPx: number | undefined;
+  /** Closest current snap, derived from topPx. Useful for switching the
+   *  sheet body's layout (e.g. row → grid when expanded). */
+  currentSnap: SheetSnap;
   /** True while the user is actively dragging — disables CSS transition. */
   isDragging: boolean;
   /** Pointer-event handlers for the drag handle. */
   handlePointerDown: (e: React.PointerEvent<HTMLElement>) => void;
   handlePointerMove: (e: React.PointerEvent<HTMLElement>) => void;
   handlePointerUp: (e: React.PointerEvent<HTMLElement>) => void;
-  /** Programmatic snap (e.g. from a tap on the handle to toggle). */
+  /** Programmatic snap — used by tap-to-expand on the sheet body. */
   snapTo: (snap: SheetSnap) => void;
 }
 
@@ -148,8 +152,25 @@ export function useBottomSheet(initial: SheetSnap = 'default'): UseBottomSheetRe
     setTopPx(snapPointsRef.current[snap]);
   }, []);
 
+  // Derive closest snap label from the live topPx so consumers can
+  // restyle (e.g. row → grid layout) without re-doing the math.
+  const currentSnap: SheetSnap = (() => {
+    const points = snapPointsRef.current;
+    if (topPx === undefined) return initial;
+    const candidates: Array<[SheetSnap, number]> = [
+      ['expanded', points.expanded],
+      ['default', points.default],
+      ['collapsed', points.collapsed],
+    ];
+    const [name] = candidates.reduce((prev, curr) =>
+      Math.abs(curr[1] - topPx) < Math.abs(prev[1] - topPx) ? curr : prev,
+    );
+    return name;
+  })();
+
   return {
     topPx,
+    currentSnap,
     isDragging,
     handlePointerDown,
     handlePointerMove,

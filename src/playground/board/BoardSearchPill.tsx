@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled, { css } from 'styled-components';
 import { Chip } from '../../components/ui/Chip';
 import {
@@ -254,6 +254,10 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
   const state = useSearchPillState();
   const wrapRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef(false);
+  // Freeform label for the "Other" occasion. Not piped through the hook —
+  // playground-local since the real schema's occasionLabel only matters at
+  // submit time.
+  const [otherLabel, setOtherLabel] = useState('');
 
   // Seed state from initialValues on mount. The setters in useSearchPillState
   // have auto-advance side effects (each one may call setOpenSegment), but
@@ -385,6 +389,14 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
                 </Chip>
               ))}
             </ChipRow>
+            {state.occasion === 'Other' && (
+              <FreeformTextarea
+                value={otherLabel}
+                onChange={(e) => setOtherLabel(e.target.value)}
+                placeholder="What kind of occasion?"
+                aria-label="Describe the occasion"
+              />
+            )}
           </DropdownSection>
         </Dropdown>
       )}
