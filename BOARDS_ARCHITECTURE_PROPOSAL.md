@@ -4,6 +4,8 @@
 *Author: Kate (with Claude). 2026-05-08.*
 *Companion to the live prototype at `~/git/thea-mobile-playground/` and the Vercel build at `thea-mobile-playground-kate629s-projects.vercel.app`.*
 
+> **Scope**: this proposal targets the **production app at givethea.com** — schemas in `ManuelMar/thea-shared-schemas`, callables/triggers/algo in `ManuelMar/thea-serverless`, FE in `ManuelMar/thea-web`. The playground in this repo is the FE prototype Manny can experience-test the proposal against; none of the playground stub code (`src/playground/*`) ports back. What ports back is the real component / hook / page code, against the real BE shape proposed below.
+
 ---
 
 ## TL;DR
