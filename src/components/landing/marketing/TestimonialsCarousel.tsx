@@ -175,10 +175,19 @@ export const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({
   const programmaticScrollUntilRef = useRef(0);
 
   const scrollToIndex = useCallback((index: number) => {
+    const track = trackRef.current;
     const el = cardRefs.current[index];
-    if (!el) return;
+    if (!track || !el) return;
     programmaticScrollUntilRef.current = Date.now() + 800;
-    el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // Compute the horizontal offset that centers the target card inside
+    // the track and scroll the TRACK only — not the page. Using
+    // `el.scrollIntoView` here causes browsers to also scroll the
+    // viewport vertically to bring the carousel into view, which on
+    // page load (auto-advance fires after dwell) would yank the user
+    // down to the testimonials section unbidden.
+    const targetLeft =
+      el.offsetLeft - track.clientWidth / 2 + el.clientWidth / 2;
+    track.scrollTo({ left: targetLeft, behavior: 'smooth' });
   }, []);
 
   // Track which card is most-centered via IntersectionObserver. The

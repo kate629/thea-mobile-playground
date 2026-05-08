@@ -114,14 +114,6 @@ const StickyCtaSpacer = styled.div`
   height: calc(96px + env(safe-area-inset-bottom, 0px));
 `;
 
-// Subheader between the step title and the chip row. Same muted-gray
-// vibe; "Select at least two" reads as a hint, not a hard label.
-const InterestsHelper = styled.p`
-  margin: -10px 0 0 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.4;
-`;
 
 export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
   title,
@@ -151,7 +143,6 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
   return (
   <>
     <Title>{title}</Title>
-    <InterestsHelper>Select at least two</InterestsHelper>
     <Section>
       <PillRow>
         {pills.map((p) => {

@@ -77,6 +77,13 @@ const PillRow = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  /* On desktop the header is on a wide column; the search pill at full
+     width feels cavernous. Cap it at ~2/3 of the column on large
+     viewports — still spacious, but no longer dwarfs the pill content
+     and leaves the price filter button comfortably anchored. */
+  @media (min-width: 1024px) {
+    max-width: 66%;
+  }
 `;
 
 const PillFill = styled.div`
