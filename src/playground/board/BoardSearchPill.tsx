@@ -147,13 +147,6 @@ const ClearButton = styled.button`
   }
 `;
 
-const DropdownHelper = styled.p`
-  margin: -6px 0 12px 0;
-  font-family: ${({ theme }) => theme.font.sans};
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-`;
-
 const SearchButton = styled.button<{ $disabled: boolean }>`
   margin-top: 16px;
   width: 100%;
