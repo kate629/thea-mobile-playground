@@ -226,7 +226,12 @@ const FreeformTextarea = styled.textarea`
   background: ${({ theme }) => theme.color.cream};
   margin-top: 12px;
   color: hsl(var(--foreground));
-  &::placeholder { color: hsl(var(--muted-foreground)); }
+  /* Sample-text vibe: lighter gray + italic so users read it as an
+     example, not a label. Placeholder strings should start with "E.g., ". */
+  &::placeholder {
+    color: hsl(var(--muted-foreground) / 0.65);
+    font-style: italic;
+  }
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.color.clay};
@@ -392,12 +397,23 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
               ))}
             </ChipRow>
             {state.occasion === 'Other' && (
-              <FreeformTextarea
-                value={otherLabel}
-                onChange={(e) => setOtherLabel(e.target.value)}
-                placeholder="What kind of occasion?"
-                aria-label="Describe the occasion"
-              />
+              <>
+                <FreeformTextarea
+                  value={otherLabel}
+                  onChange={(e) => setOtherLabel(e.target.value)}
+                  placeholder="E.g., housewarming, retirement, just because"
+                  aria-label="Describe the occasion"
+                  autoFocus
+                />
+                <SearchButton
+                  type="button"
+                  $disabled={!otherLabel.trim()}
+                  disabled={!otherLabel.trim()}
+                  onClick={() => state.openDropdown('likes')}
+                >
+                  Continue
+                </SearchButton>
+              </>
             )}
           </DropdownSection>
         </Dropdown>
@@ -410,7 +426,11 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
             <FreeformTextarea
               value={state.freeform}
               onChange={(e) => state.setFreeform(e.target.value)}
-              placeholder={state.freeformPlaceholder}
+              placeholder={
+                state.freeformPlaceholder
+                  ? `E.g., ${state.freeformPlaceholder}`
+                  : 'E.g., what they love right now, what they already have'
+              }
               aria-label="Tell us more"
               autoFocus
             />

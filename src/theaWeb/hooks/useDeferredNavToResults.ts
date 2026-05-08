@@ -40,6 +40,14 @@ import { useImagesPreloaded } from './useImagesPreloaded';
 
 export const DEFERRED_NAV_MAX_WAIT_MS = 30000;
 
+// Minimum time the loading screen must stay visible after pendingNav is
+// set. Without this, the playground (and warm-cache real users) can
+// preload three small images so fast the user barely sees the loading
+// screen at all — and definitely doesn't get to read the opening
+// testimonial. 7000ms gives the testimonial its full 6s hold plus a
+// beat of the rotating typewriter before the navigation fires.
+export const DEFERRED_NAV_MIN_VISIBLE_MS = 7000;
+
 export interface PendingNavigation {
   recipientId: string;
   recommendationId: string;
@@ -104,13 +112,29 @@ export function useDeferredNavToResults(
     return () => clearTimeout(t);
   }, [pendingNav, maxWaitFired]);
 
-  const ready = Boolean(pendingNav) && (imagesReady || maxWaitFired);
+  // Minimum-visible floor: even when imagesReady flips true near-instantly
+  // (warm cache / playground stubs), hold the loading screen for at least
+  // MIN_VISIBLE_MS so the testimonial + typewriter actually have a chance
+  // to register with the user.
+  const [minVisibleElapsed, setMinVisibleElapsed] = useState(false);
+  useEffect(() => {
+    if (!pendingNav) {
+      setMinVisibleElapsed(false);
+      return;
+    }
+    const t = setTimeout(() => setMinVisibleElapsed(true), DEFERRED_NAV_MIN_VISIBLE_MS);
+    return () => clearTimeout(t);
+  }, [pendingNav]);
+
+  const ready =
+    Boolean(pendingNav) && (imagesReady || maxWaitFired) && minVisibleElapsed;
 
   useEffect(() => {
     if (!pendingNav) return;
     if (!imagesReady && !maxWaitFired) return;
+    if (!minVisibleElapsed) return;
     navigate(`/quiz/results/${pendingNav.recipientId}/${pendingNav.recommendationId}`);
-  }, [pendingNav, imagesReady, maxWaitFired, navigate]);
+  }, [pendingNav, imagesReady, maxWaitFired, minVisibleElapsed, navigate]);
 
   return { liveImages, ready };
 }

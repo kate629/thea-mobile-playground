@@ -51,7 +51,7 @@ export const recordActivity = async (
   const product = findProduct(payload.productId);
   if (product) {
     if (payload.state === 'SAVED' || payload.state === 'PURCHASED' || payload.state === 'DISMISSED') {
-      recordMockActivity(product, payload.state);
+      recordMockActivity(product, payload.state, payload.recipientIds[0]);
     }
   }
   return {

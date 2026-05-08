@@ -20,7 +20,8 @@ export interface QuizStepInterestsProps {
   onSubmit: () => void;
   /** Submit-disabled rule comes from container; View just renders. */
   canSubmit: boolean;
-  /** Defaults to "Show me my gifts ✨" (sovrn parity). */
+  /** Defaults to a pronoun-aware "Build their board ✨". Container can
+   *  override if it has gender context. */
   submitLabel?: string;
 }
 
@@ -78,8 +79,36 @@ const Section = styled.div`
   gap: 12px;
 `;
 
-const SubmitWrap = styled.div`
-  margin: 0 auto;
+// Sticky-bottom CTA wrapper. Hugs the viewport bottom across the entire
+// quiz card so users don't have to hunt for the action — particularly
+// important for the interests step where the chip list + textarea push
+// it well below the fold. Uses a soft fade-out so chips/textarea
+// scrolling under it don't bump abruptly.
+const StickyCtaWrap = styled.div`
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 16px -16px -16px;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    #ffffff 30%,
+    #ffffff 100%
+  );
+  display: flex;
+  justify-content: center;
+  z-index: 5;
+`;
+
+// Tiny helper line below the chips. Italic-ish gray so it reads as a
+// hint, not a label.
+const InterestsHelper = styled.p`
+  margin: -4px 0 0 0;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
 `;
 
 export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
@@ -92,7 +121,7 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
   onTextareaChange,
   onSubmit,
   canSubmit,
-  submitLabel = 'Show me my gifts ✨',
+  submitLabel = 'Build their board ✨',
 }) => (
   <>
     <Title>{title}</Title>
@@ -113,6 +142,7 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
           );
         })}
       </PillRow>
+      <InterestsHelper>Pick at least two.</InterestsHelper>
     </Section>
     <Section>
       <TextareaLabel htmlFor="quiz-more-about">Go ahead, tell us everything.</TextareaLabel>
@@ -133,8 +163,8 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
         }}
       />
     </Section>
-    <SubmitWrap>
+    <StickyCtaWrap>
       <QuizNextButton label={submitLabel} disabled={!canSubmit} onClick={onSubmit} />
-    </SubmitWrap>
+    </StickyCtaWrap>
   </>
 );

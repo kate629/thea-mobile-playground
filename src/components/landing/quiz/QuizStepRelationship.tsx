@@ -16,11 +16,18 @@ export interface QuizStepRelationshipProps {
 }
 
 const Title = styled.h2`
-  margin: 0 0 20px 0;
+  margin: 0 0 6px 0;
   font-size: 24px;
   font-weight: 600;
   line-height: 1.3;
   color: hsl(var(--foreground));
+`;
+
+const Subheader = styled.p`
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
 `;
 
 const Grid = styled.div`
@@ -39,6 +46,7 @@ export const QuizStepRelationship: React.FC<QuizStepRelationshipProps> = ({
 }) => (
   <>
     <Title>{title}</Title>
+    <Subheader>Each person gets their own board to save ideas to.</Subheader>
     <Grid>
       {RELATIONSHIPS.map((rel) => (
         <HCard

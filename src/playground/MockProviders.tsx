@@ -8,6 +8,9 @@ import type { Firestore } from 'firebase/firestore';
 import { FirebaseProvider } from '../theaWeb/firebase/FirebaseContext';
 import { MergeStateProvider } from '../theaWeb/auth/MergeStateContext';
 import { MockAuthGateProvider } from './MockAuthGateProvider';
+// Importing the registry triggers its self-seed on module load — Mom +
+// a couple of other recipients populate before the People page renders.
+import './mockData/recipientRegistry';
 import {
   getAuthState,
   MOCK_UID_ANON,

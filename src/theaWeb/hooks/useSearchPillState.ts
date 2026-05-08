@@ -274,6 +274,10 @@ export function useSearchPillState(): SearchPillState {
     (value: string) => {
       const wasComplete = Boolean(occasion);
       setOccasionState(value);
+      // 'Other' requires a freeform label before WHAT counts as complete,
+      // so we hold the dropdown open here and let the consumer advance
+      // explicitly (via openDropdown('likes')) once the label is filled.
+      if (value === 'Other') return;
       // Auto-advance to LIKES when WHAT transitions to complete (first pick);
       // on a re-pick, fall back to the prior single-select close behavior.
       if (!wasComplete && value) {

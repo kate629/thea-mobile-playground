@@ -8,6 +8,10 @@ export interface QuizLoadingProps {
   showCursor: boolean;
   /** Optional overlay slot for ambient product image scrolling. */
   ambient?: React.ReactNode;
+  /** Renders the message as a large multi-line block (e.g. an intro
+   *  testimonial superimposed over the ambient scroll). Defaults to the
+   *  small single-line typewriter style. */
+  largeText?: boolean;
 }
 
 const pulse = keyframes`
@@ -59,17 +63,31 @@ const LogoGlyph = styled.span`
   animation: ${pulse} 2s ease-in-out infinite;
 `;
 
-const TextRow = styled.div`
-  height: 40px;
+const TextRow = styled.div<{ $large: boolean }>`
+  height: ${({ $large }) => ($large ? 'auto' : '40px')};
+  min-height: ${({ $large }) => ($large ? '160px' : '0')};
   display: flex;
   align-items: center;
   justify-content: center;
 `;
 
-const Message = styled.p`
+const Message = styled.p<{ $large: boolean }>`
   margin: 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
+  ${({ $large }) =>
+    $large
+      ? `
+        font-size: 22px;
+        line-height: 1.45;
+        font-weight: 500;
+        color: hsl(var(--foreground));
+        white-space: pre-wrap;
+        max-width: 28ch;
+        letter-spacing: -0.01em;
+      `
+      : `
+        font-size: 14px;
+        color: hsl(var(--muted-foreground));
+      `}
 `;
 
 const Cursor = styled.span`
@@ -82,15 +100,20 @@ const Cursor = styled.span`
   animation: ${pulse} 1.06s ease-in-out infinite;
 `;
 
-export const QuizLoading: React.FC<QuizLoadingProps> = ({ text, showCursor, ambient }) => (
+export const QuizLoading: React.FC<QuizLoadingProps> = ({
+  text,
+  showCursor,
+  ambient,
+  largeText = false,
+}) => (
   <Page>
     {ambient}
     <CenterCol>
       <LogoBubble>
         <LogoGlyph aria-hidden="true">t</LogoGlyph>
       </LogoBubble>
-      <TextRow>
-        <Message>
+      <TextRow $large={largeText}>
+        <Message $large={largeText}>
           <span>{text}</span>
           {showCursor && <Cursor aria-hidden="true" />}
         </Message>

@@ -11,15 +11,14 @@ const Sheet = styled.div<{ $accentSoft: string }>`
   right: 0;
   bottom: 0;
   z-index: 15;
-  /* Page accent flowing in: page background already gradients from cream
-     to a faint accent tint at the bottom; the sheet picks up the same
-     accent tint at its top edge so the two surfaces feel connected. */
-  --accent-tint: ${({ $accentSoft }) =>
-    $accentSoft.replace('hsl(', 'hsla(').replace(')', ', 0.18)')};
+  /* Page accent flowing in: the sheet picks up the recipient accent at
+     its top edge and fades to cream — fully opaque so the feed doesn't
+     bleed through. accentSoft is already a low-sat / high-lightness
+     value, so using it at full opacity still reads as a quiet tint. */
   background:
     ${PAPER_GRAIN},
     linear-gradient(180deg,
-      var(--accent-tint) 0%,
+      ${({ $accentSoft }) => $accentSoft} 0%,
       ${({ theme }) => theme.color.creamLight} 35%,
       ${({ theme }) => theme.color.cream} 100%);
   background-blend-mode: multiply, normal;
@@ -104,12 +103,37 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
   accentSoft,
 }) => {
   const isExpanded = currentSnap === 'expanded';
+
+  // Tap-anywhere-to-expand when collapsed. Skipped when an interactive
+  // child (saved thumbnail, X-remove button, edit link, etc.) was the
+  // tap target — those need their own click handlers to win, not the
+  // sheet's expand. Inert when already expanded so taps inside the
+  // grid don't accidentally collapse the sheet on the way to opening
+  // a product.
+  const handleSheetClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (currentSnap === 'expanded') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, textarea, [role="button"]')) return;
+    toggle();
+  };
+
   return (
     <>
       <Sheet
         $accentSoft={accentSoft}
         style={topPx !== undefined ? { top: `${topPx}px` } : undefined}
         aria-label={ariaLabel}
+        role={!isExpanded ? 'button' : undefined}
+        tabIndex={!isExpanded ? 0 : undefined}
+        aria-expanded={isExpanded}
+        onClick={handleSheetClick}
+        onKeyDown={(e) => {
+          if (currentSnap === 'expanded') return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggle();
+          }
+        }}
       >
         <Body>{children}</Body>
       </Sheet>

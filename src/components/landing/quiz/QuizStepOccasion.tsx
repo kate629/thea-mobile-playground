@@ -16,11 +16,18 @@ export interface QuizStepOccasionProps {
 }
 
 const Title = styled.h2`
-  margin: 0 0 20px 0;
+  margin: 0 0 6px 0;
   font-size: 24px;
   font-weight: 600;
   line-height: 1.3;
   color: hsl(var(--foreground));
+`;
+
+const Subheader = styled.p`
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
 `;
 
 const Grid = styled.div`
@@ -40,6 +47,7 @@ export const QuizStepOccasion: React.FC<QuizStepOccasionProps> = ({
 }) => (
   <>
     <Title>{title}</Title>
+    <Subheader>Find a gift for the occasion — and save other ideas for next time.</Subheader>
     <Grid>
       {options.map((o) => (
         <HCard

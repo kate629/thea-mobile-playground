@@ -94,6 +94,7 @@ const RecommendationResultsPage = lazy(() =>
   import("./theaWeb/pages/RecommendationResultsPage"),
 );
 const BoardRoute = lazy(() => import("./theaWeb/pages/BoardRoute"));
+const PeoplePage = lazy(() => import("./playground/board/PeoplePage"));
 const TermsPage = lazy(() => import("./theaWeb/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./theaWeb/pages/PrivacyPage"));
 
@@ -199,6 +200,14 @@ function App() {
             element={
               <Suspense fallback={null}>
                 <BoardRoute />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/people"
+            element={
+              <Suspense fallback={null}>
+                <PeoplePage />
               </Suspense>
             }
           />

@@ -31,11 +31,12 @@ interface UseGiftActivitiesResult {
 export function useGiftActivities(
   recipientId: string | undefined,
 ): UseGiftActivitiesResult {
-  const [snapshot, setSnapshot] = useState(() => readMockActivity());
+  const [snapshot, setSnapshot] = useState(() => readMockActivity(recipientId));
 
   useEffect(() => {
     if (!recipientId) return;
-    return subscribeMockActivity(() => setSnapshot(readMockActivity()));
+    setSnapshot(readMockActivity(recipientId));
+    return subscribeMockActivity(() => setSnapshot(readMockActivity(recipientId)));
   }, [recipientId]);
 
   return {

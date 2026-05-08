@@ -27,6 +27,8 @@ import { useAuth } from '../firebase/FirebaseContext';
 import { BoardLayout, type BoardChipSection } from '../../playground/board/BoardLayout';
 import { BackToHomeModal } from '../../playground/board/BackToHomeModal';
 import { BoardUserAvatar } from '../../playground/board/BoardUserAvatar';
+import { clearMockActivity } from '../../playground/mockData/giftActivityStore';
+import { renameRecipient } from '../../playground/mockData/recipientRegistry';
 
 const EMPTY_DRAFT: import('../../components/landing/results/types').ProfileDraft = {
   emoji: '✨',
@@ -292,6 +294,25 @@ const RecommendationResultsPage: React.FC = () => {
     [liked, fireActivity, requestSignIn, auth],
   );
 
+  const handleRemoveSaved = useCallback(
+    (item: ResultsProductCardItem) => {
+      // Playground-only: drop the entry directly from the in-memory store.
+      // Scoped by recipientId so we don't accidentally remove a save
+      // someone made for a different recipient that happens to share
+      // the same product.
+      clearMockActivity(item.id, recipientId);
+    },
+    [recipientId],
+  );
+
+  const handleRenameRecipient = useCallback(
+    (newName: string, newEmoji: string) => {
+      if (!recipientId) return;
+      renameRecipient(recipientId, newName, newEmoji);
+    },
+    [recipientId],
+  );
+
   const handleProductClick = useCallback((item: ResultsProductCardItem) => {
     if (item.productUrl) openExternal(item.productUrl);
   }, []);
@@ -444,7 +465,8 @@ const RecommendationResultsPage: React.FC = () => {
                 ? recipientName.charAt(0).toUpperCase()
                 : undefined
             }
-            onClick={() => navigate('/')}
+            onMyPeople={() => navigate('/people')}
+            onLogOut={() => navigate('/')}
           />
         }
         onBackClick={handleBackClick}
@@ -457,6 +479,8 @@ const RecommendationResultsPage: React.FC = () => {
         onProductClick={handleProductClick}
         onMarkPurchased={handleMarkPurchased}
         onSavedItemClick={handleProductClick}
+        onRemoveSaved={handleRemoveSaved}
+        onRenameRecipient={handleRenameRecipient}
       />
       <ProfileDrawer
         open={drawer.open}

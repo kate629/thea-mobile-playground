@@ -95,6 +95,15 @@ export interface BoardLayoutProps {
   onProductClick: (item: ResultsProductCardItem) => void;
   onMarkPurchased?: (item: ResultsProductCardItem) => void;
   onSavedItemClick?: (item: ResultsProductCardItem) => void;
+  /** Removes an item from saves (X icon on each grid card in the
+   *  expanded sheet view). Distinct from onSaveClick because that one
+   *  early-returns when an item is already liked + triggers the flight
+   *  animation. */
+  onRemoveSaved?: (item: ResultsProductCardItem) => void;
+  /** Display-only rename of the recipient (name + emoji). Triggered by
+   *  the italic "edit" link under the title in the expanded sheet. Does
+   *  NOT re-trigger search. */
+  onRenameRecipient?: (newName: string, newEmoji: string) => void;
 }
 
 export const BoardLayout: React.FC<BoardLayoutProps> = ({
@@ -112,10 +121,13 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   onProductClick,
   onMarkPurchased,
   onSavedItemClick,
+  onRemoveSaved,
+  onRenameRecipient,
 }) => {
   const initialKey = chipSections[0]?.key ?? '';
   const [activeKey, setActiveKey] = useState(initialKey);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
+  const feedScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Which chip keys render as tabs in the strip. Initialized from the
   // chips the recipient already has products for; mutated via the
@@ -171,6 +183,12 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
       setActiveKey(visibleSections[0].key);
     }
   }, [visibleSections, activeKey]);
+
+  // Reset feed scroll to top when the user switches chip tabs — each
+  // category should start fresh, not pick up where the previous one was.
+  React.useEffect(() => {
+    feedScrollRef.current?.scrollTo({ top: 0 });
+  }, [activeKey]);
 
   const tabs: ChipTab[] = useMemo(
     () => visibleSections.map((s) => ({ key: s.key, label: s.label, emoji: s.emoji })),
@@ -235,7 +253,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
             onClose={() => setEditPanelOpen(false)}
           />
         </ChipStripWrap>
-        <FeedScroll>
+        <FeedScroll ref={feedScrollRef}>
           <BoardFeed
             products={activeProducts}
             isLiked={isLiked}
@@ -256,10 +274,13 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
         <BoardSavedPanel
           ref={savedPanelRef}
           recipientName={recipientName}
+          recipientEmoji={recipientEmoji}
           items={savedItems}
           accent={accent}
           layout={sheet.currentSnap === 'expanded' ? 'grid' : 'row'}
           onItemClick={onSavedItemClick}
+          onRemove={onRemoveSaved}
+          onRename={onRenameRecipient}
         />
       </BoardBottomSheet>
       {flight.portal}

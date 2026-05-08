@@ -108,6 +108,13 @@ export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({
           onTextareaChange={flow.setMoreAbout}
           onSubmit={flow.submitInterests}
           canSubmit={flow.canSubmitInterests}
+          submitLabel={
+            flow.gender === 'female'
+              ? 'Build her board ✨'
+              : flow.gender === 'male'
+                ? 'Build his board ✨'
+                : 'Build their board ✨'
+          }
         />
       )}
     </QuizCard>
