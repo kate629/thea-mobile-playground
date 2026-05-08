@@ -9,6 +9,11 @@ import styled from 'styled-components';
 export interface HCardProps {
   emoji: string;
   label: string;
+  /** Optional second line below the primary label — used by the kid age
+   *  chips so the bracket ("3–12 months") stacks under the name without
+   *  wrapping. Both lines render with `white-space: nowrap` so the
+   *  bracket can't split across two rows on narrow viewports. */
+  sublabel?: string;
   selected: boolean;
   onClick: () => void;
   /** Use a slightly taller variant for the relationship step. */
@@ -54,14 +59,39 @@ const Emoji = styled.span`
   flex-shrink: 0;
 `;
 
+const LabelStack = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+`;
+
 const Label = styled.span`
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
 `;
 
-export const HCard: React.FC<HCardProps> = ({ emoji, label, selected, onClick, tall = false }) => (
+const Sublabel = styled.span`
+  font-size: 12px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+`;
+
+export const HCard: React.FC<HCardProps> = ({
+  emoji,
+  label,
+  sublabel,
+  selected,
+  onClick,
+  tall = false,
+}) => (
   <Button type="button" $selected={selected} $tall={tall} onClick={onClick} aria-pressed={selected}>
     <Emoji aria-hidden>{emoji}</Emoji>
-    <Label>{label}</Label>
+    <LabelStack>
+      <Label>{label}</Label>
+      {sublabel && <Sublabel>{sublabel}</Sublabel>}
+    </LabelStack>
   </Button>
 );

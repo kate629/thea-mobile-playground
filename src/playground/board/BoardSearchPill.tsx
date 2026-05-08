@@ -301,6 +301,13 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [state]);
 
+  // Kid recipients don't have an "occasion" in the meaningful adult sense
+  // (Mother's Day / Anniversary / etc. don't apply, and we already
+  // pre-select "Just Because" upstream). Hide the WHAT segment + its
+  // dropdown so the pill is just the freeform "More" field.
+  const isKid =
+    typeof initialValues?.age === 'number' && initialValues.age < 18;
+
   return (
     <Wrap ref={wrapRef} className={className}>
       <Pill>
@@ -310,36 +317,38 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
             seeded with relationship/age/gender so the WHAT options stay
             gender-aware (e.g. Mother's Day shows for female recipients) and
             the LIKES interest pills are age-bucketed. */}
-        <SegmentButton
-          type="button"
-          $active={state.openSegment === 'what'}
-          $hasValue={Boolean(state.whatDisplay)}
-          $compact
-          aria-expanded={state.openSegment === 'what'}
-          aria-haspopup="dialog"
-          onClick={() => state.toggleDropdown('what')}
-        >
-          <SegmentLabel>What</SegmentLabel>
-          <SegmentValue $placeholder={!state.whatDisplay}>
-            {state.whatDisplay ? (
-              <>
-                <span>{state.whatDisplay}</span>
-                <ClearButton
-                  type="button"
-                  aria-label="Clear occasion"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    state.clearWhat();
-                  }}
-                >
-                  <XIcon />
-                </ClearButton>
-              </>
-            ) : (
-              'Occasion'
-            )}
-          </SegmentValue>
-        </SegmentButton>
+        {!isKid && (
+          <SegmentButton
+            type="button"
+            $active={state.openSegment === 'what'}
+            $hasValue={Boolean(state.whatDisplay)}
+            $compact
+            aria-expanded={state.openSegment === 'what'}
+            aria-haspopup="dialog"
+            onClick={() => state.toggleDropdown('what')}
+          >
+            <SegmentLabel>What</SegmentLabel>
+            <SegmentValue $placeholder={!state.whatDisplay}>
+              {state.whatDisplay ? (
+                <>
+                  <span>{state.whatDisplay}</span>
+                  <ClearButton
+                    type="button"
+                    aria-label="Clear occasion"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      state.clearWhat();
+                    }}
+                  >
+                    <XIcon />
+                  </ClearButton>
+                </>
+              ) : (
+                'Occasion'
+              )}
+            </SegmentValue>
+          </SegmentButton>
+        )}
 
         <SegmentButton
           type="button"
@@ -373,7 +382,7 @@ export const BoardSearchPill: React.FC<BoardSearchPillProps> = ({
 
       </Pill>
 
-      {state.openSegment === 'what' && (
+      {!isKid && state.openSegment === 'what' && (
         <Dropdown role="dialog" aria-label="What's the occasion?">
           <DropdownSection>
             <DropdownHeading>What's the occasion?</DropdownHeading>

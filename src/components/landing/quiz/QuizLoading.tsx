@@ -41,28 +41,6 @@ const CenterCol = styled.div`
   text-align: center;
 `;
 
-const LogoBubble = styled.div`
-  width: 112px;
-  height: 112px;
-  border-radius: 9999px;
-  background: #f4e9e4;
-  box-shadow: 0 0 0 18px rgba(181, 107, 88, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 24px;
-`;
-
-const LogoGlyph = styled.span`
-  font-family: 'Albert Sans', system-ui, serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 60px;
-  line-height: 1;
-  color: #b56b58;
-  animation: ${pulse} 2s ease-in-out infinite;
-`;
-
 const TextRow = styled.div<{ $large: boolean }>`
   height: ${({ $large }) => ($large ? 'auto' : '40px')};
   min-height: ${({ $large }) => ($large ? '160px' : '0')};
@@ -83,6 +61,16 @@ const Message = styled.p<{ $large: boolean }>`
         white-space: pre-wrap;
         max-width: 28ch;
         letter-spacing: -0.01em;
+        /* Translucent shim behind the testimonial so the text stays
+           readable while the ambient product scroll keeps animating
+           visibly through the gaps. Soft cream tint + small blur so
+           it reads as a paper-card without going full opaque. */
+        background: rgba(250, 246, 243, 0.78);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        padding: 24px 22px;
+        border-radius: 16px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
       `
       : `
         font-size: 14px;
@@ -109,9 +97,6 @@ export const QuizLoading: React.FC<QuizLoadingProps> = ({
   <Page>
     {ambient}
     <CenterCol>
-      <LogoBubble>
-        <LogoGlyph aria-hidden="true">t</LogoGlyph>
-      </LogoBubble>
       <TextRow $large={largeText}>
         <Message $large={largeText}>
           <span>{text}</span>

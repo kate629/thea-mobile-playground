@@ -1,13 +1,14 @@
 import React, { useCallback } from 'react';
 import { QuizCard } from './QuizCard';
 import { QuizStepRelationship } from './QuizStepRelationship';
+import { QuizStepLifeStage } from './QuizStepLifeStage';
 import { QuizStepGender } from './QuizStepGender';
 import { QuizStepAge } from './QuizStepAge';
 import { QuizStepOccasion } from './QuizStepOccasion';
 import { QuizStepInterests } from './QuizStepInterests';
 import { QuizLoadingAnimated } from './QuizLoadingAnimated';
 import { ProductImage } from './AmbientProductScroll';
-import { Gender } from './constants';
+import { Gender, LifeStage } from './constants';
 import { QuizAnswers, useQuizFlow } from './useQuizFlow';
 
 export interface QuizCardAnimatedProps {
@@ -41,6 +42,10 @@ export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({
   const handlePickRelationship = (rel: string) => {
     flow.setRelationship(rel);
     advance(flow.goFromRelationship);
+  };
+  const handlePickLifeStage = (s: LifeStage) => {
+    flow.setLifeStage(s);
+    advance(flow.goFromLifeStage);
   };
   const handlePickGender = (g: Gender) => {
     flow.setGender(g);
@@ -78,6 +83,13 @@ export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({
           onSelect={handlePickRelationship}
         />
       )}
+      {flow.step === 'lifeStage' && (
+        <QuizStepLifeStage
+          title={flow.lifeStageTitle}
+          selected={flow.lifeStage}
+          onSelect={handlePickLifeStage}
+        />
+      )}
       {flow.step === 'gender' && (
         <QuizStepGender title={flow.genderTitle} selected={flow.gender} onSelect={handlePickGender} />
       )}
@@ -109,11 +121,11 @@ export const QuizCardAnimated: React.FC<QuizCardAnimatedProps> = ({
           onSubmit={flow.submitInterests}
           canSubmit={flow.canSubmitInterests}
           submitLabel={
-            flow.gender === 'female'
-              ? 'Build her board ✨'
-              : flow.gender === 'male'
-                ? 'Build his board ✨'
-                : 'Build their board ✨'
+            flow.derivedGender === 'female'
+              ? 'Create her board ✨'
+              : flow.derivedGender === 'male'
+                ? 'Create his board ✨'
+                : 'Create their board ✨'
           }
         />
       )}

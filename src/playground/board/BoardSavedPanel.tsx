@@ -9,10 +9,12 @@ const THUMB_SIZE = 132;
 
 const Panel = styled.div`
   background: transparent;
-  padding: 14px 14px 18px;
+  /* Tighter vertical padding so the slimmer collapsed sheet (snap 0.78)
+     can fit the header + dotted empty-slot without clipping. */
+  padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   flex: 1;
   min-height: 0;
 `;
@@ -271,11 +273,17 @@ const Thumb = styled.button<{ $accentSoft: string; $fresh: boolean }>`
   }
 `;
 
+// Empty-state slot — sized smaller than a real saved thumbnail so it
+// fits inside the slimmer collapsed sheet (snap default 0.78) without
+// being clipped top + bottom. The hint text next to it carries most of
+// the visual weight; the square is just an affordance for "saves
+// land here."
+const EMPTY_SLOT_SIZE = 60;
 const EmptySlot = styled.div<{ $accentSoft: string }>`
   flex: 0 0 auto;
-  width: ${THUMB_SIZE}px;
-  height: ${THUMB_SIZE}px;
-  border-radius: 16px;
+  width: ${EMPTY_SLOT_SIZE}px;
+  height: ${EMPTY_SLOT_SIZE}px;
+  border-radius: 14px;
   border: 1.5px dashed ${({ $accentSoft }) => $accentSoft};
   background: transparent;
 `;
@@ -385,7 +393,7 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
                 commitEdit();
               }}
             >
-              <EditPrefix>Saved for</EditPrefix>
+              <EditPrefix>Liked for</EditPrefix>
               <EmojiInput
                 value={draftEmoji}
                 onChange={(e) => setDraftEmoji(e.target.value)}
@@ -409,14 +417,21 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
             </EditRow>
           ) : (
             <>
-              <Label>Saved for {recipientName}</Label>
-              {layout === 'grid' && onRename && (
+              <Label>Liked for {recipientName}</Label>
+              {onRename && (
                 <EditLink
                   type="button"
                   aria-label={`Edit ${recipientName}'s name and emoji`}
-                  onClick={enterEdit}
+                  // Stop propagation so tapping "edit" inside a collapsed
+                  // sheet enters rename mode instead of expanding the
+                  // sheet (the parent's tap-to-expand fires on bubbled
+                  // clicks).
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    enterEdit();
+                  }}
                 >
-                  edit
+                  Edit name
                 </EditLink>
               )}
             </>
@@ -426,7 +441,7 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
           items.length === 0 ? (
             <Row>
               <EmptySlot $accentSoft={accent.soft} />
-              <EmptyHint>Save items below to start {recipientName}'s board</EmptyHint>
+              <EmptyHint>Like items to add to {recipientName}'s board</EmptyHint>
             </Row>
           ) : (
             <Grid>
@@ -442,7 +457,7 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
                   {onRemove && (
                     <RemoveButton
                       role="button"
-                      aria-label={`Remove ${item.title} from saved`}
+                      aria-label={`Remove ${item.title} from liked`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemove(item);
@@ -468,7 +483,7 @@ export const BoardSavedPanel = forwardRef<HTMLDivElement, BoardSavedPanelProps>(
             {items.length === 0 ? (
               <>
                 <EmptySlot $accentSoft={accent.soft} />
-                <EmptyHint>Save items below to start {recipientName}'s board</EmptyHint>
+                <EmptyHint>Like items to add to {recipientName}'s board</EmptyHint>
               </>
             ) : (
               items.map((item) => (

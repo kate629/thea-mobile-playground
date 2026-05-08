@@ -13,6 +13,7 @@ import { Footer } from './Footer';
 import { BrowseMyFriendsSection } from './BrowseMyFriendsSection';
 import { SCENARIO_CARDS } from './scenarios';
 import { StickyPrimaryCta, StickyPrimaryCtaMobileSpacer } from './StickyPrimaryCta';
+import { TestimonialsCarousel } from './TestimonialsCarousel';
 import { SearchPill } from './SearchPill';
 import { Button } from '../../ui/Button';
 import type { QuizAnswers } from '../quiz/useQuizFlow';
@@ -68,7 +69,7 @@ const HeroSentinel = styled.div`
 const DEFAULT_VALUE_ITEMS: ValuePropItem[] = [
   {
     emoji: '💡',
-    title: 'Tell us about them',
+    title: 'Build boards for your people',
     body: "Share the little details that make them, them. We'll remember all of it.",
   },
   {
@@ -320,6 +321,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </>
       )}
       <ValuePropsCard heading={valuePropsHeading} items={valuePropsItems} />
+      <TestimonialsCarousel />
       <OccasionGrid heading={occasionsHeading} tiles={occasionTiles} />
       <Footer />
       {/* The StickyPrimaryCta's "Find a gift" + Sign-in slot is for

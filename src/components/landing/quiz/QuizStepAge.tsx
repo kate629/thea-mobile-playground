@@ -43,6 +43,7 @@ export const QuizStepAge: React.FC<QuizStepAgeProps> = ({ title, chips, selected
           key={chip.value}
           emoji={chip.emoji}
           label={chip.label}
+          sublabel={chip.sublabel}
           selected={selectedAge === chip.value}
           onClick={() => onSelectAge(chip.value)}
         />

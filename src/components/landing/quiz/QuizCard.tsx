@@ -2,7 +2,13 @@ import React from 'react';
 import styled from 'styled-components';
 import { fadeIn } from '../../../animations';
 
-export type QuizStepKey = 'relationship' | 'gender' | 'age' | 'occasion' | 'interests';
+export type QuizStepKey =
+  | 'relationship'
+  | 'lifeStage'
+  | 'gender'
+  | 'age'
+  | 'occasion'
+  | 'interests';
 
 export interface QuizCardProps {
   /** Optional back button. Hidden on the first interactive step (relationship). */

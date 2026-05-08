@@ -17,7 +17,7 @@ export interface HeroHeaderProps {
   peekImages?: [string, string];
   /** Whether the card layer is visible (hidden during initial load + swap fade). */
   cardVisible: boolean;
-  /** CTA label. Defaults to "Find a gift". */
+  /** CTA label. Defaults to "Get started". */
   ctaLabel?: string;
   /** CTA click handler. */
   onCtaClick?: () => void;
@@ -289,7 +289,7 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
   productCard,
   peekImages,
   cardVisible,
-  ctaLabel = 'Find a gift',
+  ctaLabel = 'Get started',
   onCtaClick,
 }) => {
   return (
@@ -297,7 +297,7 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
       <Inner>
         <Row>
           <TextCol>
-            <Prefix>Find gift ideas for</Prefix>
+            <Prefix>Find ideas for</Prefix>
             <PhraseStage>
               <InvisibleStack aria-hidden="true">
                 {SCENARIO_CARDS.map((card, i) => (

@@ -20,10 +20,37 @@ export interface RecipientEntry {
   registeredAt: number;
 }
 
-const recipients = new Map<string, RecipientEntry>();
+const STORAGE_KEY = 'thea-playground:recipients:v1';
+
+function hydrate(): Map<string, RecipientEntry> {
+  if (typeof window === 'undefined') return new Map();
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as RecipientEntry[];
+    return new Map(parsed.map((r) => [r.id, r]));
+  } catch {
+    return new Map();
+  }
+}
+
+function persist() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(Array.from(recipients.values())),
+    );
+  } catch {
+    // Quota / disabled — fall back to in-memory only.
+  }
+}
+
+const recipients = hydrate();
 const listeners = new Set<() => void>();
 
 function emit() {
+  persist();
   listeners.forEach((l) => l());
 }
 
@@ -98,11 +125,18 @@ export function seedRecipientRegistry() {
     registerRecipient({ id: r.id, name: r.name, emoji: r.emoji });
     r.seedProductIds.forEach((pid) => {
       const product = MOCK_PRODUCTS.find((p) => p.id === pid);
-      if (product) recordMockActivity(product, 'SAVED', r.id);
+      // `seeded: true` excludes these from the user-liked count that
+      // drives the "save your boards" alert dot. The collage tile still
+      // renders the images — we just don't pretend the user liked them.
+      if (product) recordMockActivity(product, 'SAVED', r.id, { seeded: true });
     });
   });
 }
 
-// Auto-seed on first import — happens once per page load before any
-// component renders, so the People page sees a populated registry.
-seedRecipientRegistry();
+// Auto-seed on first import IF the registry is empty (first visit, or
+// localStorage was cleared). On returning visits the hydrated state
+// already has Mom + Maya + Dad + Sis + whatever the user added, so we
+// skip the seed to preserve renames / removals.
+if (recipients.size === 0) {
+  seedRecipientRegistry();
+}

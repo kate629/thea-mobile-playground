@@ -12,7 +12,7 @@ export interface StickyPrimaryCtaProps {
   triggerRef?: React.RefObject<HTMLElement | null>;
   /** Click handler for the primary CTA. Same action as the hero CTA. */
   onCtaClick?: () => void;
-  /** CTA label. Defaults to "Find a gift". */
+  /** CTA label. Defaults to "Get started". */
   ctaLabel?: string;
   /**
    * V2 (sign-in) slot. Intentionally unused in V1 — the visual + DOM hook is
@@ -140,7 +140,7 @@ const useShowOnScrollPast = (
 export const StickyPrimaryCta: React.FC<StickyPrimaryCtaProps> = ({
   triggerRef,
   onCtaClick,
-  ctaLabel = 'Find a gift',
+  ctaLabel = 'Get started',
   signInSlot,
 }) => {
   const visible = useShowOnScrollPast(triggerRef);

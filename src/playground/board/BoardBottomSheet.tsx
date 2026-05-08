@@ -96,7 +96,7 @@ interface BoardBottomSheetProps {
 
 export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
   children,
-  ariaLabel = 'Saved tray',
+  ariaLabel = 'Liked tray',
   topPx,
   currentSnap,
   toggle,
@@ -142,7 +142,7 @@ export const BoardBottomSheet: React.FC<BoardBottomSheetProps> = ({
         createPortal(
           <ToggleButton
             type="button"
-            aria-label={isExpanded ? 'Collapse saved tray' : 'Expand saved tray'}
+            aria-label={isExpanded ? 'Collapse liked tray' : 'Expand liked tray'}
             $top={topPx}
             onClick={toggle}
           >

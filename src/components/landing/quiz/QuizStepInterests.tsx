@@ -79,17 +79,16 @@ const Section = styled.div`
   gap: 12px;
 `;
 
-// Sticky-bottom CTA wrapper. Hugs the viewport bottom across the entire
-// quiz card so users don't have to hunt for the action — particularly
-// important for the interests step where the chip list + textarea push
-// it well below the fold. Uses a soft fade-out so chips/textarea
-// scrolling under it don't bump abruptly.
+// Always-visible CTA pinned to the viewport bottom. Uses position:fixed
+// because position:sticky was being neutralized by the QuizCard's
+// `overflow: hidden` ancestor, leaving the button hidden below the fold
+// when the chip list + textarea pushed past the viewport. Fixed
+// guarantees the button stays in view across every step length.
 const StickyCtaWrap = styled.div`
-  position: sticky;
-  bottom: 0;
+  position: fixed;
   left: 0;
   right: 0;
-  margin: 16px -16px -16px;
+  bottom: 0;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(
     180deg,
@@ -99,13 +98,26 @@ const StickyCtaWrap = styled.div`
   );
   display: flex;
   justify-content: center;
-  z-index: 5;
+  z-index: 50;
+  pointer-events: none;
+  & > * {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 480px;
+  }
 `;
 
-// Tiny helper line below the chips. Italic-ish gray so it reads as a
-// hint, not a label.
+// Spacer that matches the StickyCtaWrap's footprint so the bottom of
+// the page content (textarea, last chips) isn't hidden behind the
+// fixed CTA. Approx CTA height (44) + padding (16+16) + safe area.
+const StickyCtaSpacer = styled.div`
+  height: calc(96px + env(safe-area-inset-bottom, 0px));
+`;
+
+// Subheader between the step title and the chip row. Same muted-gray
+// vibe; "Select at least two" reads as a hint, not a hard label.
 const InterestsHelper = styled.p`
-  margin: -4px 0 0 0;
+  margin: -10px 0 0 0;
   font-size: 13px;
   color: hsl(var(--muted-foreground));
   line-height: 1.4;
@@ -122,9 +134,24 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
   onSubmit,
   canSubmit,
   submitLabel = 'Build their board ✨',
-}) => (
+}) => {
+  // Below threshold the CTA stops being a generic "create board" call
+  // and becomes the explanation of *why* it's disabled. Counts down as
+  // the user picks chips; flips to the real label at 2+. Strongest
+  // disabled-state pattern — the user is looking at the button when
+  // they wonder why it's not working, so put the answer there.
+  const need = Math.max(0, 2 - selectedInterests.length);
+  const dynamicLabel =
+    need === 2
+      ? 'Pick 2 to continue'
+      : need === 1
+        ? 'Pick 1 more to continue'
+        : submitLabel;
+
+  return (
   <>
     <Title>{title}</Title>
+    <InterestsHelper>Select at least two</InterestsHelper>
     <Section>
       <PillRow>
         {pills.map((p) => {
@@ -142,7 +169,6 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
           );
         })}
       </PillRow>
-      <InterestsHelper>Pick at least two.</InterestsHelper>
     </Section>
     <Section>
       <TextareaLabel htmlFor="quiz-more-about">Go ahead, tell us everything.</TextareaLabel>
@@ -163,8 +189,10 @@ export const QuizStepInterests: React.FC<QuizStepInterestsProps> = ({
         }}
       />
     </Section>
+    <StickyCtaSpacer aria-hidden />
     <StickyCtaWrap>
-      <QuizNextButton label={submitLabel} disabled={!canSubmit} onClick={onSubmit} />
+      <QuizNextButton label={dynamicLabel} disabled={!canSubmit} onClick={onSubmit} />
     </StickyCtaWrap>
   </>
-);
+  );
+};

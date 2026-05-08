@@ -43,12 +43,15 @@ const AGE_GROUPS: AgeGroup[] = [
     },
   },
   {
+    // Toddler (1–2 years). Kid pills bypass `orderPills` so 'Swim' (in
+    // the global REMOVE_PILLS filter for adults) actually renders.
     minAge: 1.01,
     maxAge: 2,
-    pills: orderPills([
-      'Books', 'Toys', 'Clothes', 'Bath', 'Room decor', 'Kitchen', 'Arts & crafts', 'Music',
-      'Animals', 'Dinosaurs', 'Sea life', 'Space', 'Fantasy', 'Vehicles', 'Dolls', 'Dress-up', 'Swim',
-    ]),
+    pills: [
+      'Books', 'Toys', 'Clothes', 'Arts & crafts', 'Bath', 'Room decor',
+      'Animals', 'Vehicles', 'Dinosaurs', 'Music', 'Space', 'Kitchen',
+      'Sea life', 'Fantasy', 'Dolls', 'Dress-up', 'Swim',
+    ],
     placeholders: {
       female: 'She loves coloring, sticker books, and helping her dad cook.',
       male: 'He loves animals, trucks, and helping his mom cook.',
@@ -56,13 +59,14 @@ const AGE_GROUPS: AgeGroup[] = [
     },
   },
   {
+    // Preschool (3–5 years).
     minAge: 3,
     maxAge: 5,
-    pills: orderPills([
-      'Books', 'Games', 'Clothes', 'Accessories', 'Room decor', 'Kitchen', 'Arts & crafts',
-      'Science', 'Music', 'Experiences', 'Animals', 'Dinosaurs', 'Sea life', 'Space',
-      'Fantasy', 'Vehicles', 'Dolls', 'Dress-up', 'Swim',
-    ]),
+    pills: [
+      'Books', 'Games', 'Arts & crafts', 'Science', 'Clothes', 'Accessories',
+      'Room decor', 'Animals', 'Vehicles', 'Dinosaurs', 'Music', 'Space',
+      'Kitchen', 'Sea life', 'Fantasy', 'Dolls', 'Dress-up', 'Swim',
+    ],
     placeholders: {
       female: "She's into painting, sticker books, and gardening. The family goes to the lake every summer.",
       male: "He's into music, cars, and gardening. The family goes to the lake every summer.",
@@ -70,13 +74,15 @@ const AGE_GROUPS: AgeGroup[] = [
     },
   },
   {
+    // Elementary School (6–10). Magic + Mystery dropped per the
+    // documented rule (Magic → Fantasy, Mystery → Games).
     minAge: 6,
     maxAge: 10,
-    pills: orderPills([
-      'Books', 'Games', 'Clothes', 'Accessories', 'Room decor', 'Cooking', 'Arts & crafts',
-      'Science', 'Music', 'Dance', 'Experiences', 'Sports', 'Outdoors', 'Magic', 'Mystery',
-      'Space', 'Fantasy', 'Dolls', 'Dress-up', 'Swim',
-    ]),
+    pills: [
+      'Books', 'Games', 'Arts & crafts', 'Science', 'Cooking', 'Clothes',
+      'Accessories', 'Room decor', 'Sports', 'Outdoors', 'Music', 'Space',
+      'Fantasy', 'Dolls', 'Dress-up', 'Swim', 'Dance',
+    ],
     placeholders: {
       female: "She's always drawing and making up her own stories. Her family travels often.",
       male: 'He plays basketball and loves learning about Japan. His family travels often.',
@@ -84,12 +90,14 @@ const AGE_GROUPS: AgeGroup[] = [
     },
   },
   {
+    // Middle School (11–13).
     minAge: 11,
     maxAge: 13,
-    pills: orderPills([
-      'Books', 'Games', 'Clothes', 'Accessories', 'Jewelry', 'Room decor', 'Cooking',
-      'Arts & crafts', 'STEM', 'Music', 'Dance', 'Sports', 'Outdoors', 'Sweets', 'Swim',
-    ]),
+    pills: [
+      'Books', 'Games', 'Arts & crafts', 'STEM', 'Cooking', 'Clothes',
+      'Room decor', 'Dance', 'Sports', 'Music', 'Outdoors', 'Sweets',
+      'Jewelry', 'Accessories', 'Swim',
+    ],
     placeholders: {
       female: "She's always drawing and making up her own stories. Her family travels often.",
       male: 'He plays basketball and loves learning about Japan. His family travels often.',
@@ -97,17 +105,19 @@ const AGE_GROUPS: AgeGroup[] = [
     },
   },
   {
+    // High School (14–18). Same pill list as Middle School per the
+    // current spec; placeholder mirrors Middle/Elementary copy.
     minAge: 14,
     maxAge: 20,
-    pills: orderPills([
-      'Books', 'Games', 'Clothes', 'Accessories', 'Jewelry', 'Room decor', 'Cooking',
-      'Arts & crafts', 'STEM', 'Music', 'Dance', 'Experiences', 'Sports', 'Outdoors',
-      'Sweets', 'Swim',
-    ]),
+    pills: [
+      'Books', 'Games', 'Arts & crafts', 'STEM', 'Cooking', 'Clothes',
+      'Room decor', 'Dance', 'Sports', 'Music', 'Outdoors', 'Sweets',
+      'Jewelry', 'Accessories', 'Swim',
+    ],
     placeholders: {
-      female: "She's going to study business. I want to get her something fun and useful, maybe for her dorm.",
-      male: "He's going to study business. I want to get him something fun and useful, maybe for his dorm.",
-      other: "They're going to study business. I want to get them something fun and useful, maybe for their dorm.",
+      female: "She's always drawing and making up her own stories. Her family travels often.",
+      male: 'He plays basketball and loves learning about Japan. His family travels often.',
+      other: "They're always drawing and making up their own stories. Their family travels often.",
     },
   },
   {
@@ -164,13 +174,29 @@ const INTEREST_EMOJIS: Record<string, EmojiEntry> = {
   'Arts & crafts': '✂️', Bath: '🛁', 'Room decor': '🖼️', Animals: '🐾', Vehicles: '🚗',
   Dinosaurs: '🦕', Music: '🎵', Space: '🚀', Kitchen: '🥣', 'Sea life': '🐳',
   Fantasy: '🪄', Dolls: '🎀', 'Dress-up': '✨', Games: '🧩', Art: '🎨', Science: '🧪',
-  Accessories: '🧣', Cooking: '🍲', Sports: '⚽', Magic: '🪄', Outdoors: '🏕️',
+  Accessories: '🧣', Cooking: '🍳', Sports: '⚽', Magic: '🪄', Outdoors: '🏕️',
   Mystery: '🔍', STEM: '🧪', Sweets: '🍬', Jewelry: '✨', Fitness: '💪', Alcohol: '🍷',
   Beauty: '💄', Grooming: '💈', Decor: '🏠', Crafts: '🧶', Travel: '✈️', Plants: '🌿',
-  Hosting: '🎉', Dance: '🪩',
+  Hosting: '🎉', Dance: '🪩', Swim: '🌊',
 };
 
-export const getInterestEmoji = (interest: string, gender?: Gender): string => {
+// Per-kid emoji overrides — same chip label, different glyph when the
+// recipient is a kid. Accessories swaps from a scarf to a backpack;
+// Room decor swaps from a framed picture to a bed.
+const KID_EMOJI_OVERRIDES: Record<string, string> = {
+  Accessories: '🎒',
+  'Room decor': '🛏️',
+};
+
+export const getInterestEmoji = (
+  interest: string,
+  gender?: Gender,
+  isKid?: boolean,
+): string => {
+  if (isKid) {
+    const kidGlyph = KID_EMOJI_OVERRIDES[interest];
+    if (kidGlyph) return kidGlyph + ' ';
+  }
   const entry = INTEREST_EMOJIS[interest];
   if (!entry) return '';
   if (typeof entry === 'string') return entry + ' ';

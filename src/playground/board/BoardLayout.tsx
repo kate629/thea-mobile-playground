@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import type { ResultsProductCardItem } from '../../components/landing/results/types';
 import { BoardBottomSheet } from './BoardBottomSheet';
@@ -47,11 +47,64 @@ const StickyTop = styled.div`
   background: ${({ theme }) => theme.color.creamLight};
 `;
 
+// Below the StickyTop. On mobile this is just MainContent on its own
+// (the BoardBottomSheet floats over it). On desktop (≥1024px) it
+// becomes a row with the saved sidebar pinned to the right.
+const BodyRow = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+`;
+
 const MainContent = styled.div`
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
+`;
+
+// Desktop-only saved sidebar. Hidden below 1024px — at that breakpoint
+// the BoardBottomSheet handles saves instead. Floats with a soft drop
+// shadow and rounded corners so it reads as a popover surface, not a
+// flush wall pinned to the edge. The flex column wrapper is what
+// reserves layout width; the inner Card is what looks like the popover.
+const DesktopSidebar = styled.aside`
+  display: none;
+  @media (min-width: 1024px) {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 380px;
+    padding: 16px;
+    /* Don't capture wheel/scroll on the outer wrapper — only the inner
+       Card scrolls when its content overflows. The wrapper itself
+       passes scroll events through to the page. */
+    overflow: visible;
+  }
+`;
+
+// The visible popover card inside the sidebar wrapper. White, rounded,
+// soft drop shadow — reads as an elevated surface floating over the
+// feed rather than a flush right-rail.
+const SidebarCard = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(60, 40, 30, 0.06),
+    0 12px 32px rgba(60, 40, 30, 0.12);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  /* Internal scroll only when content actually overflows. The wheel
+     handler on the wrapping aside forwards leftover scroll to the feed
+     so the user is never "stuck" against a non-scrolling sidebar. */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Stop scroll-chaining from overshoot bouncing the page — the wheel
+     handler on the parent is what drives feed scroll forwarding. */
+  overscroll-behavior: contain;
 `;
 
 // Wraps the chip-tab strip so the BoardEditChipsPanel can position itself
@@ -67,6 +120,31 @@ const FeedScroll = styled.div`
   -webkit-overflow-scrolling: touch;
   padding: 0 8px;
 `;
+
+// Reactive media query — true at the desktop breakpoint where the
+// saved sidebar replaces the bottom sheet. Subscribes to changes so
+// resizing across the breakpoint flips between the two surfaces
+// without a refresh.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    // addEventListener is the modern API; fall back to the legacy one
+    // for the rare browser that doesn't have it.
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handler);
+      return () => mql.removeEventListener('change', handler);
+    }
+    mql.addListener(handler);
+    return () => mql.removeListener(handler);
+  }, []);
+  return isDesktop;
+}
 
 export interface BoardChipSection {
   key: string;
@@ -128,6 +206,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
   const [activeKey, setActiveKey] = useState(initialKey);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const feedScrollRef = useRef<HTMLDivElement | null>(null);
+  const sidebarCardRef = useRef<HTMLDivElement | null>(null);
 
   // Which chip keys render as tabs in the strip. Initialized from the
   // chips the recipient already has products for; mutated via the
@@ -200,6 +279,17 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
     [visibleSections, activeKey],
   );
 
+  // Cross-promo: the chip that follows the active one in tab order.
+  // Wraps to the first chip when the user is on the last. Powers the
+  // "More in {Label} →" card at the bottom of the feed.
+  const nextTab = useMemo(() => {
+    if (visibleSections.length <= 1) return undefined;
+    const idx = visibleSections.findIndex((s) => s.key === activeKey);
+    if (idx === -1) return undefined;
+    const next = visibleSections[(idx + 1) % visibleSections.length];
+    return { key: next.key, label: next.label, emoji: next.emoji };
+  }, [visibleSections, activeKey]);
+
   const handleToggleChip = (key: string) => {
     setSelectedChipKeys((prev) => {
       const next = new Set(prev);
@@ -213,6 +303,7 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
 
   const sheet = useBottomSheet('default');
   const flight = useFlightAnimation();
+  const isDesktop = useIsDesktop();
 
   const handleSaveWithFlight = (
     item: ResultsProductCardItem,
@@ -237,52 +328,96 @@ export const BoardLayout: React.FC<BoardLayoutProps> = ({
           onSparklesClick={onSparklesClick}
         />
       </StickyTop>
-      <MainContent>
-        <ChipStripWrap>
-          <BoardChipTabs
-            tabs={tabs}
-            activeKey={activeKey}
-            onChange={setActiveKey}
-            trailingLabel="More"
-            onTrailingClick={() => setEditPanelOpen(true)}
+      <BodyRow>
+        <MainContent>
+          <ChipStripWrap>
+            <BoardChipTabs
+              tabs={tabs}
+              activeKey={activeKey}
+              onChange={setActiveKey}
+              trailingLabel="More"
+              onTrailingClick={() => setEditPanelOpen(true)}
+            />
+            <BoardEditChipsPanel
+              open={editPanelOpen}
+              selectedKeys={selectedChipKeys}
+              onToggle={handleToggleChip}
+              onClose={() => setEditPanelOpen(false)}
+            />
+          </ChipStripWrap>
+          <FeedScroll ref={feedScrollRef}>
+            <BoardFeed
+              products={activeProducts}
+              isLiked={isLiked}
+              departingIds={departingIds}
+              onSaveClick={handleSaveWithFlight}
+              onProductClick={onProductClick}
+              onMarkPurchased={onMarkPurchased}
+              nextTab={nextTab}
+              onSelectNextTab={() => nextTab && setActiveKey(nextTab.key)}
+            />
+          </FeedScroll>
+        </MainContent>
+        {isDesktop && (
+          <DesktopSidebar
+            aria-label={`Liked tray for ${recipientName}`}
+            onWheel={(e) => {
+              // Forward wheel scroll to the feed when the sidebar's own
+              // SidebarCard can't consume it — i.e., the user is trying
+              // to scroll up past the top, or down past the bottom.
+              // Without this, the page feels "stuck" when the cursor is
+              // over the sidebar but the feed is what actually has more
+              // content to reveal.
+              const card = sidebarCardRef.current;
+              const feed = feedScrollRef.current;
+              if (!card || !feed) return;
+              const wantsDown = e.deltaY > 0;
+              const wantsUp = e.deltaY < 0;
+              const atBottom =
+                Math.ceil(card.scrollTop + card.clientHeight) >= card.scrollHeight;
+              const atTop = card.scrollTop <= 0;
+              if ((wantsDown && atBottom) || (wantsUp && atTop)) {
+                feed.scrollBy({ top: e.deltaY });
+              }
+            }}
+          >
+            <SidebarCard ref={sidebarCardRef}>
+              <BoardSavedPanel
+                ref={savedPanelRef}
+                recipientName={recipientName}
+                recipientEmoji={recipientEmoji}
+                items={savedItems}
+                accent={accent}
+                layout="grid"
+                onItemClick={onSavedItemClick}
+                onRemove={onRemoveSaved}
+                onRename={onRenameRecipient}
+              />
+            </SidebarCard>
+          </DesktopSidebar>
+        )}
+      </BodyRow>
+      {!isDesktop && (
+        <BoardBottomSheet
+          ariaLabel={`Liked tray for ${recipientName}`}
+          topPx={sheet.topPx}
+          currentSnap={sheet.currentSnap}
+          toggle={sheet.toggle}
+          accentSoft={accent.soft}
+        >
+          <BoardSavedPanel
+            ref={savedPanelRef}
+            recipientName={recipientName}
+            recipientEmoji={recipientEmoji}
+            items={savedItems}
+            accent={accent}
+            layout={sheet.currentSnap === 'expanded' ? 'grid' : 'row'}
+            onItemClick={onSavedItemClick}
+            onRemove={onRemoveSaved}
+            onRename={onRenameRecipient}
           />
-          <BoardEditChipsPanel
-            open={editPanelOpen}
-            selectedKeys={selectedChipKeys}
-            onToggle={handleToggleChip}
-            onClose={() => setEditPanelOpen(false)}
-          />
-        </ChipStripWrap>
-        <FeedScroll ref={feedScrollRef}>
-          <BoardFeed
-            products={activeProducts}
-            isLiked={isLiked}
-            departingIds={departingIds}
-            onSaveClick={handleSaveWithFlight}
-            onProductClick={onProductClick}
-            onMarkPurchased={onMarkPurchased}
-          />
-        </FeedScroll>
-      </MainContent>
-      <BoardBottomSheet
-        ariaLabel={`Saved tray for ${recipientName}`}
-        topPx={sheet.topPx}
-        currentSnap={sheet.currentSnap}
-        toggle={sheet.toggle}
-        accentSoft={accent.soft}
-      >
-        <BoardSavedPanel
-          ref={savedPanelRef}
-          recipientName={recipientName}
-          recipientEmoji={recipientEmoji}
-          items={savedItems}
-          accent={accent}
-          layout={sheet.currentSnap === 'expanded' ? 'grid' : 'row'}
-          onItemClick={onSavedItemClick}
-          onRemove={onRemoveSaved}
-          onRename={onRenameRecipient}
-        />
-      </BoardBottomSheet>
+        </BoardBottomSheet>
+      )}
       {flight.portal}
     </Page>
   );

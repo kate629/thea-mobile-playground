@@ -4,14 +4,33 @@ import { ResultsProductCard } from '../../components/landing/results/ResultsProd
 import type { ResultsProductCardItem } from '../../components/landing/results/types';
 
 const Feed = styled.div`
-  display: flex;
-  flex-direction: column;
+  /* Mobile: single column, the canonical mobile-first layout.
+     Tablet (≥640px): 2 columns — single wide cards feel cavernous once
+       the viewport gets that wide.
+     Desktop (≥1024px): 4 columns — the discover surface should feel
+       like a dense feed on a laptop, not a stretched mobile column. */
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 24px;
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  @media (min-width: 1024px) {
+    /* 3 columns at desktop — the right sidebar takes the visual room
+       a 4th column would otherwise occupy. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
   /* Bottom padding clears the saved-tray bottom sheet at its collapsed
      snap point so the last cards are scrollable into view. At default
      snap the sheet covers more, but the user can drag it down to reach
-     these items. */
+     these items. On desktop the sheet is replaced by a right sidebar,
+     so the big bottom padding becomes wasted whitespace — drop it. */
   padding: 12px 4px 240px;
+  @media (min-width: 1024px) {
+    padding: 12px 8px 48px;
+  }
 `;
 
 // Hide the X dismiss button, "..." overflow menu, AND the original heart-only
@@ -35,19 +54,32 @@ const CardWrap = styled.div<{ $departing?: boolean }>`
     display: none !important;
   }
 
-  /* Make the image area square instead of 4:5 — 20% shorter overall. */
+  /* Make the image area square instead of 4:5 — 20% shorter overall.
+     On desktop the cards get even shorter (6:5) so the second row of
+     the 3-column grid peeks above the fold on typical laptop heights —
+     gives the user a "scroll for more" affordance without a fade. */
   & > div:first-child > div > div:first-child {
     aspect-ratio: 1 / 1 !important;
   }
+  @media (min-width: 1024px) {
+    & > div:first-child > div > div:first-child {
+      aspect-ratio: 6 / 5 !important;
+    }
+  }
 `;
 
-// Aspect-ratio wrap mirrors the image area (now 1:1) so we can position the
-// Save bar at the bottom of the image without measuring the meta area below.
+// Aspect-ratio wrap mirrors the image area so we can position the Save
+// bar at the bottom of the image without measuring the meta area below.
+// Mobile = 1:1 (square); desktop drops to 6:5 to match the override on
+// CardWrap above so the 2nd row peeks.
 const ImageOverlayWrap = styled.div`
   position: absolute;
   inset: 0 0 auto 0;
   aspect-ratio: 1 / 1;
   pointer-events: none;
+  @media (min-width: 1024px) {
+    aspect-ratio: 6 / 5;
+  }
 `;
 
 const SaveBar = styled.button<{ $saved: boolean }>`
@@ -77,6 +109,45 @@ const SaveBar = styled.button<{ $saved: boolean }>`
   &:active { transform: scale(0.98); }
 `;
 
+// End-of-feed cross-promotion. Spans the full row on desktop so it
+// reads as a section break rather than another product. Outlined +
+// muted so it doesn't visually compete with real products, but the
+// emoji + label gives it enough character to be tappable.
+const NextTabCard = styled.button`
+  grid-column: 1 / -1;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 18px;
+  border-radius: 16px;
+  background: ${({ theme }) => theme.color.creamLight};
+  border: 1.5px dashed hsl(var(--border));
+  cursor: pointer;
+  font-family: ${({ theme }) => theme.font.sans};
+  font-size: 15px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+  &:hover {
+    background: ${({ theme }) => theme.color.cream};
+    border-color: hsl(var(--foreground) / 0.4);
+  }
+  &:active { transform: scale(0.99); }
+`;
+
+const NextTabEmoji = styled.span`
+  font-size: 18px;
+  line-height: 1;
+`;
+
+const NextTabArrow = styled.span`
+  font-size: 16px;
+  margin-left: 4px;
+  color: hsl(var(--muted-foreground));
+`;
+
 const HeartGlyph: React.FC<{ filled: boolean }> = ({ filled }) => (
   <svg
     width="14"
@@ -100,6 +171,12 @@ interface BoardFeedProps {
   onSaveClick: (item: ResultsProductCardItem, sourceEl: HTMLElement | null) => void;
   onProductClick: (item: ResultsProductCardItem) => void;
   onMarkPurchased?: (item: ResultsProductCardItem) => void;
+  /** Cross-promotion to a sibling chip tab. Rendered as the last card
+   *  in the feed (full-row span on the desktop grid) — catches the
+   *  user at the moment they've finished the current category and
+   *  signals there's more elsewhere. */
+  nextTab?: { key: string; label: string; emoji?: string };
+  onSelectNextTab?: () => void;
 }
 
 export const BoardFeed: React.FC<BoardFeedProps> = ({
@@ -109,6 +186,8 @@ export const BoardFeed: React.FC<BoardFeedProps> = ({
   onSaveClick,
   onProductClick,
   onMarkPurchased,
+  nextTab,
+  onSelectNextTab,
 }) => (
   <Feed>
     {products.map((p, i) => {
@@ -130,7 +209,7 @@ export const BoardFeed: React.FC<BoardFeedProps> = ({
           <ImageOverlayWrap>
             <SaveBar
               type="button"
-              aria-label={saved ? 'Saved' : 'Save'}
+              aria-label={saved ? 'Liked' : 'Like'}
               data-board-save
               $saved={saved}
               disabled={departing || saved}
@@ -144,11 +223,22 @@ export const BoardFeed: React.FC<BoardFeedProps> = ({
               }}
             >
               <HeartGlyph filled={saved} />
-              {saved ? 'Saved' : 'Save'}
+              {saved ? 'Liked' : 'Like'}
             </SaveBar>
           </ImageOverlayWrap>
         </CardWrap>
       );
     })}
+    {nextTab && products.length > 0 && (
+      <NextTabCard
+        type="button"
+        aria-label={`Switch to ${nextTab.label}`}
+        onClick={onSelectNextTab}
+      >
+        {nextTab.emoji && <NextTabEmoji aria-hidden>{nextTab.emoji}</NextTabEmoji>}
+        <span>More in {nextTab.label}</span>
+        <NextTabArrow aria-hidden>→</NextTabArrow>
+      </NextTabCard>
+    )}
   </Feed>
 );

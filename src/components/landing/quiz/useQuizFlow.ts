@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ADULT_AGE_CHIPS, AgeChip, Gender, getGenderFromRelationship } from './constants';
+import {
+  ADULT_AGE_CHIPS,
+  AgeChip,
+  Gender,
+  KID_AGE_CHIPS,
+  LifeStage,
+  NEEDS_LIFESTAGE_RELATIONSHIPS,
+  getGenderFromRelationship,
+} from './constants';
 import { getInterestEmoji, getInterestPills, getPlaceholderText } from './ageBasedContent';
 
 /**
@@ -22,7 +30,14 @@ import { getInterestEmoji, getInterestPills, getPlaceholderText } from './ageBas
  *    optional.
  */
 
-export type QuizStep = 'relationship' | 'gender' | 'age' | 'occasion' | 'interests' | 'loading';
+export type QuizStep =
+  | 'relationship'
+  | 'lifeStage'
+  | 'gender'
+  | 'age'
+  | 'occasion'
+  | 'interests'
+  | 'loading';
 
 export const NEEDS_GENDER_RELATIONSHIPS = ['Partner', 'Friend', 'Me!', 'Other'];
 
@@ -32,6 +47,11 @@ export interface QuizOccasionOption {
   emoji: string;
 }
 
+// "Other" intentionally removed (2026-05-08). The product narrative is
+// "build a board for someone you love and return for any occasion" —
+// occasions are signals to the algo, not gates. A free-form "Other"
+// fallback wasn't pulling its weight; the freeform "tell us more" field
+// covers any nuance the structured occasions don't capture.
 const BASE_OCCASION_OPTIONS: QuizOccasionOption[] = [
   { value: 'Birthday', label: 'Birthday', emoji: '🎂' },
   { value: 'Just Because', label: 'Just Because', emoji: '🥰' },
@@ -40,7 +60,6 @@ const BASE_OCCASION_OPTIONS: QuizOccasionOption[] = [
   { value: 'New Baby', label: 'New Baby', emoji: '🍼' },
   { value: 'Wedding', label: 'Wedding', emoji: '💍' },
   { value: 'Graduation', label: 'Graduation', emoji: '🎓' },
-  { value: 'Other', label: 'Other', emoji: '✨' },
 ];
 
 const GENDERED_OCCASIONS: Record<Gender, QuizOccasionOption[]> = {
@@ -105,6 +124,11 @@ export interface UseQuizFlowOptions {
 export interface QuizFlowState {
   step: QuizStep;
   relationship: string;
+  /** Adult-or-child gate — null until the user passes through the
+   *  lifeStage step (which only shows for relationships in
+   *  NEEDS_LIFESTAGE_RELATIONSHIPS). For everyone else, defaults to
+   *  'adult' for downstream chip selection. */
+  lifeStage: LifeStage | null;
   /** User-explicit gender pick. Empty until they answer the gender step. */
   gender: Gender | null;
   /** Final gender used to drive copy + interest pills. Falls back to inferred. */
@@ -118,6 +142,7 @@ export interface QuizFlowState {
   interestPills: { label: string; emoji: string }[];
   textareaPlaceholder: string;
   ageTitle: string;
+  lifeStageTitle: string;
   occasionTitle: string;
   interestsTitle: string;
   genderTitle: string;
@@ -128,6 +153,8 @@ export interface QuizFlowState {
   // Actions
   setRelationship: (rel: string) => void;
   goFromRelationship: () => void;
+  setLifeStage: (s: LifeStage) => void;
+  goFromLifeStage: () => void;
   setGender: (g: Gender) => void;
   goFromGender: () => void;
   setAge: (age: number) => void;
@@ -157,9 +184,12 @@ const buildInterestsTitle = (gender: Gender, age: number): string => {
 const buildGenderTitle = (relationship: string): string =>
   relationship === 'Me!' ? "What's your gender?" : "What's their gender?";
 
-/** Continuous progress mirrors sovrn (relationship=1, gender=1.5, age=2, occasion=3, interests=4). */
+/** Continuous progress along the bar. lifeStage shares 1.25 — a small bump
+ *  between relationship (1) and gender (1.5) so the bar still moves but
+ *  doesn't feel like a full step. */
 const STEP_PROGRESS: Record<QuizStep, number> = {
   relationship: 1,
+  lifeStage: 1.25,
   gender: 1.5,
   age: 2,
   occasion: 3,
@@ -170,6 +200,7 @@ const STEP_PROGRESS: Record<QuizStep, number> = {
 export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   const [step, setStep] = useState<QuizStep>('relationship');
   const [relationship, setRelationshipState] = useState('');
+  const [lifeStage, setLifeStageState] = useState<LifeStage | null>(null);
   const [gender, setGenderState] = useState<Gender | null>(null);
   const [age, setAgeState] = useState(0);
   const [occasion, setOccasionState] = useState('');
@@ -182,6 +213,7 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   // Refs mirror the latest values so the auto-advance setTimeout can read
   // the just-set value instead of the stale closure captured at click time.
   const relationshipRef = useRef(relationship);
+  const lifeStageRef = useRef(lifeStage);
   const genderRef = useRef(gender);
   const ageRef = useRef(age);
   const occasionRef = useRef(occasion);
@@ -190,11 +222,13 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
 
   const setRelationship = useCallback((rel: string) => {
     relationshipRef.current = rel;
+    lifeStageRef.current = null;
     genderRef.current = null;
     ageRef.current = 0;
     occasionRef.current = '';
     setRelationshipState(rel);
     // Reset downstream picks so re-selecting the relationship starts fresh.
+    setLifeStageState(null);
     setGenderState(null);
     setAgeState(0);
     setOccasionState('');
@@ -203,6 +237,25 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   const goFromRelationship = useCallback(() => {
     const rel = relationshipRef.current;
     if (!rel) return;
+    if (NEEDS_LIFESTAGE_RELATIONSHIPS.includes(rel)) {
+      setStep('lifeStage');
+      return;
+    }
+    // Default everyone else to adult so the age chips downstream pick the
+    // right set without an explicit lifeStage answer.
+    lifeStageRef.current = 'adult';
+    setLifeStageState('adult');
+    setStep(NEEDS_GENDER_RELATIONSHIPS.includes(rel) ? 'gender' : 'age');
+  }, []);
+
+  const setLifeStage = useCallback((s: LifeStage) => {
+    lifeStageRef.current = s;
+    setLifeStageState(s);
+  }, []);
+
+  const goFromLifeStage = useCallback(() => {
+    if (!lifeStageRef.current) return;
+    const rel = relationshipRef.current;
     setStep(NEEDS_GENDER_RELATIONSHIPS.includes(rel) ? 'gender' : 'age');
   }, []);
 
@@ -223,6 +276,16 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
 
   const goFromAge = useCallback(() => {
     if (!ageRef.current) return;
+    // Kids skip the occasion step — pre-select 'Just Because' and jump
+    // straight to interests. The occasion step's filtered list (Birthday
+    // / Just Because / Graduation) is preserved as a backstop in case a
+    // future flow re-enables it for kids.
+    if (lifeStageRef.current === 'child') {
+      occasionRef.current = 'Just Because';
+      setOccasionState('Just Because');
+      setStep('interests');
+      return;
+    }
     setStep('occasion');
   }, []);
 
@@ -269,69 +332,103 @@ export function useQuizFlow(opts: UseQuizFlowOptions = {}): QuizFlowState {
   }, [interests, derivedGender, relationship, age, occasion, moreAbout]);
 
   const goBack = useCallback(() => {
+    const needsLifeStage = NEEDS_LIFESTAGE_RELATIONSHIPS.includes(relationship);
+    const needsGender = NEEDS_GENDER_RELATIONSHIPS.includes(relationship);
+    const isKid = lifeStage === 'child';
     setStep((current) => {
-      if (current === 'gender') return 'relationship';
+      if (current === 'lifeStage') return 'relationship';
+      if (current === 'gender') return needsLifeStage ? 'lifeStage' : 'relationship';
       if (current === 'age') {
-        return NEEDS_GENDER_RELATIONSHIPS.includes(relationship) ? 'gender' : 'relationship';
+        if (needsGender) return 'gender';
+        if (needsLifeStage) return 'lifeStage';
+        return 'relationship';
       }
       if (current === 'occasion') return 'age';
-      if (current === 'interests') return 'occasion';
+      // Kid flow skipped occasion on the way forward, so back from
+      // interests should likewise return to age.
+      if (current === 'interests') return isKid ? 'age' : 'occasion';
       return current;
     });
-  }, [relationship]);
+  }, [relationship, lifeStage]);
 
   const occasionOptions = useMemo(() => {
+    // Child branch shows a slimmed list. Mother's/Father's Day,
+    // Anniversary, Wedding, Housewarming, etc. don't apply to a kid
+    // recipient. Birthday + Just Because + Graduation cover the
+    // realistic gifting moments (preschool/elementary/middle/high).
+    if (lifeStage === 'child') {
+      return BASE_OCCASION_OPTIONS.filter((o) =>
+        ['Birthday', 'Just Because', 'Graduation'].includes(o.value),
+      );
+    }
     const gendered = GENDERED_OCCASIONS[derivedGender] ?? [];
     const partnerOnly =
       relationship === 'Partner'
         ? [{ value: 'Anniversary', label: 'Anniversary', emoji: '💕' } as QuizOccasionOption]
         : [];
     return [...gendered, ...BASE_OCCASION_OPTIONS, ...partnerOnly];
-  }, [derivedGender, relationship]);
+  }, [derivedGender, relationship, lifeStage]);
 
   const interestPills = useMemo(() => {
     const base = getInterestPills(age, derivedGender);
     // Sovrn guarantees "Accessories" in the list (handleInterestToggle path).
     const pillsWithAccessories = base.includes('Accessories') ? base : [...base, 'Accessories'];
+    const isKid = lifeStage === 'child';
     return pillsWithAccessories.map((label) => ({
       label,
-      emoji: getInterestEmoji(label, derivedGender),
+      emoji: getInterestEmoji(label, derivedGender, isKid),
     }));
-  }, [age, derivedGender]);
+  }, [age, derivedGender, lifeStage]);
 
   const textareaPlaceholder = useMemo(() => {
-    // Sovrn favors relationship-specific copy; we fall back to age-based copy
-    // when the relationship hasn't been picked yet (defensive — shouldn't
-    // happen since the textarea only shows on the interests step).
+    // Kids: age-bucketed copy ("Her dad loves basketball...") is
+    // tailored per kid age group and doesn't depend on relationship.
+    if (lifeStage === 'child') {
+      return getPlaceholderText(derivedGender, age);
+    }
+    // Adults: relationship-specific copy when we have one, else age fallback.
     return relationship
       ? getQuizPlaceholder(derivedGender, relationship)
       : getPlaceholderText(derivedGender, age);
-  }, [derivedGender, relationship, age]);
+  }, [derivedGender, relationship, age, lifeStage]);
 
   const progressPercent = (STEP_PROGRESS[step] / 4) * 100;
+
+  // Age chips swap based on lifeStage. Default to adult chips when
+  // lifeStage hasn't been answered yet (i.e., for relationships that
+  // skip the lifeStage step, we set lifeStage='adult' inside
+  // goFromRelationship — the fallback here covers the initial render
+  // before any answer has been given).
+  const ageChips: AgeChip[] = lifeStage === 'child' ? KID_AGE_CHIPS : ADULT_AGE_CHIPS;
 
   return {
     step,
     relationship,
+    lifeStage,
     gender,
     derivedGender,
     age,
     occasion,
     interests,
     moreAbout,
-    ageChips: ADULT_AGE_CHIPS,
+    ageChips,
     occasionOptions,
     interestPills,
     textareaPlaceholder,
     ageTitle: buildAgeTitle(relationship, derivedGender),
+    // Same headline on the lifeStage step as the age step — they're
+    // conceptually the same question, narrowed in two passes.
+    lifeStageTitle: buildAgeTitle(relationship, derivedGender),
     occasionTitle: "What's the occasion?",
     interestsTitle: buildInterestsTitle(derivedGender, age),
     genderTitle: buildGenderTitle(relationship),
-    relationshipTitle: "Who's on your list?",
+    relationshipTitle: "Who's this board for?",
     progressPercent,
     canSubmitInterests: interests.length >= 2,
     setRelationship,
     goFromRelationship,
+    setLifeStage,
+    goFromLifeStage,
     setGender,
     goFromGender,
     setAge,

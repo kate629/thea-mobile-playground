@@ -12,20 +12,58 @@ interface Entry {
   detail: GiftActivityDetail;
   /** Monotonically increasing — used to render newest-first in the saved area. */
   seq: number;
+  /** True for entries inserted by the seed (Maya/Dad/Sis pre-populated
+   *  collages). Excluded from the "user has liked >= 3 things" threshold
+   *  so the save-prompt dot doesn't fire on a fresh load. */
+  seeded?: boolean;
 }
 
 // Keyed by `${recipientId}::${productId}` so the same product can be saved
 // under multiple recipients independently. Falls back to bare productId
 // when recipientId is not provided (legacy/seed paths).
-const entries = new Map<string, Entry>();
+const STORAGE_KEY = 'thea-playground:activity:v1';
+
+interface SerializedActivity {
+  entries: [string, Entry][];
+  nextSeq: number;
+}
+
+function hydrate(): { entries: Map<string, Entry>; nextSeq: number } {
+  if (typeof window === 'undefined') return { entries: new Map(), nextSeq: 1 };
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { entries: new Map(), nextSeq: 1 };
+    const parsed = JSON.parse(raw) as SerializedActivity;
+    return { entries: new Map(parsed.entries), nextSeq: parsed.nextSeq ?? 1 };
+  } catch {
+    return { entries: new Map(), nextSeq: 1 };
+  }
+}
+
+function persist() {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload: SerializedActivity = {
+      entries: Array.from(entries.entries()),
+      nextSeq,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Quota exceeded or storage disabled — in-memory state still works.
+  }
+}
+
+const _hydrated = hydrate();
+const entries = _hydrated.entries;
 const listeners = new Set<() => void>();
-let nextSeq = 1;
+let nextSeq = _hydrated.nextSeq;
 
 function entryKey(productId: string, recipientId?: string): string {
   return recipientId ? `${recipientId}::${productId}` : productId;
 }
 
 function emit() {
+  persist();
   listeners.forEach((l) => l());
 }
 
@@ -43,6 +81,7 @@ export function recordMockActivity(
   product: RecommendationProduct,
   state: State,
   recipientId?: string,
+  opts?: { seeded?: boolean },
 ) {
   // Bump seq on every record so re-saving an item moves it back to the top
   // of the saved row (matches the user's mental model of "freshest pick").
@@ -52,6 +91,7 @@ export function recordMockActivity(
     state,
     detail: detailFromProduct(product),
     seq: nextSeq++,
+    seeded: opts?.seeded,
   });
   emit();
 }
@@ -131,6 +171,16 @@ export function readSavedImagesByRecipient(
 /** Highest seq of any SAVED entry for this recipient — used to sort the
  *  People page tiles "most-recently-saved-first." Returns 0 when the
  *  recipient has no saves yet. */
+/** Total user-liked count across all recipients, excluding seed entries.
+ *  Drives the "save your boards" alert dot threshold (≥3 → show). */
+export function getUserLikedCount(): number {
+  let count = 0;
+  entries.forEach((e) => {
+    if (e.state === 'SAVED' && !e.seeded) count++;
+  });
+  return count;
+}
+
 export function lastSavedSeqByRecipient(recipientId: string): number {
   let max = 0;
   entries.forEach((e) => {

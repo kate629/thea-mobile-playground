@@ -25,8 +25,8 @@ import { useAuthGate } from '../auth/AuthGateContext';
 import { useAuth } from '../firebase/FirebaseContext';
 
 import { BoardLayout, type BoardChipSection } from '../../playground/board/BoardLayout';
-import { BackToHomeModal } from '../../playground/board/BackToHomeModal';
 import { BoardUserAvatar } from '../../playground/board/BoardUserAvatar';
+import { useTotalLikedCount } from '../../playground/board/useTotalLikedCount';
 import { clearMockActivity } from '../../playground/mockData/giftActivityStore';
 import { renameRecipient } from '../../playground/mockData/recipientRegistry';
 
@@ -57,6 +57,7 @@ const RecommendationResultsPage: React.FC = () => {
     dismissedDetails,
     purchasedDetails,
   } = useGiftActivities(recipientId);
+  const totalLiked = useTotalLikedCount();
   const navigate = useNavigate();
   const { regenerate } = useRegenerate();
 
@@ -79,7 +80,6 @@ const RecommendationResultsPage: React.FC = () => {
   // back arrow when the user is anonymous AND has saves on the current
   // board — those saves only live in localStorage and would be lost if
   // the user starts a new search without signing in.
-  const [backModalOpen, setBackModalOpen] = useState(false);
   useEffect(() => {
     setPendingLikedIds((prev) => {
       if (prev.size === 0) return prev;
@@ -318,29 +318,10 @@ const RecommendationResultsPage: React.FC = () => {
   }, []);
 
   const handleBackClick = useCallback(() => {
-    // Anon user + has saves → confirm before nav. Otherwise just go.
-    const isAnon = auth.currentUser?.isAnonymous !== false;
-    const hasSaves = liked.size > 0 || pendingLikedIds.size > 0;
-    if (isAnon && hasSaves) {
-      setBackModalOpen(true);
-      return;
-    }
-    navigate('/');
-  }, [auth, liked, pendingLikedIds, navigate]);
-
-  const handleSignInFromBackModal = useCallback(() => {
-    // PLAYGROUND STUB: real product would open the sign-in modal here, run
-    // mergeGiftFlow on success to migrate anon localStorage state into the
-    // permanent uid's Firestore subtree, then navigate. For the playground
-    // we just log + navigate so Kate can feel the flow shape.
-    // eslint-disable-next-line no-console
-    console.log('[playground] sign-in + migrate would run here, then nav home');
-    setBackModalOpen(false);
-    navigate('/');
-  }, [navigate]);
-
-  const handleConfirmBackLeave = useCallback(() => {
-    setBackModalOpen(false);
+    // No more confirm-modal on back. The persistent avatar alert dot
+    // (fires at >=3 user likes anywhere) carries the "sign in to keep
+    // these" message; an additional modal here would be redundant nag.
+    // Below threshold, the user is window-shopping — let them go.
     navigate('/');
   }, [navigate]);
 
@@ -465,8 +446,20 @@ const RecommendationResultsPage: React.FC = () => {
                 ? recipientName.charAt(0).toUpperCase()
                 : undefined
             }
+            showSaveAlert={
+              auth.currentUser?.isAnonymous !== false && totalLiked >= 3
+            }
+            likedCount={totalLiked}
             onMyPeople={() => navigate('/people')}
             onLogOut={() => navigate('/')}
+            onSignInClick={() => {
+              // Playground sign-in: append ?auth=signedin and reload so
+              // MockProviders rebuilds the fake user as non-anon. In
+              // production this would route to the real sign-in modal.
+              const url = new URL(window.location.href);
+              url.searchParams.set('auth', 'signedin');
+              window.location.assign(url.toString());
+            }}
           />
         }
         onBackClick={handleBackClick}
@@ -493,13 +486,6 @@ const RecommendationResultsPage: React.FC = () => {
         onChange={drawer.setField}
         onUpdatePicks={drawer.commit}
         updatePicksDisabled={!drawer.canCommit}
-      />
-      <BackToHomeModal
-        open={backModalOpen}
-        recipientName={recipientName}
-        onSignIn={handleSignInFromBackModal}
-        onConfirmLeave={handleConfirmBackLeave}
-        onCancel={() => setBackModalOpen(false)}
       />
     </>
   );

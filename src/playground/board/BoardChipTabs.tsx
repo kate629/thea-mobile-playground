@@ -10,71 +10,71 @@ export interface ChipTab {
 
 const Bar = styled.div`
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 8px;
   background: #ffffff;
   border-bottom: 1px solid hsl(var(--border));
-  padding: 0 12px;
+  padding: 10px 12px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
 `;
 
+// Pill-button tab. Filled dark background when active, outlined cream
+// when inactive — visually reads as a control the user picks one of,
+// not a flat underline label. Older ICP-friendly: button shape signals
+// "tap me" louder than an underline ever does.
 const Tab = styled.button<{ $active: boolean }>`
   flex: 0 0 auto;
-  padding: 14px 14px 12px;
-  background: transparent;
-  border: none;
-  position: relative;
+  padding: 8px 14px;
+  border-radius: 9999px;
   cursor: pointer;
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 16px;
+  font-size: 14px;
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
-  color: ${({ $active }) =>
-    $active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'};
   white-space: nowrap;
-  transition: color 150ms ease;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+
+  background: ${({ $active }) => ($active ? '#2D2D2D' : '#F5F1EC')};
+  color: ${({ $active }) =>
+    $active ? '#ffffff' : 'hsl(var(--foreground))'};
+  border: 1px solid
+    ${({ $active }) => ($active ? '#2D2D2D' : 'hsl(var(--border))')};
 
   &:hover {
-    color: hsl(var(--foreground));
+    background: ${({ $active }) => ($active ? '#1c1c1c' : '#ECE6DD')};
   }
-
-  &::after {
-    content: '';
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    bottom: -1px;
-    height: 2px;
-    background: ${({ $active, theme }) =>
-      $active ? theme.color.clay : 'transparent'};
-    border-radius: 2px 2px 0 0;
-    transition: background 150ms ease;
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
-// Trailing button styled distinctly from category tabs — no underline
-// indicator, slightly muted, reads as an action ("+ More") rather than
-// another category.
+// Trailing "+ More" — same pill geometry as Tab, slightly muted so it
+// reads as an action rather than another category.
 const TrailingButton = styled.button`
   flex: 0 0 auto;
-  padding: 14px 14px 12px;
-  background: transparent;
-  border: none;
+  padding: 8px 14px;
+  border-radius: 9999px;
   cursor: pointer;
   font-family: ${({ theme }) => theme.font.sans};
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: color 150ms ease;
-  &:hover { color: hsl(var(--foreground)); }
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  border: 1px dashed hsl(var(--border));
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  &:hover {
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--foreground) / 0.4);
+  }
 `;
 
 interface BoardChipTabsProps {
@@ -93,25 +93,43 @@ export const BoardChipTabs: React.FC<BoardChipTabsProps> = ({
   onChange,
   trailingLabel,
   onTrailingClick,
-}) => (
-  <Bar role="tablist" aria-label="Interest categories">
-    {tabs.map((t) => (
-      <Tab
-        key={t.key}
-        type="button"
-        role="tab"
-        aria-selected={t.key === activeKey}
-        $active={t.key === activeKey}
-        onClick={() => onChange(t.key)}
-      >
-        {t.emoji && <span aria-hidden="true">{t.emoji}</span>}
-        {t.label}
-      </Tab>
-    ))}
-    {trailingLabel && onTrailingClick && (
-      <TrailingButton type="button" onClick={onTrailingClick}>
-        <span aria-hidden="true">+</span> {trailingLabel}
-      </TrailingButton>
-    )}
-  </Bar>
-);
+}) => {
+  // Center the tapped tab in the strip on selection. The browser
+  // clamps automatically — tapping a tab near the start or end won't
+  // overscroll past the bar's edges. Standard iOS/Material tab pattern.
+  const handleTabClick = (key: string) =>
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      onChange(key);
+      e.currentTarget.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    };
+
+  return (
+    <Bar role="tablist" aria-label="Interest categories">
+      {tabs.map((t) => {
+        const active = t.key === activeKey;
+        return (
+          <Tab
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            $active={active}
+            onClick={handleTabClick(t.key)}
+          >
+            {t.emoji && <span aria-hidden="true">{t.emoji}</span>}
+            <span>{t.label}</span>
+          </Tab>
+        );
+      })}
+      {trailingLabel && onTrailingClick && (
+        <TrailingButton type="button" onClick={onTrailingClick}>
+          <span aria-hidden="true">+</span> {trailingLabel}
+        </TrailingButton>
+      )}
+    </Bar>
+  );
+};

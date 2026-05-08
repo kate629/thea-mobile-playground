@@ -7,7 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *   - expanded: 0.17 (sheet covers ~83%, top sits just below the search pill,
  *                     so the chip-tab strip is COVERED by the sheet — by
  *                     design, since the sheet is the focus when expanded)
- *   - default:  0.72 (sheet covers ~28%, header label + thumb row visible)
+ *   - default:  0.78 (sheet covers ~22%, header label + thumb row visible
+ *                     and the second product card peeks above the sheet —
+ *                     the peek is the "scroll for more" affordance)
  *
  * Drag was removed in favor of an explicit expand/retract icon at the
  * top-right of the sheet. The hook just exposes the current snap, the
@@ -18,7 +20,7 @@ export type SheetSnap = 'expanded' | 'default';
 
 const SNAP_FRACTIONS: Record<SheetSnap, number> = {
   expanded: 0.17,
-  default: 0.72,
+  default: 0.78,
 };
 
 interface UseBottomSheetResult {
