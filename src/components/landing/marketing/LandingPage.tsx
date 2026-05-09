@@ -14,6 +14,7 @@ import { BrowseMyFriendsSection } from './BrowseMyFriendsSection';
 import { SCENARIO_CARDS } from './scenarios';
 import { StickyPrimaryCta, StickyPrimaryCtaMobileSpacer } from './StickyPrimaryCta';
 import { TestimonialsCarousel } from './TestimonialsCarousel';
+import { HomeYourPeopleSection } from '../../../playground/board/HomeYourPeopleSection';
 import { SearchPill } from './SearchPill';
 import { Button } from '../../ui/Button';
 import type { QuizAnswers } from '../quiz/useQuizFlow';
@@ -320,6 +321,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <HeroSentinel ref={heroSentinelRef} aria-hidden="true" />
         </>
       )}
+      <HomeYourPeopleSection />
       <ValuePropsCard heading={valuePropsHeading} items={valuePropsItems} />
       <TestimonialsCarousel />
       <OccasionGrid heading={occasionsHeading} tiles={occasionTiles} />

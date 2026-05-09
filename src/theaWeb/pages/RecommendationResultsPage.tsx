@@ -2,25 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Spinner } from 'react-bootstrap';
 
-import { ProfileDrawer } from '../../components/landing/results/ProfileDrawer';
-import { useProfileDrawer } from '../../components/landing/results/useProfileDrawer';
 import type { ResultsProductCardItem } from '../../components/landing/results/types';
-import { getInterestPills } from '../../components/landing/quiz/ageBasedContent';
-import { getQuizPlaceholder } from '../../components/landing/quiz/useQuizFlow';
 
-import { recordActivity, updateRecipient } from '../callables';
+import { recordActivity } from '../callables';
 import { openExternal } from '../lib/openExternal';
 import { useCarouselSession } from '../hooks/useCarouselSession';
 import { useGiftActivities, type GiftActivityDetail } from '../hooks/useGiftActivities';
 import { useRecommendationDoc } from '../hooks/useRecommendationDoc';
-import { useRegenerate } from '../hooks/useRegenerate';
-import { buildPreferenceSignals } from '../lib/preferenceSignals';
 import { productToCardItem } from '../lib/resultsAdapters';
-import {
-  recommendationToProfileDraft,
-  profileDraftToUpdateRecipient,
-  profileDraftToRegenerateRequest,
-} from '../lib/profileDraftAdapter';
 import { useAuthGate } from '../auth/AuthGateContext';
 import { useAuth } from '../firebase/FirebaseContext';
 
@@ -29,16 +18,6 @@ import { BoardUserAvatar } from '../../playground/board/BoardUserAvatar';
 import { useTotalLikedCount } from '../../playground/board/useTotalLikedCount';
 import { clearMockActivity } from '../../playground/mockData/giftActivityStore';
 import { renameRecipient } from '../../playground/mockData/recipientRegistry';
-
-const EMPTY_DRAFT: import('../../components/landing/results/types').ProfileDraft = {
-  emoji: '✨',
-  name: '',
-  priceMin: 25,
-  priceMax: 200,
-  interests: [],
-  vibes: [],
-  moreAbout: '',
-};
 
 const RecommendationResultsPage: React.FC = () => {
   const auth = useAuth();
@@ -54,17 +33,10 @@ const RecommendationResultsPage: React.FC = () => {
   const {
     liked,
     likedDetails,
-    dismissedDetails,
     purchasedDetails,
   } = useGiftActivities(recipientId);
   const totalLiked = useTotalLikedCount();
   const navigate = useNavigate();
-  const { regenerate } = useRegenerate();
-
-  const preferenceSignals = useMemo(
-    () => buildPreferenceSignals(likedDetails, dismissedDetails, purchasedDetails),
-    [likedDetails, dismissedDetails, purchasedDetails],
-  );
 
   // Optimistic heart fill: stage immediately, clear once the BE-truth `liked`
   // Set catches up. Same pattern as upstream RecommendationResultsPage.
@@ -127,55 +99,8 @@ const RecommendationResultsPage: React.FC = () => {
 
   const { requestSignIn } = useAuthGate();
 
-  // ProfileDrawer wiring kept intact so the recipient pencil → drawer flow
-  // stays usable while we iterate on the board layout.
-  const initialDraft = useMemo(
-    () => (doc ? recommendationToProfileDraft(doc) : EMPTY_DRAFT),
-    [doc],
-  );
-
-  const handleUpdatePicks = useCallback(
-    (next: typeof initialDraft) => {
-      if (!recipientId || !doc) return;
-      const requestOverride = profileDraftToRegenerateRequest(next, recipientId, doc);
-      regenerate({ recipientId, recommendation: doc, requestOverride, preferenceSignals })
-        .then((res) => {
-          navigate(`/quiz/results/${res.recipientId}/${res.recommendationId}`);
-        })
-        .catch(() => {});
-    },
-    [recipientId, doc, regenerate, navigate, preferenceSignals],
-  );
-
-  const handleAutoSaveOnClose = useCallback(
-    (next: typeof initialDraft) => {
-      if (!recipientId) return;
-      const req = profileDraftToUpdateRecipient(next, recipientId);
-      if (Object.keys(req).length <= 1) return;
-      updateRecipient(req).catch((err) => {
-        console.error('updateRecipient failed', err);
-      });
-    },
-    [recipientId],
-  );
-
-  const drawer = useProfileDrawer({
-    initial: initialDraft,
-    onCommit: handleUpdatePicks,
-    onAutoSaveOnClose: handleAutoSaveOnClose,
-  });
-
-  const liveAge = drawer.draft.age ?? 30;
-  const liveGender = drawer.draft.gender ?? 'other';
-  const liveRelationship = drawer.draft.relationship ?? '';
-  const interestPills = useMemo(
-    () => getInterestPills(liveAge, liveGender),
-    [liveAge, liveGender],
-  );
-  const freeformPlaceholder = useMemo(
-    () => getQuizPlaceholder(liveGender, liveRelationship),
-    [liveGender, liveRelationship],
-  );
+  // ProfileDrawer + sparkles button removed — recipient editing is now
+  // inline (name + emoji from the Liked tray header).
 
   // Build chipSections directly from session.carousels — bypass the dynamic-
   // title resolver in resultsAdapters so the chip labels stay simple ("Cozy",
@@ -463,7 +388,6 @@ const RecommendationResultsPage: React.FC = () => {
           />
         }
         onBackClick={handleBackClick}
-        onSparklesClick={drawer.openDrawer}
         chipSections={chipSections}
         savedItems={savedItems}
         departingIds={departingIds}
@@ -474,18 +398,6 @@ const RecommendationResultsPage: React.FC = () => {
         onSavedItemClick={handleProductClick}
         onRemoveSaved={handleRemoveSaved}
         onRenameRecipient={handleRenameRecipient}
-      />
-      <ProfileDrawer
-        open={drawer.open}
-        onClose={drawer.closeDrawer}
-        isMe={doc.recipientSnapshot.isMe}
-        draft={drawer.draft}
-        savedHints={drawer.savedHints}
-        interestPills={interestPills}
-        freeformPlaceholder={freeformPlaceholder}
-        onChange={drawer.setField}
-        onUpdatePicks={drawer.commit}
-        updatePicksDisabled={!drawer.canCommit}
       />
     </>
   );

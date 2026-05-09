@@ -7,6 +7,7 @@ import {
   clearMockActivity,
   recordMockActivity,
 } from '../playground/mockData/giftActivityStore';
+import { registerRecipient } from '../playground/mockData/recipientRegistry';
 import type {
   TheaWebLogEventsRequest,
   TheaWebLogEventsResponse,
@@ -22,8 +23,6 @@ import type {
   TheaWebUpdateRecipientResponse,
 } from './schemas';
 import {
-  MOCK_CAROUSEL_SESSION_ID,
-  MOCK_RECIPIENT_ID,
   MOCK_RECOMMENDATION_ID,
 } from '../playground/mockData/playgroundConfig';
 
@@ -31,15 +30,46 @@ interface CallableResult<T> {
   data: T;
 }
 
+// Map of relationship enum → display emoji (mirrors the RELATIONSHIPS
+// constant in the quiz). Used by the playground to pick a default emoji
+// for a freshly submitted recipient. Inline rename can override later.
+const RELATIONSHIP_EMOJI: Record<string, string> = {
+  MOM: '🌷',
+  DAD: '⛳',
+  PARTNER: '❤️',
+  SISTER: '👯',
+  BROTHER: '🏀',
+  DAUGHTER: '🌸',
+  SON: '⭐',
+  GRANDMA: '🫖',
+  GRANDPA: '☕',
+  GRANDDAUGHTER: '🎀',
+  GRANDSON: '🧸',
+  FRIEND: '🤝',
+  ME: '🙋',
+  OTHER: '✨',
+};
+
 export const submitGiftFlow = async (
-  _payload: TheaWebSubmitGiftFlowRequest,
+  payload: TheaWebSubmitGiftFlowRequest,
 ): Promise<CallableResult<TheaWebSubmitGiftFlowResponse>> => {
   await new Promise((r) => setTimeout(r, 200));
+  // Generate a fresh recipientId per submission so each quiz-take builds
+  // a new board. Name + emoji come from the payload; default emoji from
+  // the relationship enum when not provided.
+  const recipientId = `mock-recipient-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const carouselSessionId = `${recipientId}_${MOCK_RECOMMENDATION_ID}`;
+  const name = payload.recipient.name || payload.recipient.relationship;
+  const emoji =
+    payload.recipient.emoji ||
+    RELATIONSHIP_EMOJI[payload.recipient.relationship] ||
+    '✨';
+  registerRecipient({ id: recipientId, name, emoji });
   return {
     data: {
-      recipientId: MOCK_RECIPIENT_ID,
+      recipientId,
       recommendationId: MOCK_RECOMMENDATION_ID,
-      carouselSessionId: MOCK_CAROUSEL_SESSION_ID,
+      carouselSessionId,
       status: 'PROCESSING',
     },
   };
@@ -73,9 +103,11 @@ export function clearMockActivityById(productId: string) {
 }
 
 export const updateRecipient = async (
-  _payload: TheaWebUpdateRecipientRequest,
+  payload: TheaWebUpdateRecipientRequest,
 ): Promise<CallableResult<TheaWebUpdateRecipientResponse>> => ({
-  data: { recipientId: MOCK_RECIPIENT_ID } as unknown as TheaWebUpdateRecipientResponse,
+  data: {
+    recipientId: payload.recipientId ?? '',
+  } as unknown as TheaWebUpdateRecipientResponse,
 });
 
 export const mergeGiftFlow = async (
