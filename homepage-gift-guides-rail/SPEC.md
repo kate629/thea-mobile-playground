@@ -53,7 +53,8 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
 - `src/theaWeb/guide/guideListings.ts` — `GUIDE_BROWSE_LISTINGS` (hand-ordered registry: `key`, `href`,
   `title`, `emoji`, optional `season`), `visibleGuideListings(now)` (season-filtered), `isInSeason`.
 - `src/theaWeb/guide/useGuidePreviewDoc.ts` — reads the materialized doc `theaWebGuidePreviews/current`
-  → `{ [guideKey]: string[] }` preview image urls (anon-readable; one doc, self-heals daily). This is how
+  → `{ [guideKey]: string[] }` preview image urls (one doc, self-heals daily; **anon-readability is a
+  pre-build gate to verify, not an assumption — §10 #2**). This is how
   `GiftGuidesPage` sources its strip photos.
 - `src/theaWeb/pages/GiftGuidesPage.tsx` — reference for wiring listings + `useGuidePreviewDoc` →
   `GuideBrowse`, and for the card-click analytics call.
@@ -91,6 +92,10 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
     to `'auto'` when `matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.webdriver`**
     (keeps Storybook/Happo deterministic);
   - arrow = ~46px circle, white, `#E8E5E0` border, soft shadow, an **inline-SVG chevron** (no emoji/glyph).
+  - **Accessibility (required, not optional):** each arrow is a native `<button>` with an `aria-label`
+    ("Previous gift guides" / "Next gift guides"), a visible focus style, and it is removed/disabled in
+    sync with the scroll bounds — so keyboard and screen-reader users get real, labeled controls, not a
+    clickable SVG. (The mock draws a bare `<div>` for brevity; the build must use a button.)
 - **No auto-advance** (that behavior belongs to testimonials' 4 items, not a browse rail).
 
 Palette/type already in the theme: font `Albert Sans`; accent/clay `#AF5B50`; foreground `hsl(22 10% 20%)`;
@@ -140,8 +145,10 @@ splits by `action`:
   (`gaGuideCardClick` for `kind:'guide'`, `gaOccasionCardClick` for `kind:'occasion'` — every listing is a
   guide today), tagged with `entry_point: 'homepage_rail'`, e.g.
   `gaGuideCardClick({ occasion: <key>, surface: 'gift_guide', entry_point: 'homepage_rail' })`. Extend
-  `GaGuideCardClickParams` with an optional `entry_point?: string`; `/gift-guides` keeps firing the event
-  **unchanged** (no `entry_point`).
+  **both** `GaGuideCardClickParams` **and** `GaOccasionCardClickParams` with an optional
+  `entry_point?: string` and pass it in whichever branch fires (today it's always the guide branch, but the
+  registry keeps `kind: 'occasion'` for future listings — don't leave the occasion path un-taggable);
+  `/gift-guides` keeps firing both events **unchanged** (no `entry_point`).
 - "See all →" tap → a new `gaGuideSeeAllClick({ entry_point: 'homepage_rail' })` → `emit('guide_see_all_click', …)`.
 
 Rationale: lets us measure rail CTR, see-all CTR, and (joined to `quiz_start`) whether the rail is additive
@@ -160,8 +167,10 @@ test **and** a story.
   **desktop arrows** — mock the rail node's `scrollWidth`/`clientWidth`/`scrollLeft`, drive with
   `fireEvent.scroll`, assert each arrow appears/hides at start / middle / end, and that a click calls
   `scrollBy` with `±~0.9 × clientWidth`; assert the reduced-motion/`navigator.webdriver` path uses instant
-  scroll. Inject `previewImagesOverride` so no Firebase. Story: deterministic `data:` tiles, Happo targets
-  for both a mobile (swipe) and desktop (arrows) frame; JS scroll gated so nothing is photographed mid-flight.
+  scroll. **Accessibility:** query the arrows via `getByRole('button', { name: /previous gift guides|next gift guides/i })`
+  (proves they're real, labeled buttons, not clickable SVGs). Inject `previewImagesOverride` so no Firebase.
+  Story: deterministic `data:` tiles, Happo targets for both a mobile (swipe) and desktop (arrows) frame; JS
+  scroll gated so nothing is photographed mid-flight.
 - The rail's source list equals the leading `HOME_RAIL_COUNT` of `visibleGuideListings(now)` — assert it
   matches the first N listings `/gift-guides` shows, in the same order; add a season-boundary case (an
   in-season guide is present, then absent past its window, and the same guide leaves `/gift-guides`).
@@ -191,7 +200,9 @@ test **and** a story.
 ## 9. Out of scope
 
 - The `/occasion/*` routes and pages (kept, untouched).
-- The `/gift-guides` page itself (unchanged; the rail previews it).
+- `GiftGuidesPage`'s container, listings, and behavior (unchanged). **NOT out of scope:** `GuideBrowse` is
+  intentionally refactored to render the shared `GuidePeekCard`, and the pinned-emoji change applies to its
+  cards too — that visual change on `/gift-guides` is expected, not scope creep.
 - Any schema / Firestore rules / backend / Cloud Function change.
 - The signed-in / has-boards homepage ("Your people").
 - A/B experimentation infrastructure (see §10).
@@ -205,15 +216,35 @@ test **and** a story.
    **8** (adjustable). No separate curated list — variety/ordering is controlled by the registry order in
    `guideListings.ts`, which already governs `/gift-guides`, so the two never drift.
 
-**One item for Manny's agents to confirm:**
-2. **Preview images** — recommended: read strip photos from **`useGuidePreviewDoc`** (the same
-   `theaWebGuidePreviews/current` doc `/gift-guides` reads), so photos stay matched to the live catalog
-   with zero maintenance. This adds **one Firestore doc listener** to the logged-out marketing homepage,
-   which is currently listener-light by design — **please confirm that's acceptable on this surface.** If
-   you'd rather keep it strictly listener-free, the fallback is hardcoded CDN image urls per guide (like
-   `OCCASION_TILES` does today): the **guides and their order still mirror `/gift-guides`** either way
-   (that comes from the static registry, not the listener) — only the *photos* become a manual snapshot
-   that can go stale until refreshed. Everything else in this spec is independent of this choice.
+   ⚠️ **Consequence to weigh (registry, not the rail):** the three Halloween guides
+   (`halloween-hosting`, `spooky-season`, `kids-halloween`) are currently pinned to the top of the
+   registry **with no `season` window**, so a blind `slice(0,8)` would lead the rail — and the acquisition
+   homepage — with Halloween **Jan–Sept, year-round**. The mirror is doing its job (both surfaces agree);
+   the lead set is the issue. The clean fix is in the registry, and it fixes `/gift-guides` at the same
+   time: **add `season` windows to the Halloween pins** (and any dated campaign) so they drop off out of
+   season, and order a varied evergreen set to lead the rest of the year. → **Kate's call: season-window
+   the Halloween pins, or accept a Halloween-led rail year-round.**
+
+**One item for Manny's agents to confirm (this is a GATE, not a default):**
+2. **Preview images.** The recommended path — read strip photos from **`useGuidePreviewDoc`** (the same
+   `theaWebGuidePreviews/current` doc `/gift-guides` reads) — depends on two things this spec cannot settle
+   from thea-web, so treat them as **pre-build gates**, not assumptions:
+   - **(a) Verify the anonymous read.** Confirm an unauthenticated, production-equivalent read of
+     `theaWebGuidePreviews/current` actually succeeds (the Firestore rules live in thea-serverless). The
+     spec does **not** assert this is true — verify it. `/gift-guides` reading it while anon-reachable is
+     suggestive, not proof.
+     If the read is denied, the live path is off the table.
+   - **(b) Approve the listener.** This adds **one Firestore doc listener** to the logged-out marketing
+     homepage, currently listener-light by design — confirm that's acceptable there.
+
+   **If either gate fails**, the listener-free fallback is a **checked-in, keyed manifest**
+   (`guide-key → [3 CDN urls]`, built by resolving each featured guide's lead-product `images_cdn`/
+   `images_cdn_mobile`), and the contract then narrows to **order-mirroring only** — the guides + their
+   order still mirror `/gift-guides` (that comes from the static registry, not the listener), but the
+   *photos* become a manual snapshot that can drift and must be refreshed on catalog/registry changes.
+   Note the coupling to the mirror: the manifest must be keyed by guide **key** (not position) and must
+   cover every guide the top-`HOME_RAIL_COUNT` slice can surface, or a reorder shows placeholder tiles.
+   Everything else in this spec is independent of this choice.
 
 **Post-ship (Kate, not a build task):** the analytics in §6 exist so Kate can watch quiz-start and
 first-board-creation rates after launch and revert if the rail measurably pulls visitors out of the quiz
