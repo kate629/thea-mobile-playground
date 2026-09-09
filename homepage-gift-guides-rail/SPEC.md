@@ -79,6 +79,11 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
 - **Card** = the existing `/gift-guides` peek strip: **title with the emoji trailing, pinned to the last
   word** (see below), over a 3-tile 2:3 product-photo strip (16px radius, 2px gaps, cream placeholder
   tiles when an image is missing).
+- **Title height must be reserved so the strips align.** In a single-row rail, a 1-line title vs. a
+  2-line title (e.g. "Back to school" vs. "Coffee, tea & matcha gifts") otherwise pushes its strip down
+  and the rail looks broken/uneven. Reserve a fixed two-line title height (`min-height ≈ 2 × line-height`)
+  so **every peek strip starts on the same baseline** regardless of title length. (This is a real bug the
+  first mock had — see the acceptance criteria.)
 - **Emoji handling (explicit request):** the emoji sits **after** the title, pinned to the **last word**
   with a non-breaking space so it wraps together with that word and is **never orphaned on its own line**
   (e.g. "Spooky Season / Style 🦇"). Emoji at `0.82em`; title `text-wrap: balance`.
@@ -196,6 +201,9 @@ test **and** a story.
 9. Tests + stories per §7 pass; `CI=true npm run build` is clean; Happo has no unexplained diffs.
 10. The rail's guides and their order **equal the top `HOME_RAIL_COUNT` of `/gift-guides`** (both derive
     from `visibleGuideListings`); reordering the registry updates both surfaces identically.
+11. **All peek strips align on a common baseline** — a card with a 2-line title does not push its strip
+    below the 1-line cards. Verify at desktop AND mobile widths with a mix of 1- and 2-line titles in the
+    rail (e.g. "Back to school" next to "Coffee, tea & matcha gifts").
 
 ## 9. Out of scope
 
