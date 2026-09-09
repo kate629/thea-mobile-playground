@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trending gift guides — desktop mock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ffffff; color: hsl(22 10% 20%); font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 1200px; }
+  a { color: #AF5B50; text-decoration: none; } a:hover { color: #9E5B4A; }
+  .gcard { flex: 0 0 auto; width: 214px; }
+  .gtitle { font-size: 17px; font-weight: 700; line-height: 1.2; text-wrap: balance; margin-bottom: 10px; min-height: 24px; }
+  .gemoji { font-size: 0.82em; white-space: nowrap; }
+  .gstrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; border-radius: 16px; overflow: hidden; }
+  .gtile { aspect-ratio: 2 / 3; }
+</style>
+</head>
+<body>
+  <div style="padding:18px 64px 0;">
+    <span style="display:inline-block; background:#F5F0EB; color:#6B6B6B; font-size:12px; font-weight:600; padding:5px 11px; border-radius:9999px;">Desktop — hover arrows to page · rail replaces “Browse by occasion” · same register as the testimonials rail below</span>
+  </div>
+
+  <!-- ===== Trending gift guides rail ===== -->
+  <div style="padding:44px 0 12px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; padding:0 64px; margin-bottom:30px;">
+      <h2 style="margin:0; font-size:40px; font-weight:700; letter-spacing:-0.02em; line-height:1.05;">Trending gift guides</h2>
+      <a href="#" style="font-size:16px; font-weight:600; white-space:nowrap;">See all guides&nbsp;→</a>
+    </div>
+    <div style="position:relative;">
+      <div style="display:flex; gap:24px; overflow-x:hidden; padding:0 64px 8px;">
+        <div class="gcard"><div class="gtitle">Spooky Season Style<span class="gemoji">&nbsp;🦇</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#F1E4DE,#E4CBC1);"></div><div class="gtile" style="background:linear-gradient(150deg,#F5F0EB,#E6DED3);"></div><div class="gtile" style="background:linear-gradient(150deg,#EDE6DC,#DACFBE);"></div></div></div>
+        <div class="gcard"><div class="gtitle">Kids' Halloween gifts<span class="gemoji">&nbsp;🎃</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#F3E7DF,#E3C9B8);"></div><div class="gtile" style="background:linear-gradient(150deg,#ECE7DF,#D7CDBD);"></div><div class="gtile" style="background:linear-gradient(150deg,#F1E4DE,#E4CBC1);"></div></div></div>
+        <div class="gcard"><div class="gtitle">Back to school<span class="gemoji">&nbsp;✏️</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#F5F0EB,#E6DED3);"></div><div class="gtile" style="background:linear-gradient(150deg,#EDE6DC,#DACFBE);"></div><div class="gtile" style="background:linear-gradient(150deg,#F3E7DF,#E3C9B8);"></div></div></div>
+        <div class="gcard"><div class="gtitle">Coffee, tea &amp; matcha<span class="gemoji">&nbsp;🍵</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#ECE7DF,#D7CDBD);"></div><div class="gtile" style="background:linear-gradient(150deg,#F1E4DE,#E4CBC1);"></div><div class="gtile" style="background:linear-gradient(150deg,#F5F0EB,#E6DED3);"></div></div></div>
+        <div class="gcard"><div class="gtitle">For the dinosaur kid<span class="gemoji">&nbsp;🦖</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#F1E4DE,#E4CBC1);"></div><div class="gtile" style="background:linear-gradient(150deg,#EDE6DC,#DACFBE);"></div><div class="gtile" style="background:linear-gradient(150deg,#F3E7DF,#E3C9B8);"></div></div></div>
+        <div class="gcard"><div class="gtitle">Date night in<span class="gemoji">&nbsp;🌙</span></div><div class="gstrip"><div class="gtile" style="background:linear-gradient(150deg,#F5F0EB,#E6DED3);"></div><div class="gtile" style="background:linear-gradient(150deg,#EDE6DC,#DACFBE);"></div><div class="gtile" style="background:linear-gradient(150deg,#F3E7DF,#E3C9B8);"></div></div></div>
+      </div>
+      <!-- desktop paging arrow (right); left arrow appears once scrolled -->
+      <div style="position:absolute; top:56%; transform:translateY(-50%); right:44px; width:46px; height:46px; border-radius:9999px; background:#fff; border:1px solid #E8E5E0; box-shadow:0 5px 18px rgba(61,53,48,0.16); display:flex; align-items:center; justify-content:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3D3530" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== existing testimonials rail (context, faded) ===== -->
+  <div style="opacity:0.5; padding:40px 0 22px;">
+    <div style="padding:0 64px; margin-bottom:28px;"><h2 style="margin:0; font-size:40px; font-weight:700; letter-spacing:-0.02em; line-height:1.05;">What people are saying</h2></div>
+    <div style="display:flex; gap:24px; overflow-x:hidden; padding:0 64px;">
+      <div style="flex:0 0 auto; width:360px; background:#fff; border:1px solid #E8E5E0; border-radius:24px; padding:34px 32px;"><div style="font-size:19px; line-height:1.45;">"I give way more just-because gifts now. Sent my best friend a dried flower bouquet last week and she called me crying."</div><div style="font-size:14px; color:#6B6B6B; margin-top:18px;">— Anika S.</div></div>
+      <div style="flex:0 0 auto; width:360px; background:#fff; border:1px solid #E8E5E0; border-radius:24px; padding:34px 32px;"><div style="font-size:19px; line-height:1.45;">"I started a board just for myself — a little treat-yourself wishlist. It's made me better at knowing what I actually want."</div><div style="font-size:14px; color:#6B6B6B; margin-top:18px;">— Priya D.</div></div>
+      <div style="flex:0 0 auto; width:220px; background:#fff; border:1px solid #E8E5E0; border-radius:24px;"></div>
+    </div>
+  </div>
+</body>
+</html>
