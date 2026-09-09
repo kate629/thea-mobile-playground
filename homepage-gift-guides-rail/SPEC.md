@@ -216,14 +216,12 @@ test **and** a story.
    **8** (adjustable). No separate curated list — variety/ordering is controlled by the registry order in
    `guideListings.ts`, which already governs `/gift-guides`, so the two never drift.
 
-   ⚠️ **Consequence to weigh (registry, not the rail):** the three Halloween guides
-   (`halloween-hosting`, `spooky-season`, `kids-halloween`) are currently pinned to the top of the
-   registry **with no `season` window**, so a blind `slice(0,8)` would lead the rail — and the acquisition
-   homepage — with Halloween **Jan–Sept, year-round**. The mirror is doing its job (both surfaces agree);
-   the lead set is the issue. The clean fix is in the registry, and it fixes `/gift-guides` at the same
-   time: **add `season` windows to the Halloween pins** (and any dated campaign) so they drop off out of
-   season, and order a varied evergreen set to lead the rest of the year. → **Kate's call: season-window
-   the Halloween pins, or accept a Halloween-led rail year-round.**
+   **The rail follows the page's order, by design.** What ranks at the top of `/gift-guides` is a
+   **manual editorial decision Kate makes in `guideListings.ts`** (today the Halloween guides lead). The
+   rail's whole job is to inherit exactly that order — so "is the lead set right for the season" is
+   answered on the `/gift-guides` side, never here. How that top order gets chosen (a future,
+   currently-manual process Kate owns) is **out of scope for this rail** — build it to match whatever the
+   page currently shows.
 
 **One item for Manny's agents to confirm (this is a GATE, not a default):**
 2. **Preview images.** The recommended path — read strip photos from **`useGuidePreviewDoc`** (the same
