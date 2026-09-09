@@ -42,9 +42,10 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
 ## 3. Current state — exact anchors in this repo
 
 - `src/components/landing/marketing/LandingPage.tsx` — the `!showSignedInLayout` JSX block renders
-  `FeatureStack → EmotionalBanner → TestimonialsCarousel → OccasionBrowse` (the `<OccasionBrowse …/>` at
-  ~L525). `occasionsHeading` / `occasionTiles` props (~L62–63, 205–206) feed it; **grep-confirmed no
-  external caller passes them**, and `OccasionBrowse` is imported only here + its own test/story.
+  `FeatureStack → EmotionalBanner → TestimonialsCarousel → OccasionBrowse` (grep `OccasionBrowse` /
+  `occasionsHeading` / `occasionTiles` — line numbers omitted, master moves). Those two props feed
+  `OccasionBrowse`; **grep-confirmed no external caller passes them**, and `OccasionBrowse` is imported
+  only here + its own test/story.
 - `src/theaWeb/guide/GuideBrowse.tsx` — the `/gift-guides` card: an emotive **title + emoji** over a
   **3-tile (aspect 2:3) product "peek strip"**, 16px radius, 2px gaps. Its `Section/Title/Strip/Tile`
   styled-components are **module-private** (only `GuideBrowse`, its props, and `GUIDE_BROWSE_TILE_COUNT`
