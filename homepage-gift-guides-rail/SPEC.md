@@ -75,16 +75,28 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
   `TestimonialsCarousel`'s heading). **The entire heading text is itself a link to `/gift-guides`** (the
   whole "Trending gift guides" is clickable — `<h2><a href="/gift-guides">…</a></h2>`), and a right-aligned
   **"See all →"** link (clay `#AF5B50`) also goes to `/gift-guides`. Both are entries to the browse page.
-- **Cards per view (approved sizing — the tiny 5–6-up is explicitly rejected; product photos must be
-  large enough to be compelling):**
-  - **Mobile (< 768px): 1 card fully visible + the next peeking** (~285px cards on a 390px screen).
-  - **Desktop (≥ 1024px): 2 cards fully visible + the 3rd peeking** (~500px cards at the 1280 max-width).
-  - **Tablet (768–1024px):** interpolate (~1.5 cards + peek).
-  Derive card width from the container so the intended count + a ~15–25% peek of the next fills the row
-  (roughly `card ≈ (contentWidth − gaps) / (count + 0.3)`), rather than hard-coding px — so it holds across
-  window sizes. Rail is **flush-left at the section padding, bleeding off the right edge** (the peek), the
-  testimonials-track pattern. Card = the shared `GuidePeekCard` (title + 3-photo strip); at these widths
-  the strip tiles are large (desktop ≈ 160px wide each, mobile ≈ 90px).
+- **Cards per view — RESPONSIVE. The px below are DERIVED reference values, not implementation constants;
+  hard-coding them ships broken (a fixed 500px clips the 2nd card on 1024–1279px laptops; a fixed 285px
+  loses the peek on ≤~360px phones).** The tiny 5–6-up is rejected — photos must be large/compelling.
+  - **`R` = the rail's inner content width** = `min(viewport, 1280px) − 2 × sectionPadding`
+    (sectionPadding = 16px `<640`, 32px `640–1023`, 64px `≥1024`). The rail is the testimonials-track
+    pattern: cards flush-left at the padding, the next card peeking, **clipped at the inner content edge
+    `R`** — the peek sits inside the padded content; the track does **not** bleed through the right padding
+    to the physical viewport edge (that would change `R` and the math). Mirror `TestimonialsCarousel`'s
+    Track exactly for this.
+  - **Card-to-card gap (pin it, matching the testimonials rail): `16px` below 768px, `24px` at ≥768px.**
+    (The peek amount and whether the cards fit both depend on the gap.) Tile gap stays 2px;
+    `tileW = (cardW − 4px) / 3`.
+  - **Target peek = 20% of the next card.** Card width per breakpoint (no clamps — the formula holds the
+    1-/2-up + 20% invariant at every width in range):
+    - **Mobile (<768px): 1 full + 20% peek** → `cardW = (R − 16px) / 1.2`  (CSS `calc(83.333% − 13.333px)`).
+      @390px `R`=358 → **~285px** (peek 57px); @320px SE `R`=288 → ~227px (peek 45px). ✓
+    - **Tablet (768–1023px): 1 full + a ~50% peek (~1.5 cards)** → `cardW = (R − 24px) / 1.5`.
+      @768 `R`=704 → ~453px; @1023 `R`=959 → ~623px. (Avoids one giant single card before desktop's 2-up.)
+    - **Desktop (≥1024px): 2 full + 20% peek** (two gaps — 1→2 and 2→3) → `cardW = (R − 2 × 24px) / 2.2`
+      (CSS `calc(45.4545% − 21.818px)`). @≥1280 `R`=1152 → **~502px** (peek ~100px, tiles ~166px);
+      @1024 `R`=896 → ~386px, still 2 full + peek. ✓
+  - Card = the shared `GuidePeekCard` (title + 3-photo strip).
 - **Card** = the existing `/gift-guides` peek strip: **title with the emoji trailing, pinned to the last
   word** (see below), over a 3-tile 2:3 product-photo strip (16px radius, 2px gaps, cream placeholder
   tiles when an image is missing).
@@ -206,8 +218,10 @@ test **and** a story.
    flush-left/bleed-right.
 5. **Mobile:** the rail swipes. **Desktop:** ‹ › arrows appear only when scrollable, hide at the ends, and
    page the rail; motion is instant under reduced-motion / webdriver.
-6. **Cards per view:** mobile shows **1 card + the next peeking**; desktop shows **2 cards + the 3rd
-   peeking** (per §4). Verify at 390px and at ≥1280px.
+6. **Cards per view (responsive per §4):** mobile shows **1 card + the next peeking**; desktop shows **2
+   cards + the 3rd peeking**, with a ~20% peek held by the formula (NOT fixed px). **Verify at the edges
+   where fixed px breaks:** 320px (mobile keeps a peek, card ~227px), 390px (~285px), 1024px (desktop
+   shows 2 full + peek, card ~386px), ≥1280px (~502px). Card width is derived from `R`; the gap is 16/24px.
 7. **Both** the "See all →" link **and the "Trending gift guides" heading** navigate to `/gift-guides`.
 7. Analytics per §6 fire with the right params; `/gift-guides`'s existing `guide_card_click` is unchanged.
 8. `/` and `/welcome2` remain identical.
