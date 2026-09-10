@@ -80,10 +80,12 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
   loses the peek on ≤~360px phones).** The tiny 5–6-up is rejected — photos must be large/compelling.
   - **`R` = the rail's inner content width** = `min(viewport, 1280px) − 2 × sectionPadding`
     (sectionPadding = 16px `<640`, 32px `640–1023`, 64px `≥1024`). The rail is the testimonials-track
-    pattern: cards flush-left at the padding, the next card peeking, **clipped at the inner content edge
-    `R`** — the peek sits inside the padded content; the track does **not** bleed through the right padding
-    to the physical viewport edge (that would change `R` and the math). Mirror `TestimonialsCarousel`'s
-    Track exactly for this.
+    pattern: cards flush-left at the padding, the next card peeking and **bleeding through the right
+    padding to the physical viewport edge** — exactly what `TestimonialsCarousel` already does, and the
+    affordance that reads as "there is more this way". Card widths are still derived from `R`, so every
+    formula below is unchanged: measured against the content box the peek is exactly 20%, it just reads
+    wider (~33% at 1280px) against the full viewport. Mirror `TestimonialsCarousel`'s Track exactly for
+    this.
   - **Card-to-card gap (pin it, matching the testimonials rail): `16px` below 768px, `24px` at ≥768px.**
     (The peek amount and whether the cards fit both depend on the gap.) Tile gap stays 2px;
     `tileW = (cardW − 4px) / 3`.
