@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EDEBE8; font-family: 'Albert Sans', -apple-system, sans-serif; color: hsl(22 10% 20%); padding: 20px; }
+  h2.section { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 2px; }
+  .sub { font-size: 12px; color: #6B6B6B; margin: 0 0 14px; }
+  .frame { background: #fff; border-radius: 20px; box-shadow: 0 8px 30px rgba(61,53,48,0.12); padding: 20px 0 24px; margin: 0 0 26px; overflow: hidden; }
+  .frameinner { }
+  .rowlabel { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #AF5B50; padding: 0 20px; margin: 6px 0 14px; }
+  .railhead { display:flex; justify-content:space-between; align-items:baseline; padding:0 20px; margin-bottom:16px; }
+  .railhead h3 { margin:0; font-weight:700; letter-spacing:-0.02em; }
+  .seeall { color:#AF5B50; text-decoration:none; font-weight:600; white-space:nowrap; }
+  .rail { display:flex; overflow-x:auto; }
+  .gtitle { font-weight:700; text-wrap:balance; }
+  .gemoji { font-size:0.82em; white-space:nowrap; }
+  .strip { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px; border-radius:16px; overflow:hidden; }
+  .tile { aspect-ratio:2/3; background:#F5F0EB; overflow:hidden; }
+  .tile img, .hero img { width:100%; height:100%; object-fit:cover; display:block; }
+  .hero { border-radius:16px; overflow:hidden; background:#F5F0EB; }
+  .wrapM { width:430px; }
+  .wrapD { width:1240px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const G = [
+ {t:"Halloween hosting", e:"🥂", imgs:[
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2F8G8yXyYUDEi2GSNh2tIU%2Fc51630835d1b9b01_mobile.webp?alt=media&token=2ff92e09-3498-4bfc-9745-c1eaea10c058",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2Fgpg9OPldrw039F56J1Q0%2F2791ab16dbe01be3_mobile.webp?alt=media&token=795aa800-e241-40e1-b7c7-c050c3197d73",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2F8khI72MSUXgBsqJB7NmQ%2F2a03888c1d7d496e_mobile.webp?alt=media&token=aa8f1961-d8e5-470b-bf1a-5505140b6c58"]},
+ {t:"Spooky Season Style", e:"🦇", imgs:[
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2Fd19JHcN3ZCK1u4Oxg5Mg%2Fea3a7f5e43dab3ae_mobile.webp?alt=media&token=422f0359-18bd-4320-82b4-1fd8bf8318d2",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2F4YzVfdeHZ4L1uaMnsbCx%2F87ddc95634495df0_mobile.webp?alt=media&token=f1087d77-1656-42a4-afae-25a13586d638",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2Fe0ZnyHI83rCzI79vZnfN%2F0b8016236a5bd22c_mobile.webp?alt=media&token=d20eca86-9c8c-4771-9c77-dc5a71a98d0e"]},
+ {t:"Kids' Halloween gifts", e:"🎃", imgs:[
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2Fe9XCLWqFCtFEXuXcXT5Y%2F5d3a74a4eb8b592f_mobile.webp?alt=media&token=be99d394-d5eb-4978-ae44-01bf6300aef2",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2FoUuuO0WmoCsZU6EBFqjV%2F74c5740f610be0fd_mobile.webp?alt=media&token=769d4c41-31c7-4579-a42c-e5826129462d",
+  "https://firebasestorage.googleapis.com/v0/b/thea-643b1.firebasestorage.app/o/products%2FIsbtVcUtIh0aoSyS4ROm%2F75e89f023e975be0_mobile.webp?alt=media&token=dda5545b-3651-4bef-912e-914a6372f40e"]},
+ {t:"Thanksgiving hosting", e:"🦃", imgs:[
+  "https://cb.scene7.com/is/image/Crate/AspnTlPlttrSSF26",
+  "https://assets.wsimgs.com/wsimgs/ab/images/dp/wcm/202624/0365/pheasant-feather-live-wreath-c.jpg",
+  "https://assets.wsimgs.com/wsimgs/ab/images/dp/wcm/202628/0175/fall-chocolate-board-c.jpg"]},
+ {t:"Cozy fall books for kids", e:"🍁", imgs:[
+  "https://m.media-amazon.com/images/I/81bNGa3XvFL._SL1500_.jpg",
+  "https://m.media-amazon.com/images/I/81OlkkYeRjL._SL1500_.jpg",
+  "https://m.media-amazon.com/images/I/91cEcgIcDuL._SL1500_.jpg"]},
+ {t:"Autumn Aesthetic", e:"🍂", imgs:[
+  "https://cdn.shopify.com/s/files/1/1063/1742/files/TheCozyPumpkinSweater-Women_sCream.png?v=1762398678",
+  "https://cdn.shopify.com/s/files/1/0630/4999/0366/files/1746866_01.jpg?v=1786116909",
+  "https://cdn.shopify.com/s/files/1/1063/1742/files/KJP_Chestnut_Hill_Gingham_Shirt_1.jpg?v=1786650830"]},
+];
+
+function stripCard(g, cardW, titleSize, gap){
+  const gp = (gap!=null) ? gap : Math.round(cardW*0.11);
+  return `<div style="flex:0 0 auto; width:${cardW}px; margin-right:${gp}px;">
+    <div class="gtitle" style="font-size:${titleSize}px; line-height:1.2; margin-bottom:9px; min-height:${Math.round(titleSize*1.2*2)}px;">${g.t}<span class="gemoji">&nbsp;${g.e}</span></div>
+    <div class="strip">${g.imgs.slice(0,3).map(u=>`<div class="tile"><img src="${u}" alt=""></div>`).join('')}</div>
+  </div>`;
+}
+function heroCard(g, cardW, titleSize){
+  return `<div style="flex:0 0 auto; width:${cardW}px; margin-right:${Math.round(cardW*0.09)}px;">
+    <div class="hero" style="aspect-ratio:4/5;"><img src="${g.imgs[0]}" alt=""></div>
+    <div class="gtitle" style="font-size:${titleSize}px; line-height:1.2; margin-top:10px;">${g.t}<span class="gemoji">&nbsp;${g.e}</span></div>
+  </div>`;
+}
+function railHTML(builder, cardW, titleSize, headSize, pad, gap){
+  return `<div class="railhead" style="padding:0 ${pad}px;"><h3 style="font-size:${headSize}px;">Trending gift guides</h3><a class="seeall" href="#" style="font-size:${headSize>30?16:14}px;">See all&nbsp;→</a></div>
+  <div class="rail" style="padding:0 ${pad}px 6px;">${G.map(g=>builder(g,cardW,titleSize,gap)).join('')}</div>`;
+}
+
+const header = `
+<h2 class="section">Real-photo preview — real product images, at the actual rail sizes</h2>
+<p class="sub">Top of /gift-guides today. Proposed 3-photo strip vs. a bigger 1-photo card.</p>`;
+
+const mobileBlock = `
+<div class="frame wrapM">
+  <div class="rowlabel">Mobile · proposed — 3-photo strip (150px cards)</div>
+  ${railHTML(stripCard, 150, 15, 26, 20)}
+  <div class="rowlabel" style="margin-top:26px;">Mobile · alternative — 1 bigger photo (210px cards)</div>
+  ${railHTML(heroCard, 210, 16, 26, 20)}
+</div>`;
+
+const desktopBlock = `
+<div class="frame wrapD">
+  <div class="rowlabel">Desktop · proposed — 3-photo strip (214px cards)</div>
+  ${railHTML(stripCard, 214, 17, 40, 40)}
+  <div class="rowlabel" style="margin-top:30px;">Desktop · alternative — 1 bigger photo (300px cards)</div>
+  ${railHTML(heroCard, 300, 19, 40, 40)}
+</div>`;
+
+// Desktop, 3-up: 3 guides fully visible + 4th peeking → ~340px cards, much bigger tiles.
+const desktop3Block = `
+<div style="background:#fff; width:1280px; padding:18px 0 26px; border-radius:20px;">
+  <div class="rowlabel">Desktop · 3 guides showing, 4th peeking — 3-photo strip, ~340px cards</div>
+  ${railHTML(stripCard, 340, 19, 40, 64)}
+</div>`;
+
+// Desktop, 2-up: 2 guides fully visible + 3rd peeking → ~500px cards, biggest tiles.
+const desktop2Block = `
+<div style="background:#fff; width:1280px; padding:18px 0 26px; border-radius:20px;">
+  <div class="rowlabel">Desktop · 2 guides showing, 3rd peeking — 3-photo strip, ~500px cards</div>
+  ${railHTML(stripCard, 500, 21, 40, 64)}
+</div>`;
+
+// ---- Full desktop homepage with the 3-up rail dropped in above testimonials ----
+const clayBtn = (label) => `<a href="#" style="display:inline-block; background:#AF5B50; color:#fff; font-weight:600; font-size:17px; padding:15px 34px; border-radius:9999px; text-decoration:none;">${label}</a>`;
+const headerBar = `<header style="display:flex; justify-content:space-between; align-items:center; padding:20px 64px; max-width:1280px; margin:0 auto;">
+  <span style="font-family:'Source Serif 4',Georgia,serif; font-style:italic; font-size:26px; color:#AF5B50;">thea</span>
+  <span style="font-size:15px; color:#3D3530;">Sign in</span></header>`;
+const heroSec = `<section style="max-width:920px; margin:0 auto; padding:84px 32px 48px; text-align:center;">
+  <h1 style="font-size:60px; font-weight:800; letter-spacing:-0.03em; line-height:1.05; margin:0;">Your gifting brain,<br><span style="color:#AF5B50;">all in one place.</span></h1>
+  <p style="font-size:23px; color:#6B6B6B; max-width:37rem; margin:22px auto 0; line-height:1.4;">Thea reminds you before the big days — with a board of gift ideas ready for everyone you love.</p>
+  <div style="margin-top:38px;">${clayBtn('Get started')}</div></section>`;
+const BEATS = [['Tell Thea once.','Who they are, when their day is, what they love.'],
+  ['Everyone gets a board.','Kids, grandparents, in-laws, your best friend.'],
+  ['Reminders find you.','Before every birthday, every year — Thea does the remembering.'],
+  ['The ideas stay fresh.','New finds land on their boards all year, so when the day comes, you’re choosing, not searching.']];
+const beatsSec = `<section style="max-width:1080px; margin:0 auto; padding:36px 32px 64px; display:flex; flex-direction:column; gap:20px;">
+  ${BEATS.map(([t,b],i)=>`<div style="display:flex; align-items:center; gap:40px; ${i%2?'flex-direction:row-reverse;':''}">
+    <div style="flex:1;"><div style="font-size:30px; font-weight:700; letter-spacing:-0.02em;">${t}</div>
+      <div style="font-size:18px; color:#6B6B6B; margin-top:8px; max-width:26rem; line-height:1.45;">${b}</div></div>
+    <div style="flex:0 0 190px; height:150px; background:#F5F0EB; border-radius:20px; border:1px solid #E8E5E0;"></div></div>`).join('')}
+  <div style="text-align:center; font-size:11px; color:#B7B0A6; margin-top:6px;">(how-it-works section — approximated; real page uses device-framed screenshots)</div></section>`;
+const bannerSec = `<section style="background:#F3E9E2; padding:92px 32px; text-align:center;">
+  <h2 style="font-size:46px; font-weight:800; letter-spacing:-0.02em; margin:0; line-height:1.12;">You love your people.<br><span style="color:#AF5B50;">Let it show.</span></h2>
+  <div style="margin-top:38px;">${clayBtn('Get started')}</div></section>`;
+const railSec = `<section style="padding:64px 0 60px; background:#fff;">
+  <div style="border-top:1px dashed #E4B9AE; border-bottom:1px dashed #E4B9AE; padding:26px 0;">
+    <div style="text-align:center; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#AF5B50; margin-bottom:18px;">◆ NEW — Trending gift guides rail (replaces Browse by occasion) ◆</div>
+    ${railHTML(stripCard, 340, 19, 40, 64)}
+  </div></section>`;
+const QUOTES = [['I give way more just-because gifts now. Sent my best friend a dried flower bouquet last week and she called me crying.','Anika S.'],
+  ['I started a board just for myself — a little treat-yourself wishlist. It’s made me better at knowing what I actually want.','Priya D.'],
+  ['Thea suggested an at-home pottery date night kit for my wife. We haven’t laughed that hard together in months.','Ben R.']];
+const testiSec = `<section style="max-width:1280px; margin:0 auto; padding:60px 0 68px;">
+  <h2 style="font-size:40px; font-weight:700; letter-spacing:-0.02em; padding:0 64px; margin:0 0 40px;">What people are saying</h2>
+  <div style="display:flex; gap:24px; padding:0 64px;">
+    ${QUOTES.map(([q,a])=>`<div style="flex:1; background:#fff; border:1px solid #E8E5E0; border-radius:24px; padding:34px 32px;">
+      <div style="font-size:19px; line-height:1.45;">“${q}”</div>
+      <div style="font-size:14px; color:#6B6B6B; margin-top:20px;">— ${a}</div></div>`).join('')}
+  </div></section>`;
+const footerSec = `<footer style="background:#2A2422; color:#EDE7DF; padding:44px 64px;">
+  <div style="font-family:'Source Serif 4',Georgia,serif; font-style:italic; font-size:26px; color:#fff;">thea</div>
+  <div style="font-size:13px; color:#B7B0A6; margin-top:10px;">Making gifting magical ✨</div></footer>`;
+const fullPageBlock = `<div style="width:1280px; background:#fff; box-shadow:0 10px 50px rgba(61,53,48,0.15);">
+  ${headerBar}${heroSec}${beatsSec}${bannerSec}${railSec}${testiSec}${footerSec}</div>`;
+// Full page but with the 2-up rail (500px cards, 2 shown + 3rd peeking).
+const railSec2 = `<section style="padding:64px 0 60px; background:#fff;">
+  <div style="border-top:1px dashed #E4B9AE; border-bottom:1px dashed #E4B9AE; padding:26px 0;">
+    <div style="text-align:center; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#AF5B50; margin-bottom:18px;">◆ NEW — Trending gift guides rail · 2-up (replaces Browse by occasion) ◆</div>
+    ${railHTML(stripCard, 500, 21, 40, 64)}
+  </div></section>`;
+const fullPageBlock2 = `<div style="width:1280px; background:#fff; box-shadow:0 10px 50px rgba(61,53,48,0.15);">
+  ${headerBar}${heroSec}${beatsSec}${bannerSec}${railSec2}${testiSec}${footerSec}</div>`;
+
+// Mobile, bigger cards to match the 2-up desktop choice.
+const phone = (label, cardW, titleSize) => `
+<div style="width:390px; margin:0 auto 24px; background:#fff; border-radius:30px; box-shadow:0 12px 40px rgba(61,53,48,0.18); overflow:hidden; padding-bottom:18px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 16px 0;">
+    <span style="font-family:'Source Serif 4',Georgia,serif; font-style:italic; font-size:21px; color:#AF5B50;">thea</span>
+    <span style="font-size:12px; color:#6B6B6B;">Sign in</span></div>
+  <div class="rowlabel" style="padding:14px 16px 0; margin:0;">${label}</div>
+  <div style="padding-top:4px;">${railHTML(stripCard, cardW, titleSize, 24, 16, 16)}</div>
+</div>`;
+const mobileBigBlock = phone('1 card + peek · ~285px cards', 285, 16) + phone('~1.4 cards · ~235px cards', 235, 15);
+const mobileFinalBlock = phone('Mobile — 1 card + 2nd card peeking · ~285px cards', 285, 16);
+
+const h = location.hash;
+const bare = (h === '#mobile' || h === '#desktop' || h === '#desktop3' || h === '#desktop2' || h === '#fullpage' || h === '#fullpage2' || h === '#mobilebig' || h === '#mobilefinal');
+if (h === '#fullpage' || h === '#fullpage2') document.body.style.padding = '18px';
+document.getElementById('root').innerHTML =
+  (bare ? '' : header) +
+  (h === '#mobile' ? mobileBlock
+   : h === '#desktop' ? desktopBlock
+   : h === '#desktop3' ? desktop3Block
+   : h === '#desktop2' ? desktop2Block
+   : h === '#fullpage' ? fullPageBlock
+   : h === '#fullpage2' ? fullPageBlock2
+   : h === '#mobilebig' ? mobileBigBlock
+   : h === '#mobilefinal' ? mobileFinalBlock
+   : (mobileBlock + desktopBlock));
+</script>
+</body>
+</html>

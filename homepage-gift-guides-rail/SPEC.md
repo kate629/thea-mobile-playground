@@ -72,10 +72,19 @@ Hero → FeatureStack → EmotionalBanner → [Trending gift guides rail] → Te
 
 - Section `max-width: 1280px`, centered, horizontal padding `16px → 32px (≥640/768) → 64px (≥1024)`.
 - Header row: `<h2>` **"Trending gift guides"** at **28px mobile / 40px desktop, weight 700** (identical to
-  `TestimonialsCarousel`'s heading), with a right-aligned **"See all →"** link (clay `#AF5B50`) to
-  `/gift-guides`.
-- Rail: a horizontal row of guide cards, **flush-left at the section padding, bleeding off the right edge**
-  (last card peeks) — the testimonials-track pattern. Cards ~150px wide on mobile, ~214px on desktop.
+  `TestimonialsCarousel`'s heading). **The entire heading text is itself a link to `/gift-guides`** (the
+  whole "Trending gift guides" is clickable — `<h2><a href="/gift-guides">…</a></h2>`), and a right-aligned
+  **"See all →"** link (clay `#AF5B50`) also goes to `/gift-guides`. Both are entries to the browse page.
+- **Cards per view (approved sizing — the tiny 5–6-up is explicitly rejected; product photos must be
+  large enough to be compelling):**
+  - **Mobile (< 768px): 1 card fully visible + the next peeking** (~285px cards on a 390px screen).
+  - **Desktop (≥ 1024px): 2 cards fully visible + the 3rd peeking** (~500px cards at the 1280 max-width).
+  - **Tablet (768–1024px):** interpolate (~1.5 cards + peek).
+  Derive card width from the container so the intended count + a ~15–25% peek of the next fills the row
+  (roughly `card ≈ (contentWidth − gaps) / (count + 0.3)`), rather than hard-coding px — so it holds across
+  window sizes. Rail is **flush-left at the section padding, bleeding off the right edge** (the peek), the
+  testimonials-track pattern. Card = the shared `GuidePeekCard` (title + 3-photo strip); at these widths
+  the strip tiles are large (desktop ≈ 160px wide each, mobile ≈ 90px).
 - **Card** = the existing `/gift-guides` peek strip: **title with the emoji trailing, pinned to the last
   word** (see below), over a 3-tile 2:3 product-photo strip (16px radius, 2px gaps, cream placeholder
   tiles when an image is missing).
@@ -154,7 +163,8 @@ splits by `action`:
   `entry_point?: string` and pass it in whichever branch fires (today it's always the guide branch, but the
   registry keeps `kind: 'occasion'` for future listings — don't leave the occasion path un-taggable);
   `/gift-guides` keeps firing both events **unchanged** (no `entry_point`).
-- "See all →" tap → a new `gaGuideSeeAllClick({ entry_point: 'homepage_rail' })` → `emit('guide_see_all_click', …)`.
+- Tap on **either** the "See all →" link **or the "Trending gift guides" heading** (both go to
+  `/gift-guides`) → a new `gaGuideSeeAllClick({ entry_point: 'homepage_rail' })` → `emit('guide_see_all_click', …)`.
 
 Rationale: lets us measure rail CTR, see-all CTR, and (joined to `quiz_start`) whether the rail is additive
 to quiz starts vs. an early exit. `entry_point` and `guide_see_all_click` also need registering as GA4
@@ -168,7 +178,8 @@ test **and** a story.
 - `GuidePeekCard`: title renders; **emoji is pinned to the last word and never orphans**; N image tiles vs.
   placeholders; link href; `onClick` fires. Story uses `data:` URI images (Happo determinism).
 - `HomeGuideRail`: renders the featured listings in order; card tap fires `gaGuideCardClick` with
-  `entry_point: 'homepage_rail'` (spy); "See all" links to `/gift-guides` and fires `gaGuideSeeAllClick`;
+  `entry_point: 'homepage_rail'` (spy); **both** the "See all" link **and the "Trending gift guides"
+  heading** link to `/gift-guides` and fire `gaGuideSeeAllClick`;
   **desktop arrows** — mock the rail node's `scrollWidth`/`clientWidth`/`scrollLeft`, drive with
   `fireEvent.scroll`, assert each arrow appears/hides at start / middle / end, and that a click calls
   `scrollBy` with `±~0.9 × clientWidth`; assert the reduced-motion/`navigator.webdriver` path uses instant
@@ -195,7 +206,9 @@ test **and** a story.
    flush-left/bleed-right.
 5. **Mobile:** the rail swipes. **Desktop:** ‹ › arrows appear only when scrollable, hide at the ends, and
    page the rail; motion is instant under reduced-motion / webdriver.
-6. "See all →" navigates to `/gift-guides`.
+6. **Cards per view:** mobile shows **1 card + the next peeking**; desktop shows **2 cards + the 3rd
+   peeking** (per §4). Verify at 390px and at ≥1280px.
+7. **Both** the "See all →" link **and the "Trending gift guides" heading** navigate to `/gift-guides`.
 7. Analytics per §6 fire with the right params; `/gift-guides`'s existing `guide_card_click` is unchanged.
 8. `/` and `/welcome2` remain identical.
 9. Tests + stories per §7 pass; `CI=true npm run build` is clean; Happo has no unexplained diffs.
